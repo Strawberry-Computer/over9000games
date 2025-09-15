@@ -11,7 +11,17 @@ import {
   reddit,
   redis,
 } from "@devvit/web/server";
+import { Devvit, SettingScope } from "devvit";
 import { createPost } from "./core/post";
+
+Devvit.addSettings([
+  {
+    type: "string",
+    name: "openAIKey",
+    label: "OpenAI API Key",
+    scope: SettingScope.App,
+  },
+]);
 
 const app = express();
 
