@@ -25,7 +25,6 @@ export class NESConsole {
     };
 
     this.gameDefinition = null;
-    this.gameUpdateFunction = null;
     this.inputState = {};
     this.prevInputState = {};
     this.animationId = null;
@@ -100,11 +99,7 @@ export class NESConsole {
     this.buildSpriteMap();
     this.preRenderSprites();
 
-    try {
-      this.gameUpdateFunction = new Function('console', gameDefinition.gameLogic);
-    } catch (error) {
-      console.error('Error loading game logic:', error);
-    }
+    // Game logic is now handled by QuickJS runner
 
     this.state.score = 0;
     this.resetGame();
@@ -307,13 +302,8 @@ export class NESConsole {
 
     this.updateInput();
 
-    if (this.gameUpdateFunction) {
-      try {
-        this.gameUpdateFunction(this);
-      } catch (error) {
-        console.error('Game update error:', error);
-      }
-    }
+    // Game logic is now handled by QuickJS runner
+    // NES console just handles rendering
 
     this.render();
     this.animationId = requestAnimationFrame(this.gameLoop);

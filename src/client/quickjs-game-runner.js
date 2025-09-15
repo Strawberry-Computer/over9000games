@@ -122,20 +122,31 @@ export class QuickJSGameRunner {
     const sanitizedGame = sanitizeGameDefinition(gameDefinition);
     this.gameDefinition = sanitizedGame;
 
-    // Load game into NES console first (for sprite/tile definitions)
+    // Load game into NES console (sprites/tiles/palette only)
     const nesGameDef = {
       ...sanitizedGame,
-      gameLogic: (console) => {
-        // This will be overridden by our QuickJS execution
-        try {
-          this.executeGameUpdate();
-        } catch (error) {
-          console.error("Game update error:", error);
-        }
-      }
+      gameLogic: null // No game logic in NES console anymore
     };
 
     this.nesConsole.loadGame(nesGameDef);
+
+    // Override the NES console game loop to call our QuickJS execution
+    const originalGameLoop = this.nesConsole.gameLoop;
+    this.nesConsole.gameLoop = () => {
+      if (!this.nesConsole.state.gameRunning) return;
+
+      this.nesConsole.updateInput();
+
+      // Execute QuickJS game logic
+      try {
+        this.executeGameUpdate();
+      } catch (error) {
+        console.error("Game update error:", error);
+      }
+
+      this.nesConsole.render();
+      this.nesConsole.animationId = requestAnimationFrame(this.nesConsole.gameLoop);
+    };
 
     // Initialize game state in QuickJS
     const gameStateCode = `
