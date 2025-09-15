@@ -1,9 +1,11 @@
 export async function generateGameWithAI(description) {
-  const gameDefinition = createSimpleGame(description);
+  // For now, generate a QuickJS-compatible game based on description
+  // TODO: Integrate with actual LLM service for dynamic generation
+  const gameDefinition = createQuickJSGame(description);
   return gameDefinition;
 }
 
-function createSimpleGame(description) {
+function createQuickJSGame(description) {
   const defaultPalette = [
     0x000000, 0x666666, 0x888888, 0xAAAAAA, 0xCCCCCC, 0xFFFFFF,
     0xFF0000, 0x00FF00, 0x0000FF, 0xFFFF00, 0xFF00FF, 0x00FFFF,
@@ -58,102 +60,105 @@ function createSimpleGame(description) {
     ]
   };
 
-  const gameLogic = `
-// Simple game logic - collect items while avoiding enemies
-let player = { x: 128, y: 128, speed: 2 };
-let enemies = [
-  { x: 50, y: 50, dx: 1, dy: 1 },
-  { x: 200, y: 100, dx: -1, dy: 1 },
-  { x: 100, y: 200, dx: 1, dy: -1 }
-];
-let collectibles = [
-  { x: 80, y: 80, collected: false },
-  { x: 180, y: 80, collected: false },
-  { x: 80, y: 180, collected: false },
-  { x: 180, y: 180, collected: false }
-];
-let gameStarted = false;
-let gameOver = false;
-
-function gameUpdate() {
-  if (!gameStarted && console.justPressed('start')) {
-    gameStarted = true;
-    console.setScore(0);
-  }
-
-  if (!gameStarted || gameOver) {
-    // Show start screen
-    console.setSprite(0, 'player', 128, 128);
-    return;
-  }
-
-  // Player movement
-  if (console.isPressed('up') && player.y > 0) player.y -= player.speed;
-  if (console.isPressed('down') && player.y < 248) player.y += player.speed;
-  if (console.isPressed('left') && player.x > 0) player.x -= player.speed;
-  if (console.isPressed('right') && player.x < 248) player.x += player.speed;
-
-  // Enemy movement
-  enemies.forEach((enemy, i) => {
-    enemy.x += enemy.dx;
-    enemy.y += enemy.dy;
-
-    if (enemy.x <= 0 || enemy.x >= 248) enemy.dx = -enemy.dx;
-    if (enemy.y <= 0 || enemy.y >= 248) enemy.dy = -enemy.dy;
-
-    // Check collision with player
-    if (Math.abs(enemy.x - player.x) < 8 && Math.abs(enemy.y - player.y) < 8) {
-      gameOver = true;
-      // Dispatch game over event
-      document.dispatchEvent(new CustomEvent('gameOver', { detail: { score: console.getScore() } }));
+  // QuickJS-compatible update function using 'sys' interface
+  const updateFunction = function(sys) {
+    // Access game state from global scope
+    if (!globalThis.gameState) {
+      globalThis.gameState = {
+        player: { x: 128, y: 128, speed: 2 },
+        enemies: [
+          { x: 50, y: 50, dx: 1, dy: 1 },
+          { x: 200, y: 100, dx: -1, dy: 1 },
+          { x: 100, y: 200, dx: 1, dy: -1 }
+        ],
+        collectibles: [
+          { x: 80, y: 80, collected: false },
+          { x: 180, y: 80, collected: false },
+          { x: 80, y: 180, collected: false },
+          { x: 180, y: 180, collected: false }
+        ],
+        gameStarted: false,
+        gameOver: false
+      };
     }
 
-    console.setSprite(10 + i, 'enemy', enemy.x, enemy.y);
-  });
+    const state = globalThis.gameState;
 
-  // Collectible logic
-  collectibles.forEach((item, i) => {
-    if (!item.collected) {
-      if (Math.abs(item.x - player.x) < 8 && Math.abs(item.y - player.y) < 8) {
-        item.collected = true;
-        console.addScore(100);
-        console.clearSprite(20 + i);
-      } else {
-        console.setSprite(20 + i, 'collectible', item.x, item.y);
+    if (!state.gameStarted && sys.justPressed('start')) {
+      state.gameStarted = true;
+      sys.setScore(0);
+    }
+
+    if (!state.gameStarted || state.gameOver) {
+      // Show start screen
+      sys.setSprite(0, 'player', 128, 128);
+      return;
+    }
+
+    // Player movement
+    if (sys.isPressed('up') && state.player.y > 0) state.player.y -= state.player.speed;
+    if (sys.isPressed('down') && state.player.y < 248) state.player.y += state.player.speed;
+    if (sys.isPressed('left') && state.player.x > 0) state.player.x -= state.player.speed;
+    if (sys.isPressed('right') && state.player.x < 248) state.player.x += state.player.speed;
+
+    // Enemy movement
+    state.enemies.forEach((enemy, i) => {
+      enemy.x += enemy.dx;
+      enemy.y += enemy.dy;
+
+      if (enemy.x <= 0 || enemy.x >= 248) enemy.dx = -enemy.dx;
+      if (enemy.y <= 0 || enemy.y >= 248) enemy.dy = -enemy.dy;
+
+      // Check collision with player
+      if (Math.abs(enemy.x - state.player.x) < 8 && Math.abs(enemy.y - state.player.y) < 8) {
+        state.gameOver = true;
       }
+
+      sys.setSprite(10 + i, 'enemy', enemy.x, enemy.y);
+    });
+
+    // Collectible logic
+    state.collectibles.forEach((item, i) => {
+      if (!item.collected) {
+        if (Math.abs(item.x - state.player.x) < 8 && Math.abs(item.y - state.player.y) < 8) {
+          item.collected = true;
+          sys.addScore(100);
+          sys.clearSprite(20 + i);
+        } else {
+          sys.setSprite(20 + i, 'collectible', item.x, item.y);
+        }
+      }
+    });
+
+    // Check win condition
+    if (state.collectibles.every(item => item.collected)) {
+      sys.addScore(500); // Bonus for completing level
+      state.gameOver = true;
     }
-  });
 
-  // Check win condition
-  if (collectibles.every(item => item.collected)) {
-    console.addScore(500); // Bonus for completing level
-    gameOver = true;
-    document.dispatchEvent(new CustomEvent('gameOver', { detail: { score: console.getScore() } }));
-  }
+    // Draw walls around border
+    for (let x = 0; x < 32; x++) {
+      sys.setTile(x, 0, 'wall');
+      sys.setTile(x, 31, 'wall');
+    }
+    for (let y = 0; y < 32; y++) {
+      sys.setTile(0, y, 'wall');
+      sys.setTile(31, y, 'wall');
+    }
 
-  // Draw walls around border
-  for (let x = 0; x < 32; x++) {
-    console.setTile(x, 0, 'wall');
-    console.setTile(x, 31, 'wall');
-  }
-  for (let y = 0; y < 32; y++) {
-    console.setTile(0, y, 'wall');
-    console.setTile(31, y, 'wall');
-  }
-
-  // Draw player
-  console.setSprite(0, 'player', player.x, player.y);
-}
-
-// Call the update function
-if (typeof console !== 'undefined') {
-  gameUpdate(console);
-}
-`;
+    // Draw player
+    sys.setSprite(0, 'player', state.player.x, state.player.y);
+  };
 
   return {
-    name: generateGameName(description),
-    description: description.length > 100 ? description.substring(0, 100) + "..." : description,
+    metadata: {
+      title: generateGameName(description),
+      description: description.length > 100 ? description.substring(0, 100) + "..." : description,
+      controls: [
+        { key: "arrow keys", action: "move player" },
+        { key: "start", action: "begin game" }
+      ]
+    },
     sprites: {
       player: playerSprite,
       enemy: enemySprite,
@@ -162,7 +167,8 @@ if (typeof console !== 'undefined') {
     tiles: {
       wall: wallTile
     },
-    gameLogic,
+    update: updateFunction,
+    updateCode: updateFunction.toString(),
     initialState: {
       score: 0
     },
