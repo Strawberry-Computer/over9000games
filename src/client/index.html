@@ -7,21 +7,79 @@
       name="viewport"
       content="initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, width=device-width, height=device-height, user-scalable=0"
     />
-    <title>Devvit Experimental</title>
+    <title>Over9000Games - NES Console</title>
   </head>
   <body class="app">
-    <img class="snoo" src="/snoo.png" alt="Snoo" />
-    <div class="content">
-      <h1 class="title" id="title"></h1>
-      <p class="description">
-        Edit <span class="code">src/client/main.ts</span> to get started.
-      </p>
+    <div class="console-container">
+      <div class="console-header">
+        <h1 class="title" id="title">Over9000Games</h1>
+        <div class="game-info" id="game-info"></div>
+      </div>
+
+      <div class="console-screen">
+        <canvas id="console-canvas" width="256" height="256"></canvas>
+        <canvas id="sprite-canvas" width="256" height="256" style="display: none;"></canvas>
+      </div>
+
+      <div class="controls">
+        <div class="dpad">
+          <button class="control-btn dpad-up" id="btn-up">↑</button>
+          <div class="dpad-row">
+            <button class="control-btn dpad-left" id="btn-left">←</button>
+            <div class="dpad-center"></div>
+            <button class="control-btn dpad-right" id="btn-right">→</button>
+          </div>
+          <button class="control-btn dpad-down" id="btn-down">↓</button>
+        </div>
+
+        <div class="action-buttons">
+          <button class="control-btn action-btn" id="btn-b">B</button>
+          <button class="control-btn action-btn" id="btn-a">A</button>
+        </div>
+
+        <div class="menu-buttons">
+          <button class="control-btn menu-btn" id="btn-select">SELECT</button>
+          <button class="control-btn menu-btn" id="btn-start">START</button>
+        </div>
+      </div>
+
+      <div class="game-management">
+        <div class="current-game">
+          <span>Current Game: </span>
+          <span id="current-game-name">None</span>
+        </div>
+        <div class="game-actions">
+          <button class="game-btn" id="btn-new-game">Generate New Game</button>
+          <button class="game-btn" id="btn-leaderboard">Leaderboard</button>
+        </div>
+      </div>
+
+      <div class="game-prompt" id="game-prompt" style="display: none;">
+        <div class="prompt-overlay">
+          <div class="prompt-modal">
+            <h3>Generate New Game</h3>
+            <textarea id="game-description" placeholder="Describe the game you want to create... (e.g., 'A platformer where you play as a cat collecting fish while avoiding dogs')"></textarea>
+            <div class="prompt-actions">
+              <button class="game-btn" id="btn-generate">Generate</button>
+              <button class="game-btn" id="btn-cancel">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="leaderboard" id="leaderboard" style="display: none;">
+        <div class="prompt-overlay">
+          <div class="prompt-modal">
+            <h3>High Scores</h3>
+            <div id="scores-list"></div>
+            <div class="prompt-actions">
+              <button class="game-btn" id="btn-close-leaderboard">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="counter-row">
-      <button class="counter-button" id="decrement-button">-</button>
-      <span class="counter-value" id="counter-value">0</span>
-      <button class="counter-button" id="increment-button">+</button>
-    </div>
+
     <footer class="footer">
       <div class="docs-link" tabindex="0" id="docs-link">Docs</div>
       <span class="divider">|</span>
@@ -29,6 +87,6 @@
       <span class="divider">|</span>
       <div class="docs-link" tabindex="0" id="discord-link">Discord</div>
     </footer>
-    <script type="module" src="main.ts" defer></script>
+    <script type="module" src="main.js" defer></script>
   </body>
 </html>

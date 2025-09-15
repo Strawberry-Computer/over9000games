@@ -1,0 +1,222 @@
+import { navigateTo } from "@devvit/web/client";
+import { NESConsole } from "./console.js";
+
+const titleElement = document.getElementById("title");
+const gameInfoElement = document.getElementById("game-info");
+const currentGameNameElement = document.getElementById("current-game-name");
+const gamePromptElement = document.getElementById("game-prompt");
+const leaderboardElement = document.getElementById("leaderboard");
+const scoresListElement = document.getElementById("scores-list");
+const gameDescriptionElement = document.getElementById("game-description");
+
+const docsLink = document.getElementById("docs-link");
+const playtestLink = document.getElementById("playtest-link");
+const discordLink = document.getElementById("discord-link");
+
+docsLink.addEventListener("click", () => {
+  navigateTo("https://developers.reddit.com/docs");
+});
+
+playtestLink.addEventListener("click", () => {
+  navigateTo("https://www.reddit.com/r/Devvit");
+});
+
+discordLink.addEventListener("click", () => {
+  navigateTo("https://discord.com/invite/R7yu2wh9Qz");
+});
+
+let currentPostId = null;
+let currentUsername = null;
+let gameConsole;
+let currentHighScores = [];
+
+function initializeConsole() {
+  try {
+    gameConsole = new NESConsole("console-canvas", "sprite-canvas");
+  } catch (error) {
+    console.error("Failed to initialize console:", error);
+  }
+}
+
+async function fetchInitialData() {
+  try {
+    const response = await fetch("/api/init");
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+
+    if (data.type === "init") {
+      currentPostId = data.postId;
+      currentUsername = data.username;
+      currentHighScores = data.highScores;
+      titleElement.textContent = `Hey ${data.username} 👋`;
+
+      if (data.gameDefinition) {
+        loadGame(data.gameDefinition);
+      } else {
+        showNoGameState();
+      }
+    } else {
+      console.error("Invalid response type from /api/init", data);
+      showErrorState("Failed to load game data");
+    }
+  } catch (error) {
+    console.error("Error fetching initial data:", error);
+    showErrorState("Connection error");
+  }
+}
+
+function loadGame(gameDefinition) {
+  currentGameNameElement.textContent = gameDefinition.name;
+  gameInfoElement.textContent = gameDefinition.description;
+
+  if (gameConsole) {
+    gameConsole.loadGame(gameDefinition);
+    showGameReadyState();
+  }
+}
+
+function showNoGameState() {
+  currentGameNameElement.textContent = "None";
+  gameInfoElement.textContent = "No game available. Generate a new game to start playing!";
+}
+
+function showErrorState(message) {
+  currentGameNameElement.textContent = "Error";
+  gameInfoElement.textContent = message;
+}
+
+function showGameReadyState() {
+  gameInfoElement.textContent += " - Press START to play!";
+}
+
+async function generateGame(description) {
+  try {
+    const request = { description };
+    const response = await fetch("/api/game/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.type === "generate") {
+      loadGame(data.gameDefinition);
+      hideGamePrompt();
+    }
+  } catch (error) {
+    console.error("Error generating game:", error);
+    alert("Failed to generate game. Please try again.");
+  }
+}
+
+async function submitScore(score) {
+  if (!currentPostId || !currentUsername) return;
+
+  try {
+    const request = { score };
+    const response = await fetch("/api/score/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    currentHighScores = data.highScores;
+
+    if (data.isHighScore) {
+      alert(`New high score! Rank #${data.newRank}`);
+    }
+  } catch (error) {
+    console.error("Error submitting score:", error);
+  }
+}
+
+async function loadLeaderboard() {
+  try {
+    const response = await fetch("/api/leaderboard");
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    currentHighScores = data.highScores;
+    displayLeaderboard();
+  } catch (error) {
+    console.error("Error loading leaderboard:", error);
+  }
+}
+
+function displayLeaderboard() {
+  scoresListElement.innerHTML = "";
+
+  if (currentHighScores.length === 0) {
+    scoresListElement.innerHTML = "<p>No scores yet!</p>";
+  } else {
+    const list = document.createElement("ol");
+    currentHighScores.forEach(score => {
+      const item = document.createElement("li");
+      item.innerHTML = `
+        <span class="username">${score.username}</span>
+        <span class="score">${score.score}</span>
+        <span class="date">${new Date(score.timestamp).toLocaleDateString()}</span>
+      `;
+      list.appendChild(item);
+    });
+    scoresListElement.appendChild(list);
+  }
+
+  leaderboardElement.style.display = "block";
+}
+
+function showGamePrompt() {
+  gamePromptElement.style.display = "block";
+  gameDescriptionElement.focus();
+}
+
+function hideGamePrompt() {
+  gamePromptElement.style.display = "none";
+  gameDescriptionElement.value = "";
+}
+
+function hideLeaderboard() {
+  leaderboardElement.style.display = "none";
+}
+
+// Event Listeners
+document.getElementById("btn-new-game")?.addEventListener("click", showGamePrompt);
+document.getElementById("btn-leaderboard")?.addEventListener("click", loadLeaderboard);
+document.getElementById("btn-cancel")?.addEventListener("click", hideGamePrompt);
+document.getElementById("btn-close-leaderboard")?.addEventListener("click", hideLeaderboard);
+
+document.getElementById("btn-generate")?.addEventListener("click", () => {
+  const description = gameDescriptionElement.value.trim();
+  if (description) {
+    generateGame(description);
+  }
+});
+
+document.getElementById("btn-start")?.addEventListener("click", () => {
+  if (gameConsole) {
+    gameConsole.startGame();
+  }
+});
+
+// Custom game event for score submission
+document.addEventListener("gameOver", (event) => {
+  const finalScore = event.detail.score;
+  submitScore(finalScore);
+});
+
+// Initialize everything
+initializeConsole();
+fetchInitialData();
