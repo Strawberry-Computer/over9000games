@@ -59,24 +59,48 @@ export const TEST_GAMES = {
       ]
     },
     sprites: [
+      // 0: Ball (round white ball) - color index 1 (white)
       {
         width: 8,
         height: 8,
         layers: [
-          [255,255,255,255,255,255,255,255],
-          [0,0,0,0,0,0,0,0],
-          [0,0,0,0,0,0,0,0],
-          [0,0,0,0,0,0,0,0]
+          [0x00, 0x3C, 0x7E, 0xFF, 0xFF, 0x7E, 0x3C, 0x00], // Layer 0: round shape
+          [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1: off
+          [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 2: off
+          [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]  // Layer 3: off
         ]
       },
+      // 1: Paddle top (rounded top) - color index 1 (white)
       {
         width: 8,
         height: 8,
         layers: [
-          [255,0,0,0,0,0,0,255],
-          [255,0,0,0,0,0,0,255],
-          [255,0,0,0,0,0,0,255],
-          [255,0,0,0,0,0,0,255]
+          [0x3C, 0x7E, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF], // Layer 0: rounded top
+          [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1: off
+          [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 2: off
+          [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]  // Layer 3: off
+        ]
+      },
+      // 2: Paddle middle (solid rectangle) - color index 1 (white)
+      {
+        width: 8,
+        height: 8,
+        layers: [
+          [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF], // Layer 0: solid
+          [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1: off
+          [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 2: off
+          [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]  // Layer 3: off
+        ]
+      },
+      // 3: Paddle bottom (rounded bottom) - color index 1 (white)
+      {
+        width: 8,
+        height: 8,
+        layers: [
+          [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C], // Layer 0: rounded bottom
+          [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1: off
+          [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 2: off
+          [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]  // Layer 3: off
         ]
       }
     ],
@@ -89,6 +113,16 @@ export const TEST_GAMES = {
       let player2 = {x: 238, y: 100};
       let ball = {x: 130, y: 100, dx: 120, dy: 120}; // pixels per second
       let score = 0;
+      const paddleHeight = 24; // 3 sprites * 8 pixels each
+
+      function drawPaddle(slotStart, paddleX, paddleY) {
+        // Draw 3-sprite tall paddle with rounded ends
+        return [
+          {type: 'sprite', slotId: slotStart, spriteId: 1, x: paddleX, y: paddleY},     // Top
+          {type: 'sprite', slotId: slotStart + 1, spriteId: 2, x: paddleX, y: paddleY + 8}, // Middle
+          {type: 'sprite', slotId: slotStart + 2, spriteId: 3, x: paddleX, y: paddleY + 16} // Bottom
+        ];
+      }
 
       function gameUpdate(deltaTime, input) {
         const paddleSpeed = 150; // pixels per second
@@ -97,15 +131,18 @@ export const TEST_GAMES = {
         if (input.up && player1.y > 0) {
           player1.y -= paddleSpeed * deltaTime;
         }
-        if (input.down && player1.y < 232) {
+        if (input.down && player1.y < 256 - paddleHeight) {
           player1.y += paddleSpeed * deltaTime;
         }
 
-        // Simple AI for player 2
-        if (ball.y < player2.y && player2.y > 0) {
+        // Simple AI for player 2 (follows ball)
+        const paddle2Center = player2.y + paddleHeight / 2;
+        const ballCenter = ball.y + 4;
+
+        if (ballCenter < paddle2Center - 2 && player2.y > 0) {
           player2.y -= paddleSpeed * deltaTime;
         }
-        if (ball.y > player2.y + 8 && player2.y < 232) {
+        if (ballCenter > paddle2Center + 2 && player2.y < 256 - paddleHeight) {
           player2.y += paddleSpeed * deltaTime;
         }
 
@@ -113,33 +150,56 @@ export const TEST_GAMES = {
         ball.x += ball.dx * deltaTime;
         ball.y += ball.dy * deltaTime;
 
-        // Ball collision with top and bottom
+        // Ball collision with top and bottom walls
         if (ball.y <= 0 || ball.y >= 248) {
           ball.dy *= -1;
+          ball.y = Math.max(0, Math.min(248, ball.y)); // Keep in bounds
         }
 
         // Ball collision with paddles
-        if ((ball.x <= player1.x + 8 && ball.y >= player1.y && ball.y <= player1.y + 24) ||
-            (ball.x >= player2.x - 8 && ball.y >= player2.y && ball.y <= player2.y + 24)) {
-          ball.dx *= -1;
+        if (ball.x <= player1.x + 8 && ball.x >= player1.x &&
+            ball.y >= player1.y && ball.y <= player1.y + paddleHeight) {
+          ball.dx = Math.abs(ball.dx); // Bounce right
           score += 10;
         }
 
-        // Reset ball if it goes off screen
-        if (ball.x < 0 || ball.x > 256) {
-          ball.x = 130;
-          ball.y = 100;
-          ball.dx = ball.dx > 0 ? 120 : -120;
-          ball.dy = 120;
+        if (ball.x >= player2.x - 8 && ball.x <= player2.x &&
+            ball.y >= player2.y && ball.y <= player2.y + paddleHeight) {
+          ball.dx = -Math.abs(ball.dx); // Bounce left
+          score += 10;
         }
 
-        // Return commands
-        return [
-          {type: 'sprite', slotId: 0, spriteId: 1, x: player1.x, y: player1.y},
-          {type: 'sprite', slotId: 1, spriteId: 1, x: player2.x, y: player2.y},
-          {type: 'sprite', slotId: 2, spriteId: 0, x: ball.x, y: ball.y},
-          {type: 'score', value: score}
-        ];
+        // Reset ball if it goes off screen (scoring)
+        if (ball.x < -8) {
+          ball.x = 130;
+          ball.y = 100;
+          ball.dx = 120; // Serve right
+          ball.dy = (Math.random() - 0.5) * 240; // Random angle
+          score += 100; // Point for player 2
+        }
+
+        if (ball.x > 264) {
+          ball.x = 130;
+          ball.y = 100;
+          ball.dx = -120; // Serve left
+          ball.dy = (Math.random() - 0.5) * 240; // Random angle
+          score += 100; // Point for player 1
+        }
+
+        // Build command list
+        let commands = [];
+
+        // Draw paddles (multi-sprite objects)
+        commands.push(...drawPaddle(0, player1.x, player1.y));
+        commands.push(...drawPaddle(3, player2.x, player2.y));
+
+        // Draw ball
+        commands.push({type: 'sprite', slotId: 6, spriteId: 0, x: ball.x, y: ball.y});
+
+        // Update score
+        commands.push({type: 'score', value: score});
+
+        return commands;
       }
     `
   }
