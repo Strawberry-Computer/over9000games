@@ -1,6 +1,5 @@
 import { navigateTo } from "@devvit/web/client";
-import { NESConsole } from "./console.js";
-import { getGameRunner } from "./quickjs-game-runner.js";
+import { getGameRunner } from "./game-runner.js";
 import { getQuickJS, RELEASE_SYNC } from "quickjs-emscripten";
 
 const titleElement = document.getElementById("title");
@@ -29,18 +28,16 @@ discordLink.addEventListener("click", () => {
 
 let currentPostId = null;
 let currentUsername = null;
-let gameConsole;
 let gameRunner;
 let currentHighScores = [];
 
 async function initializeConsole() {
   try {
-    gameConsole = new NESConsole("console-canvas", "sprite-canvas");
-    gameRunner = getGameRunner(gameConsole);
+    gameRunner = getGameRunner("console-canvas", "sprite-canvas");
     await gameRunner.initialize();
-    console.log("Console and QuickJS game runner initialized");
+    console.log("Game runner initialized");
   } catch (error) {
-    console.error("Failed to initialize console:", error);
+    console.error("Failed to initialize game runner:", error);
   }
 }
 
@@ -356,8 +353,6 @@ document.getElementById("btn-generate")?.addEventListener("click", () => {
 document.getElementById("btn-start")?.addEventListener("click", () => {
   if (gameRunner) {
     gameRunner.startGame();
-  } else if (gameConsole) {
-    gameConsole.startGame();
   }
 });
 

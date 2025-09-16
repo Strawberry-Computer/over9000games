@@ -1,6 +1,7 @@
-// NES-style game console implementation
+import { getQuickJS, RELEASE_SYNC } from "quickjs-emscripten";
+import { validateGameSchema, sanitizeGameDefinition } from "../shared/game-schema.js";
 
-export class NESConsole {
+export class GameRunner {
   constructor(canvasId, spriteCanvasId) {
     this.canvas = document.getElementById(canvasId);
     this.spriteCanvas = document.getElementById(spriteCanvasId);
@@ -30,7 +31,39 @@ export class NESConsole {
     this.animationId = null;
     this.spritePositions = [];
 
+    // QuickJS properties
+    this.vm = null;
+    this.QuickJS = null;
+    this.runtime = null;
+    this.updateFunction = null;
+    this.isInitialized = false;
+    this.frameCount = 0;
+    this.lastFrameTime = 0;
+
     this.setupInputHandlers();
+  }
+
+  async initialize() {
+    if (this.isInitialized) return;
+
+    try {
+      console.log("Initializing QuickJS game runner...");
+      this.QuickJS = await getQuickJS();
+
+      this.runtime = this.QuickJS.newRuntime({ variant: RELEASE_SYNC });
+      this.runtime.setModuleLoader((moduleName) => {
+        console.log("Module loader called for:", moduleName);
+        return "";
+      });
+
+      this.vm = this.runtime.newContext();
+
+      this.isInitialized = true;
+      console.log("QuickJS game runner initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize QuickJS game runner:", error);
+      throw error;
+    }
   }
 
   getDefaultPalette() {
@@ -62,7 +95,6 @@ export class NESConsole {
     document.addEventListener('keydown', (e) => {
       const button = keyMap[e.code];
       if (button) {
-        // Only prevent default if we're not in an input field
         const activeElement = document.activeElement;
         const isInputElement = activeElement && (
           activeElement.tagName === 'INPUT' ||
@@ -80,7 +112,6 @@ export class NESConsole {
     document.addEventListener('keyup', (e) => {
       const button = keyMap[e.code];
       if (button) {
-        // Only prevent default if we're not in an input field
         const activeElement = document.activeElement;
         const isInputElement = activeElement && (
           activeElement.tagName === 'INPUT' ||
@@ -112,14 +143,70 @@ export class NESConsole {
     });
   }
 
+  async loadCode(gameCode) {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    if (this.vm) {
+      this.vm.dispose();
+      this.vm = null;
+    }
+
+    this.vm = this.runtime.newContext();
+
+    console.log("Loading game code into QuickJS VM...");
+
+    const result = this.vm.evalCode(gameCode, "game.js");
+    if (result.error) {
+      const errorMsg = this.vm.dump(result.error);
+      result.dispose();
+      throw new Error(`Failed to load game code: ${errorMsg}`);
+    }
+    result.dispose();
+
+    const metadataHandle = this.vm.getProp(this.vm.global, "metadata");
+    const resourcesHandle = this.vm.getProp(this.vm.global, "resources");
+    const updateHandle = this.vm.getProp(this.vm.global, "update");
+
+    if (!metadataHandle || !resourcesHandle || !updateHandle) {
+      throw new Error("Game code must define metadata, resources, and update functions");
+    }
+
+    const metadataResult = this.vm.callFunction(metadataHandle, this.vm.undefined);
+    const resourcesResult = this.vm.callFunction(resourcesHandle, this.vm.undefined);
+
+    if (metadataResult.error || resourcesResult.error) {
+      const errorMsg = metadataResult.error ? this.vm.dump(metadataResult.error) : this.vm.dump(resourcesResult.error);
+      metadataResult.dispose();
+      resourcesResult.dispose();
+      throw new Error(`Failed to call game functions: ${errorMsg}`);
+    }
+
+    const metadata = this.vm.dump(this.vm.unwrapResult(metadataResult));
+    const resources = this.vm.dump(this.vm.unwrapResult(resourcesResult));
+
+    this.updateFunction = updateHandle;
+
+    metadataResult.dispose();
+    resourcesResult.dispose();
+    metadataHandle.dispose();
+    resourcesHandle.dispose();
+
+    this.loadGame({
+      metadata,
+      ...resources,
+      gameLogic: null
+    });
+
+    console.log("Game loaded successfully:", metadata.title);
+  }
+
   loadGame(gameDefinition) {
     this.gameDefinition = gameDefinition;
     this.state.palette = gameDefinition.palette;
     this.buildSpriteMap();
     this.preRenderSprites();
-
-    // Game logic is now handled by QuickJS runner
-
     this.state.score = 0;
     this.resetGame();
   }
@@ -127,13 +214,12 @@ export class NESConsole {
   buildSpriteMap() {
     if (!this.gameDefinition) return;
 
-    this.spritePositions = []; // No reserved empty slot, use -1 for empty
+    this.spritePositions = [];
 
     let currentX = 0;
     let currentY = 0;
     const sheetWidth = 256;
 
-    // Add sprites (array indices map directly to sprite IDs)
     if (Array.isArray(this.gameDefinition.sprites)) {
       this.gameDefinition.sprites.forEach((sprite, index) => {
         if (currentX + 8 > sheetWidth) {
@@ -152,7 +238,6 @@ export class NESConsole {
       });
     }
 
-    // Add tiles (they continue the sprite position array after sprites)
     let nextIndex = this.spritePositions.length;
     if (this.gameDefinition.tiles) {
       Object.values(this.gameDefinition.tiles).forEach(tile => {
@@ -177,11 +262,9 @@ export class NESConsole {
   preRenderSprites() {
     if (!this.gameDefinition) return;
 
-    // Clear sprite sheet
     this.spriteCtx.fillStyle = '#000000';
     this.spriteCtx.fillRect(0, 0, 256, 256);
 
-    // Render all sprites to the sprite sheet
     if (Array.isArray(this.gameDefinition.sprites)) {
       this.gameDefinition.sprites.forEach((sprite, index) => {
         this.renderSpriteToSheet(sprite, index);
@@ -208,7 +291,6 @@ export class NESConsole {
         const bitIndex = 7 - (pixelIndex % 8);
 
         let colorIndex = 0;
-        // New format: sprite is array of layers
         for (let layer = 0; layer < sprite.length; layer++) {
           if (sprite[layer] && sprite[layer][byteIndex] & (1 << bitIndex)) {
             colorIndex |= (1 << layer);
@@ -218,17 +300,16 @@ export class NESConsole {
         const color = this.state.palette[colorIndex] || 0x000000;
         const dataIndex = (y * 8 + x) * 4;
 
-        data[dataIndex] = (color >> 16) & 0xFF;     // R
-        data[dataIndex + 1] = (color >> 8) & 0xFF;  // G
-        data[dataIndex + 2] = color & 0xFF;         // B
-        data[dataIndex + 3] = colorIndex === 0 ? 0 : 255; // A (transparent if color 0)
+        data[dataIndex] = (color >> 16) & 0xFF;
+        data[dataIndex + 1] = (color >> 8) & 0xFF;
+        data[dataIndex + 2] = color & 0xFF;
+        data[dataIndex + 3] = colorIndex === 0 ? 0 : 255;
       }
     }
 
     const position = this.spritePositions[index];
     if (!position) return;
 
-    // Render to sprite sheet canvas at calculated position
     this.spriteCtx.putImageData(imageData, position.x, position.y);
   }
 
@@ -298,12 +379,10 @@ export class NESConsole {
   }
 
   resetGame() {
-    // Clear all sprites
     for (let i = 0; i < 64; i++) {
       this.state.sprites[i] = { spriteId: -1, x: 0, y: 0 };
     }
 
-    // Clear all tiles
     for (let y = 0; y < 32; y++) {
       for (let x = 0; x < 32; x++) {
         this.state.tiles[y][x] = -1;
@@ -316,6 +395,9 @@ export class NESConsole {
     if (this.gameDefinition && this.gameDefinition.initialState) {
       Object.assign(this.state, this.gameDefinition.initialState);
     }
+
+    this.lastFrameTime = 0;
+    this.frameCount = 0;
   }
 
   gameLoop = () => {
@@ -323,8 +405,12 @@ export class NESConsole {
 
     this.updateInput();
 
-    // Game logic is now handled by QuickJS runner
-    // NES console just handles rendering
+    try {
+      const commands = this.executeGameUpdate();
+      this.processCommands(commands);
+    } catch (error) {
+      console.error("Game update error:", error);
+    }
 
     this.render();
     this.animationId = requestAnimationFrame(this.gameLoop);
@@ -334,6 +420,100 @@ export class NESConsole {
     Object.keys(this.inputState).forEach(key => {
       this.prevInputState[key] = this.inputState[key];
     });
+  }
+
+  executeGameUpdate() {
+    if (!this.vm || !this.updateFunction) return [];
+
+    try {
+      const currentTime = performance.now();
+      const deltaTime = this.lastFrameTime ? (currentTime - this.lastFrameTime) / 1000 : 0;
+      this.lastFrameTime = currentTime;
+
+      const inputState = this.getInputState();
+
+      const deltaTimeHandle = this.vm.newNumber(deltaTime);
+      const inputStateHandle = this.vm.newObject();
+
+      Object.entries(inputState).forEach(([key, value]) => {
+        const keyHandle = this.vm.newString(key);
+        const valueHandle = this.vm.newNumber(value ? 1 : 0);
+        this.vm.setProp(inputStateHandle, keyHandle, valueHandle);
+        keyHandle.dispose();
+        valueHandle.dispose();
+      });
+
+      const result = this.vm.callFunction(this.updateFunction, this.vm.undefined, deltaTimeHandle, inputStateHandle);
+
+      deltaTimeHandle.dispose();
+      inputStateHandle.dispose();
+
+      if (result.error) {
+        const errorMsg = this.vm.dump(result.error);
+        result.dispose();
+        throw new Error(`Update function error: ${errorMsg}`);
+      }
+
+      const commands = this.vm.dump(this.vm.unwrapResult(result));
+      result.dispose();
+
+      return commands;
+
+    } catch (error) {
+      console.error("Failed to execute game update:", error);
+      return {};
+    }
+  }
+
+  getInputState() {
+    return {
+      up: this.isPressed('up'),
+      down: this.isPressed('down'),
+      left: this.isPressed('left'),
+      right: this.isPressed('right'),
+      a: this.isPressed('a'),
+      b: this.isPressed('b'),
+      start: this.isPressed('start'),
+      select: this.isPressed('select'),
+      upPressed: this.justPressed('up'),
+      downPressed: this.justPressed('down'),
+      leftPressed: this.justPressed('left'),
+      rightPressed: this.justPressed('right'),
+      aPressed: this.justPressed('a'),
+      bPressed: this.justPressed('b'),
+      startPressed: this.justPressed('start'),
+      selectPressed: this.justPressed('select')
+    };
+  }
+
+  processCommands(commands) {
+    if (!commands) return;
+
+    for (let i = 0; i < 64; i++) {
+      this.clearSprite(i);
+    }
+
+    if (commands.sprites && Array.isArray(commands.sprites)) {
+      commands.sprites.forEach((sprite, index) => {
+        if (index < 64) {
+          this.setSprite(index, sprite.spriteId, sprite.x, sprite.y);
+        }
+      });
+    }
+
+    if (commands.tiles && Array.isArray(commands.tiles)) {
+      commands.tiles.forEach(tile => {
+        this.setTile(tile.x, tile.y, tile.tileId);
+      });
+    }
+
+    if (commands.background !== undefined) {
+      this.setBackgroundColor(commands.background);
+    }
+
+    if (commands.score !== undefined) {
+      this.setScore(commands.score);
+    }
   }
 
   render() {
@@ -382,5 +562,42 @@ export class NESConsole {
   clear() {
     this.ctx.clearRect(0, 0, 256, 256);
     this.spriteCtx.clearRect(0, 0, 256, 256);
+  }
+
+  dispose() {
+    if (this.updateFunction) {
+      this.updateFunction.dispose();
+      this.updateFunction = null;
+    }
+
+    if (this.vm) {
+      this.vm.dispose();
+      this.vm = null;
+    }
+
+    if (this.runtime) {
+      this.runtime.dispose();
+      this.runtime = null;
+    }
+
+    this.QuickJS = null;
+    this.gameDefinition = null;
+    this.isInitialized = false;
+  }
+}
+
+let gameRunner = null;
+
+export function getGameRunner(canvasId, spriteCanvasId) {
+  if (!gameRunner) {
+    gameRunner = new GameRunner(canvasId, spriteCanvasId);
+  }
+  return gameRunner;
+}
+
+export function disposeGameRunner() {
+  if (gameRunner) {
+    gameRunner.dispose();
+    gameRunner = null;
   }
 }
