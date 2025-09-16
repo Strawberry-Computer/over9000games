@@ -13,60 +13,109 @@ function metadata() {
 function resources() {
   return {
     sprites: [
-      // Sprite 0: Player - blue (palette index 4)
+      // Sprite 0: Wizard head - purple hat with white face and gray beard
       [
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 0 (bit 0)
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1 (bit 1)
-        [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF], // Layer 2 (bit 2) = 4 (blue)
+        [0x00, 0x00, 0x18, 0x3C, 0x66, 0x66, 0x3C, 0x18], // Layer 0 (bit 0) - white face
+        [0x3C, 0x7E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1 (bit 1) - purple hat
+        [0x00, 0x00, 0x24, 0x42, 0x18, 0x18, 0x42, 0x66], // Layer 2 (bit 2) - eyes and beard highlights
         [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]  // Layer 3 (bit 3)
       ],
 
-      // Sprite 1: Enemy - red (palette index 2)
+      // Sprite 1: Wizard body - purple robes with belt
       [
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 0
-        [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF], // Layer 1 (bit 1) = 2 (red)
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 2
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]  // Layer 3
+        [0x18, 0x24, 0x00, 0x18, 0x18, 0x24, 0x18, 0x00], // Layer 0 (bit 0) - white arms and belt
+        [0x00, 0x00, 0x3C, 0x66, 0x66, 0x00, 0x00, 0x00], // Layer 1 (bit 1) - purple robe
+        [0x00, 0x18, 0x42, 0x00, 0x00, 0x42, 0x66, 0x00], // Layer 2 (bit 2) - robe details
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]  // Layer 3 (bit 3)
       ],
 
-      // Sprite 2: Enemy body - red
+      // Sprite 2: Wizard legs with staff - purple robe bottom with brown staff
+      // Bit combinations: 0=black, 1=white, 2=red, 3=green, 4=blue, 5=yellow, 6=magenta, 7=cyan
       [
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-        [0x00, 0x18, 0x3C, 0x7E, 0x7E, 0x3C, 0x18, 0x00], // Red shape
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+        [0x81, 0x81, 0x00, 0x00, 0x00, 0x00, 0x81, 0x81], // Layer 0 (bit 0) - staff base (bit 0 only = white)
+        [0x18, 0x18, 0x3C, 0x24, 0x24, 0x3C, 0x18, 0x18], // Layer 1 (bit 1) - purple robe (bit 1 only = red, but we want purple = red+blue)
+        [0x18, 0x18, 0x3C, 0x24, 0x24, 0x3C, 0x00, 0x00], // Layer 2 (bit 2) - blue component for purple robe (bit 1+2 = red+blue = magenta/purple)
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18]  // Layer 3 (bit 3) - staff orb (bit 3 only = dark color)
       ],
 
-      // Sprite 3: Enemy legs - red
+      // Sprite 3: Enemy head - red skin with yellow eyes and spikes
       [
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-        [0x00, 0x00, 0x18, 0x18, 0x18, 0x18, 0x00, 0x00], // Red legs
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+        [0x18, 0x24, 0x24, 0x18, 0x00, 0x00, 0x00, 0x00], // Layer 0 (bit 0) - eyes
+        [0x3C, 0x42, 0x42, 0x42, 0x7E, 0x7E, 0x7E, 0x3C], // Layer 1 (bit 1) - red head
+        [0x81, 0x99, 0x99, 0x81, 0x00, 0x00, 0x00, 0x00], // Layer 2 (bit 2) - spiky hair
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]  // Layer 3 (bit 3)
       ],
 
-      // Sprite 4: Platform block - gray (palette index 8)
+      // Sprite 4: Enemy body - purple shirt with red arms
       [
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-        [0xFF, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0xFF]  // Layer 3 (bit 3) = 8 (gray)
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 0 (bit 0)
+        [0x18, 0x24, 0x00, 0x00, 0x00, 0x24, 0x18, 0x00], // Layer 1 (bit 1) - red arms
+        [0x00, 0x00, 0x3C, 0x7E, 0x7E, 0x00, 0x00, 0x00], // Layer 2 (bit 2) - purple shirt
+        [0x00, 0x18, 0x00, 0x00, 0x00, 0x18, 0x00, 0x00]  // Layer 3 (bit 3) - shirt details
       ],
 
-      // Sprite 5: Collectible coin - yellow (palette index 5)
+      // Sprite 5: Enemy legs - black pants with red feet
       [
-        [0x3C, 0x7E, 0xFF, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C], // Layer 0 (bit 0)
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1
-        [0x3C, 0x7E, 0xFF, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C], // Layer 2 (bit 2)
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]  // 1+4=5 (yellow)
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x3C], // Layer 0 (bit 0) - red feet
+        [0x18, 0x18, 0x3C, 0x24, 0x24, 0x3C, 0x00, 0x00], // Layer 1 (bit 1) - black pants
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 2 (bit 2)
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]  // Layer 3 (bit 3)
       ],
 
-      // Sprite 6: Attack projectile - white (palette index 1)
+      // Sprite 6: Platform block - textured stone (gray with highlights)
       [
-        [0x18, 0x3C, 0x7E, 0x7E, 0x7E, 0x7E, 0x3C, 0x18], // Layer 0 (bit 0) = 1 (white)
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+        [0x42, 0x24, 0x81, 0x18, 0x81, 0x24, 0x42, 0x99], // Layer 0 (bit 0) - texture details
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1 (bit 1)
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 2 (bit 2)
+        [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]  // Layer 3 (bit 3) - stone base
+      ],
+
+      // Sprite 7: Collectible coin - yellow with gray edges
+      [
+        [0x18, 0x3C, 0x7E, 0x7E, 0x7E, 0x7E, 0x3C, 0x18], // Layer 0 (bit 0) - yellow base (bit 0+2 = 5 = yellow)
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1 (bit 1)
+        [0x18, 0x3C, 0x7E, 0x7E, 0x7E, 0x7E, 0x3C, 0x18], // Layer 2 (bit 2) - yellow base (bit 0+2 = 5 = yellow)
+        [0x00, 0x42, 0x81, 0x99, 0x99, 0x81, 0x42, 0x00]  // Layer 3 (bit 3) - gray edge details (bit 3 = 8 = gray)
+      ],
+
+      // Sprite 8: Energy blast projectile - cyan with white core
+      [
+        [0x18, 0x3C, 0x7E, 0x7E, 0x7E, 0x7E, 0x3C, 0x18], // Layer 0 (bit 0) - white core
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1 (bit 1)
+        [0x00, 0x18, 0x00, 0x00, 0x00, 0x00, 0x18, 0x00], // Layer 2 (bit 2) - cyan glow
+        [0x3C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3C]  // Layer 3 (bit 3) - outer glow
+      ],
+
+      // Sprite 9: Brick tile - orange/brown brick pattern
+      [
+        [0x00, 0xFF, 0x81, 0xFF, 0xFF, 0x81, 0xFF, 0x00], // Layer 0 (bit 0) - white mortar lines
+        [0xFF, 0x00, 0x7E, 0x00, 0x00, 0x7E, 0x00, 0xFF], // Layer 1 (bit 1) - red brick base (bit 0+1 = yellow/orange)
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 2 (bit 2)
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]  // Layer 3 (bit 3)
+      ],
+
+      // Sprite 10: Metal tile - silver/gray metal with bolts
+      [
+        [0x42, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x42], // Layer 0 (bit 0) - white bolt highlights
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1 (bit 1)
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 2 (bit 2)
+        [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]  // Layer 3 (bit 3) - gray metal base (bit 3 = 8 = gray)
+      ],
+
+      // Sprite 11: Spikes - red spikes with gray base
+      [
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 0 (bit 0)
+        [0x18, 0x3C, 0x7E, 0xFF, 0xFF, 0x7E, 0x3C, 0x18], // Layer 1 (bit 1) - red spikes (bit 1 = 2 = red)
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 2 (bit 2)
+        [0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF]  // Layer 3 (bit 3) - gray base (bit 3 = 8 = gray)
+      ],
+
+      // Sprite 12: Exit portal - glowing green/cyan swirl
+      [
+        [0x18, 0x3C, 0x7E, 0xFF, 0xFF, 0x7E, 0x3C, 0x18], // Layer 0 (bit 0) - white core
+        [0x24, 0x42, 0x81, 0x00, 0x00, 0x81, 0x42, 0x24], // Layer 1 (bit 1) - green swirl (bit 0+1 = 3 = green)
+        [0x18, 0x3C, 0x66, 0x99, 0x99, 0x66, 0x3C, 0x18], // Layer 2 (bit 2) - cyan glow (bit 0+2 = 5 = yellow, bit 2 = 4 = blue)
+        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]  // Layer 3 (bit 3)
       ]
     ],
     palette: [
@@ -98,7 +147,7 @@ function update(deltaTime, input) {
     gameState = {
       player: {
         x: 50,
-        y: 224, // On ground platform (240 - 16 = 224)
+        y: 216, // One tile higher (240 - 24 = 216)
         vx: 0,
         vy: 0,
         onGround: true,
@@ -107,29 +156,93 @@ function update(deltaTime, input) {
         facing: 1 // 1 = right, -1 = left
       },
       enemies: [
-        { x: 150, y: 200, vx: -30, health: 2, walkFrame: 0, walkTimer: 0 },
-        { x: 200, y: 120, vx: 25, health: 2, walkFrame: 0, walkTimer: 0 }
+        { x: 60, y: 184, vx: -30, health: 2, walkFrame: 0, walkTimer: 0 }, // On brick platform (row 26 * 8 - 24 = 184)
+        { x: 140, y: 192, vx: 25, health: 2, walkFrame: 0, walkTimer: 0 }, // On stone platform (row 27 * 8 - 24 = 192)
+        { x: 90, y: 168, vx: 20, health: 2, walkFrame: 0, walkTimer: 0 }   // On stone platform (row 24 * 8 - 24 = 168)
       ],
-      platforms: [
-        { x: 0, y: 240, width: 256, height: 16 },    // Ground
-        { x: 100, y: 180, width: 80, height: 8 },     // Platform 1
-        { x: 150, y: 140, width: 64, height: 8 },     // Platform 2
-        { x: 80, y: 100, width: 96, height: 8 }       // Platform 3
+      tilemap: [
+        // 32x32 tile grid (256x256 pixels ÷ 8x8 tiles) - 0=empty, 6=platform, 9=brick, 10=metal, 11=spikes, 12=exit
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 0
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 1
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 2
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 3
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 4
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 5
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 6
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 7
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 8
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 9
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 10
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 11
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 12
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 13
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 14
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 15
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 16
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 17
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 18
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 19
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,12,12,0], // Row 20: Exit platform (top right)
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,6,6,6,6], // Row 21: Platform to exit
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,9,9,0,0,0,0,0,0,0,0], // Row 22: High brick platform
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 23: Metal platform
+        [0,0,0,0,0,0,0,0,0,0,6,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 24: Stone platform
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,10,0,0,0,0,0,0,0,0,0,0], // Row 25: Metal blocks
+        [0,0,0,0,0,0,0,9,9,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 26: Brick platform
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0], // Row 27: Stone platform
+        [0,0,0,0,0,0,0,0,0,0,0,0,6,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 28: Stone platform
+        [0,0,0,0,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,11,11,11,11,0,0,0,0], // Row 29: Platforms with spikes
+        [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6], // Row 30: Ground
+        [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6]  // Row 31: Ground
       ],
       coins: [
-        { x: 120, y: 160, collected: false },
-        { x: 170, y: 120, collected: false },
-        { x: 110, y: 80, collected: false }
+        { x: 72, y: 176, collected: false },   // On brick platform (row 26-1 * 8 = 200, coin above = 176)
+        { x: 144, y: 208, collected: false },  // On stone platform (row 28-1 * 8 = 216, coin above = 208)
+        { x: 168, y: 192, collected: false },  // On metal platform (row 25-1 * 8 = 192)
+        { x: 96, y: 160, collected: false },   // On stone platform (row 24-1 * 8 = 160)
+        { x: 176, y: 144, collected: false },  // On high brick platform (row 22-1 * 8 = 144)
+        { x: 240, y: 152, collected: false }   // Near exit platform (row 21-1 * 8 = 152)
       ],
       projectiles: [],
       gravity: 400,
       jumpPower: 200,
       playerSpeed: 80,
-      score: 0
+      score: 0,
+      gameOver: false,
+      levelComplete: false
     };
   }
 
   const dt = deltaTime; // Use deltaTime directly
+
+  // Check for game over or level complete
+  if (gameState.gameOver || gameState.levelComplete) {
+    // Stop game logic, just render current state
+    const tiles = [];
+    const sprites = [];
+
+    // Render tilemap
+    for (let y = 0; y < 32; y++) {
+      for (let x = 0; x < 32; x++) {
+        const tileId = gameState.tilemap[y][x];
+        if (tileId !== 0) {
+          tiles.push({
+            x: x,
+            y: y,
+            tileId: tileId
+          });
+        }
+      }
+    }
+
+    return {
+      tiles,
+      sprites,
+      score: gameState.score,
+      gameOver: gameState.gameOver,
+      levelComplete: gameState.levelComplete
+    };
+  }
 
   // Player input handling with deltaTime
   if (input.left) {
@@ -178,19 +291,63 @@ function update(deltaTime, input) {
     gameState.player.walkFrame = 0;
   }
 
-  // Platform collision for player
+  // Platform collision for player using tilemap (player is 24 pixels tall)
   gameState.player.onGround = false;
-  for (const platform of gameState.platforms) {
-    if (gameState.player.x + 8 > platform.x &&
-        gameState.player.x < platform.x + platform.width &&
-        gameState.player.y + 16 > platform.y &&
-        gameState.player.y + 16 < platform.y + platform.height + 8) {
 
-      if (gameState.player.vy > 0) { // Falling
-        gameState.player.y = platform.y - 16;
-        gameState.player.vy = 0;
-        gameState.player.onGround = true;
+  // Check tiles under player's feet (bottom edge)
+  const playerBottom = gameState.player.y + 24;
+  const playerLeft = gameState.player.x;
+  const playerRight = gameState.player.x + 8;
+
+  // Convert to tile coordinates
+  const tileY = Math.floor(playerBottom / 8);
+  const leftTileX = Math.floor(playerLeft / 8);
+  const rightTileX = Math.floor(playerRight / 8);
+
+  // Check if falling onto a platform
+  if (gameState.player.vy > 0 && tileY < 32) {
+    for (let tileX = leftTileX; tileX <= rightTileX; tileX++) {
+      if (tileX >= 0 && tileX < 32 && gameState.tilemap[tileY] && gameState.tilemap[tileY][tileX] !== 0) {
+        const tileId = gameState.tilemap[tileY][tileX];
+
+        // Check for spikes
+        if (tileId === 11) {
+          gameState.gameOver = true;
+          return;
+        }
+
+        // Check for exit
+        if (tileId === 12) {
+          gameState.levelComplete = true;
+          return;
+        }
+
+        // Land on solid platform
+        if (tileId === 6 || tileId === 9 || tileId === 10) {
+          gameState.player.y = tileY * 8 - 24;
+          gameState.player.vy = 0;
+          gameState.player.onGround = true;
+          break;
+        }
       }
+    }
+  }
+
+  // Check for spikes or exit while standing/moving
+  const playerCenterX = gameState.player.x + 4;
+  const playerCenterY = gameState.player.y + 12;
+  const centerTileX = Math.floor(playerCenterX / 8);
+  const centerTileY = Math.floor(playerCenterY / 8);
+
+  if (centerTileX >= 0 && centerTileX < 32 && centerTileY >= 0 && centerTileY < 32) {
+    const tileId = gameState.tilemap[centerTileY][centerTileX];
+    if (tileId === 11) {
+      gameState.gameOver = true;
+      return;
+    }
+    if (tileId === 12) {
+      gameState.levelComplete = true;
+      return;
     }
   }
 
@@ -216,18 +373,20 @@ function update(deltaTime, input) {
       enemy.walkTimer = 0;
     }
 
-    // Enemy AI: reverse direction at edges or walls
+    // Enemy AI: reverse direction at edges using tilemap
     let hitWall = false;
-    for (const platform of gameState.platforms) {
-      if (enemy.x <= platform.x || enemy.x >= platform.x + platform.width - 8) {
-        if (enemy.y + 16 >= platform.y && enemy.y + 16 < platform.y + platform.height + 8) {
-          hitWall = true;
-          break;
-        }
-      }
-    }
+    const enemyBottom = enemy.y + 24;
+    const enemyTileY = Math.floor(enemyBottom / 8);
 
-    if (hitWall || enemy.x <= 0 || enemy.x >= 248) {
+    // Check if enemy is at edge of platform
+    const nextX = enemy.x + (enemy.vx > 0 ? 8 : -8);
+    const nextTileX = Math.floor(nextX / 8);
+
+    // Reverse if at world edge or no platform ahead
+    if (nextX <= 0 || nextX >= 248 ||
+        nextTileX < 0 || nextTileX >= 32 ||
+        !gameState.tilemap[enemyTileY] ||
+        gameState.tilemap[enemyTileY][nextTileX] === 0) {
       enemy.vx *= -1;
     }
   }
@@ -240,11 +399,11 @@ function update(deltaTime, input) {
     // Remove if out of bounds or expired
     if (proj.x < 0 || proj.x > 256 || proj.life <= 0) return false;
 
-    // Check collision with enemies
+    // Check collision with enemies (enemies are 24 pixels tall)
     for (const enemy of gameState.enemies) {
       if (enemy.health > 0 &&
           proj.x + 4 > enemy.x && proj.x < enemy.x + 8 &&
-          proj.y + 4 > enemy.y && proj.y < enemy.y + 16) {
+          proj.y + 4 > enemy.y && proj.y < enemy.y + 24) {
         enemy.health--;
         if (enemy.health <= 0) gameState.score += 100;
         return false;
@@ -254,11 +413,11 @@ function update(deltaTime, input) {
     return true;
   });
 
-  // Coin collection
+  // Coin collection (player is 24 pixels tall)
   for (const coin of gameState.coins) {
     if (!coin.collected &&
         gameState.player.x + 8 > coin.x && gameState.player.x < coin.x + 8 &&
-        gameState.player.y + 16 > coin.y && gameState.player.y < coin.y + 8) {
+        gameState.player.y + 24 > coin.y && gameState.player.y < coin.y + 8) {
       coin.collected = true;
       gameState.score += 50;
     }
@@ -268,16 +427,17 @@ function update(deltaTime, input) {
   const tiles = [];
   const sprites = [];
 
-  // Render platforms as tiles
-  for (const platform of gameState.platforms) {
-    for (let x = 0; x < platform.width; x += 8) {
-      const tileX = Math.floor((platform.x + x) / 8);
-      const tileY = Math.floor(platform.y / 8);
-      tiles.push({
-        x: tileX,
-        y: tileY,
-        tileId: 4 // Platform sprite used as tile (gray)
-      });
+  // Render tilemap
+  for (let y = 0; y < 32; y++) {
+    for (let x = 0; x < 32; x++) {
+      const tileId = gameState.tilemap[y][x];
+      if (tileId !== 0) {
+        tiles.push({
+          x: x,
+          y: y,
+          tileId: tileId
+        });
+      }
     }
   }
 
@@ -285,35 +445,45 @@ function update(deltaTime, input) {
   for (const coin of gameState.coins) {
     if (!coin.collected) {
       sprites.push({
-        spriteId: 5, // Yellow coin
+        spriteId: 7, // Yellow coin with gray edges
         x: coin.x,
         y: coin.y
       });
     }
   }
 
-  // Render player (blue sprite)
+  // Render wizard (multi-sprite character)
   sprites.push({
-    spriteId: 0, // Blue player
+    spriteId: 0, // Wizard head (purple hat, white face, gray beard)
     x: gameState.player.x,
     y: gameState.player.y
+  });
+  sprites.push({
+    spriteId: 1, // Wizard body (purple robes with belt)
+    x: gameState.player.x,
+    y: gameState.player.y + 8
+  });
+  sprites.push({
+    spriteId: 2, // Wizard legs with staff (purple robe bottom, brown staff)
+    x: gameState.player.x,
+    y: gameState.player.y + 16
   });
 
   // Render enemies (multi-sprite)
   for (const enemy of gameState.enemies) {
     if (enemy.health > 0) {
       sprites.push({
-        spriteId: 1, // Enemy head (red)
+        spriteId: 3, // Enemy head (red skin, yellow eyes, spiky hair)
         x: enemy.x,
         y: enemy.y
       });
       sprites.push({
-        spriteId: 2, // Enemy body (red)
+        spriteId: 4, // Enemy body (purple shirt, red arms)
         x: enemy.x,
         y: enemy.y + 8
       });
       sprites.push({
-        spriteId: 3, // Enemy legs (red)
+        spriteId: 5, // Enemy legs (black pants, red feet)
         x: enemy.x,
         y: enemy.y + 16
       });
@@ -323,7 +493,7 @@ function update(deltaTime, input) {
   // Render projectiles
   for (const proj of gameState.projectiles) {
     sprites.push({
-      spriteId: 6, // White projectile
+      spriteId: 8, // Energy blast projectile
       x: proj.x,
       y: proj.y
     });
