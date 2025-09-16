@@ -1,4 +1,4 @@
-import { getQuickJS } from "quickjs-emscripten";
+import { getQuickJS, RELEASE_SYNC } from "quickjs-emscripten";
 import { validateGameSchema, sanitizeGameDefinition } from "../shared/game-schema.js";
 
 export class QuickJSGameRunner {
@@ -19,7 +19,8 @@ export class QuickJSGameRunner {
     try {
       console.log("Initializing QuickJS game runner...");
       this.QuickJS = await getQuickJS();
-      this.vm = this.QuickJS.newContext();
+      this.vm = this.QuickJS.newContext();//{ variant: RELEASE_SYNC });
+
       this.isInitialized = true;
       console.log("QuickJS game runner initialized successfully");
     } catch (error) {

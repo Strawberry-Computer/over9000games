@@ -166,6 +166,28 @@
   flex-wrap: wrap;
 }
 
+.test-games {
+  margin-top: 10px;
+  color: #fff;
+  font-size: 14px;
+}
+
+.test-games span {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.test-btn {
+  background: #4a90e2;
+  font-size: 12px;
+  padding: 8px 12px;
+  margin-right: 5px;
+}
+
+.test-btn:hover {
+  background: #357abd;
+}
+
 .game-btn {
   background: #d93900;
   color: #fff;

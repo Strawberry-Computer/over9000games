@@ -3,6 +3,8 @@
 export function validateGameSchema(gameDefinition) {
   const errors = [];
 
+  console.log("Validating game schema:", gameDefinition);
+
   // Check basic structure
   if (!gameDefinition || typeof gameDefinition !== 'object') {
     errors.push('Game definition must be an object');
@@ -25,25 +27,22 @@ export function validateGameSchema(gameDefinition) {
   }
 
   // Validate sprites
-  if (gameDefinition.sprites && typeof gameDefinition.sprites !== 'object') {
-    errors.push('Sprites must be an object');
+  if (gameDefinition.sprites && !Array.isArray(gameDefinition.sprites)) {
+    errors.push('Sprites must be an array');
   } else if (gameDefinition.sprites) {
-    Object.entries(gameDefinition.sprites).forEach(([spriteId, sprite]) => {
-      if (!sprite.id || typeof sprite.id !== 'string') {
-        errors.push(`Sprite ${spriteId} must have a valid id`);
-      }
+    gameDefinition.sprites.forEach((sprite, spriteIndex) => {
       if (typeof sprite.width !== 'number' || sprite.width !== 8) {
-        errors.push(`Sprite ${spriteId} width must be 8 pixels`);
+        errors.push(`Sprite ${spriteIndex} width must be 8 pixels`);
       }
       if (typeof sprite.height !== 'number' || sprite.height !== 8) {
-        errors.push(`Sprite ${spriteId} height must be 8 pixels`);
+        errors.push(`Sprite ${spriteIndex} height must be 8 pixels`);
       }
       if (!Array.isArray(sprite.layers) || sprite.layers.length !== 4) {
-        errors.push(`Sprite ${spriteId} must have exactly 4 layers`);
+        errors.push(`Sprite ${spriteIndex} must have exactly 4 layers`);
       } else {
         sprite.layers.forEach((layer, i) => {
           if (!Array.isArray(layer) || layer.length !== 8) {
-            errors.push(`Sprite ${spriteId} layer ${i} must be an array of 8 bytes`);
+            errors.push(`Sprite ${spriteIndex} layer ${i} must be an array of 8 bytes`);
           }
         });
       }
@@ -85,11 +84,13 @@ export function validateGameSchema(gameDefinition) {
     }
   }
 
-  // Validate update function
-  if (!gameDefinition.update) {
-    errors.push('Game update function is required');
-  } else if (typeof gameDefinition.update !== 'function' && typeof gameDefinition.update !== 'string') {
+  // Validate update function (accept either update function or updateCode string)
+  if (!gameDefinition.update && !gameDefinition.updateCode) {
+    errors.push('Game update function or updateCode is required');
+  } else if (gameDefinition.update && typeof gameDefinition.update !== 'function' && typeof gameDefinition.update !== 'string') {
     errors.push('Game update must be a function or function string');
+  } else if (gameDefinition.updateCode && typeof gameDefinition.updateCode !== 'string') {
+    errors.push('Game updateCode must be a string');
   }
 
   // Validate initial state
@@ -104,67 +105,11 @@ export function validateGameSchema(gameDefinition) {
 }
 
 export function sanitizeGameDefinition(gameDefinition) {
-  // Create a clean copy
-  const sanitized = {
-    metadata: {
-      title: String(gameDefinition.metadata?.title || 'Untitled Game'),
-      description: String(gameDefinition.metadata?.description || ''),
-      controls: Array.isArray(gameDefinition.metadata?.controls) ?
-        gameDefinition.metadata.controls : []
-    },
-    sprites: {},
-    tiles: {},
-    palette: Array.isArray(gameDefinition.palette) ?
-      gameDefinition.palette.slice(0, 16) : [],
-    initialState: gameDefinition.initialState || {}
-  };
-
-  // Sanitize sprites
-  if (gameDefinition.sprites && typeof gameDefinition.sprites === 'object') {
-    Object.entries(gameDefinition.sprites).forEach(([spriteId, sprite]) => {
-      if (sprite && typeof sprite === 'object' &&
-          sprite.width === 8 && sprite.height === 8 &&
-          Array.isArray(sprite.layers) && sprite.layers.length === 4) {
-        sanitized.sprites[spriteId] = {
-          id: String(sprite.id || spriteId),
-          width: 8,
-          height: 8,
-          layers: sprite.layers.map(layer =>
-            Array.isArray(layer) && layer.length === 8 ?
-            layer.map(byte => Math.max(0, Math.min(255, Math.floor(Number(byte) || 0)))) :
-            new Array(8).fill(0)
-          )
-        };
-      }
-    });
+  // Just validate and return the original if valid
+  const validation = validateGameSchema(gameDefinition);
+  if (!validation.valid) {
+    throw new Error(`Invalid game definition: ${validation.errors.join(', ')}`);
   }
 
-  // Sanitize tiles
-  if (gameDefinition.tiles && typeof gameDefinition.tiles === 'object') {
-    Object.entries(gameDefinition.tiles).forEach(([tileId, tile]) => {
-      if (tile && typeof tile === 'object' &&
-          tile.width === 8 && tile.height === 8 &&
-          Array.isArray(tile.layers) && tile.layers.length === 4) {
-        sanitized.tiles[tileId] = {
-          id: String(tile.id || tileId),
-          width: 8,
-          height: 8,
-          layers: tile.layers.map(layer =>
-            Array.isArray(layer) && layer.length === 8 ?
-            layer.map(byte => Math.max(0, Math.min(255, Math.floor(Number(byte) || 0)))) :
-            new Array(8).fill(0)
-          )
-        };
-      }
-    });
-  }
-
-  // Convert update function to string if needed
-  if (typeof gameDefinition.update === 'function') {
-    sanitized.updateCode = gameDefinition.update.toString();
-  } else if (typeof gameDefinition.update === 'string') {
-    sanitized.updateCode = gameDefinition.update;
-  }
-
-  return sanitized;
+  return gameDefinition;
 }

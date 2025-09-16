@@ -29,5 +29,19 @@
   },
   "dev": {
     "subreddit": "over9000games_dev"
+  },
+  "settings": {
+    "global": {
+      "openAIKey": {
+        "type": "string",
+        "label": "OpenAI API Key",
+        "isSecret": true
+      },
+      "geminiKey": {
+        "type": "string",
+        "label": "Gemini API Key",
+        "isSecret": true
+      }
+    }
   }
 }

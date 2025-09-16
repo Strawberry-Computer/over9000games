@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "title": "Pong NES",
+    "description": "A retro-inspired Pong game where players control paddles to hit a bouncing ball.",
+    "controls": [
+      {"key": "up", "action": "move paddle up"},
+      {"key": "down", "action": "move paddle down"},
+      {"key": "a", "action": "hit ball"}
+    ]
+  },
+  "sprites": [
+    {
+      "width": 8,
+      "height": 8,
+      "layers": [
+        [255,255,255,255,255,255,255,255],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0]
+      ]
+    },
+    {
+      "width": 8,
+      "height": 8,
+      "layers": [
+        [255,0,0,0,0,0,0,255],
+        [255,0,0,0,0,0,0,255],
+        [255,0,0,0,0,0,0,255],
+        [255,0,0,0,0,0,0,255]
+      ]
+    }
+  ],
+  "tiles": {
+    "wall": {
+      "id": "wall",
+      "width": 8,
+      "height": 8,
+      "layers": [
+        [255,255,255,255,255,255,255,255],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0]
+      ]
+    }
+  },
+  "palette": ["0x000000", "0xFFFFFF", "0xFF0000", "0x00FF00", "0x0000FF", "0xFFFF00", "0xFF00FF", "0x00FFFF", "0x888888", "0x444444", "0xAAAAAA", "0xCCCCCC", "0x800000", "0x008000", "0x000080", "0x808080"],
+  "initialState": {}
+}

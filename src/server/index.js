@@ -5,9 +5,11 @@ import {
   getServerPort,
   reddit,
   redis,
+  settings,
 } from "@devvit/web/server";
 import { createPost } from "./core/post.js";
 import { generateGameWithAI } from "./game-generator.js";
+import { getTestGame, getAvailableTestGames } from "../shared/test-games.js";
 
 const app = express();
 
@@ -94,7 +96,9 @@ router.post("/api/game/generate", async (req, res) => {
       return;
     }
 
-    const gameDefinition = await generateGameWithAI(description);
+    const gameDefinition = await generateGameWithAI(description, settings);
+
+    console.log("Generated game definition:", JSON.stringify(gameDefinition, null, 2));
 
     await redis.set(`game:${postId}:definition`, JSON.stringify(gameDefinition));
 
@@ -106,7 +110,49 @@ router.post("/api/game/generate", async (req, res) => {
     console.error(`Error generating game for post ${postId}:`, error);
     res.status(500).json({
       status: "error",
-      message: "Failed to generate game",
+      message: `Failed to generate game: ${error.message}`,
+    });
+  }
+});
+
+router.post("/api/game/test", async (req, res) => {
+  const { postId } = context;
+  if (!postId) {
+    res.status(400).json({
+      status: "error",
+      message: "postId is required",
+    });
+    return;
+  }
+
+  try {
+    const { gameName = 'simple-movement' } = req.body;
+
+    // Validate game name
+    const availableGames = getAvailableTestGames();
+    if (!availableGames.includes(gameName)) {
+      res.status(400).json({
+        status: "error",
+        message: `Invalid game name. Available: ${availableGames.join(', ')}`,
+      });
+      return;
+    }
+
+    const testGameDefinition = getTestGame(gameName);
+
+    console.log(`Loaded test game "${gameName}":`, JSON.stringify(testGameDefinition, null, 2));
+
+    await redis.set(`game:${postId}:definition`, JSON.stringify(testGameDefinition));
+
+    res.json({
+      type: "generate",
+      gameDefinition: testGameDefinition,
+    });
+  } catch (error) {
+    console.error(`Error loading test game for post ${postId}:`, error);
+    res.status(500).json({
+      status: "error",
+      message: `Failed to load test game: ${error.message}`,
     });
   }
 });

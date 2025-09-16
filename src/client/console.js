@@ -16,8 +16,8 @@ export class NESConsole {
     this.spriteCtx.imageSmoothingEnabled = false;
 
     this.state = {
-      sprites: Array(64).fill(null).map(() => ({ spriteId: 0, x: 0, y: 0 })),
-      tiles: Array(32).fill(null).map(() => Array(32).fill(0)),
+      sprites: Array(64).fill(null).map(() => ({ spriteId: -1, x: 0, y: 0 })),
+      tiles: Array(32).fill(null).map(() => Array(32).fill(-1)),
       backgroundColor: 0,
       palette: this.getDefaultPalette(),
       gameRunning: false,
@@ -28,7 +28,6 @@ export class NESConsole {
     this.inputState = {};
     this.prevInputState = {};
     this.animationId = null;
-    this.spriteIdMap = new Map();
     this.spritePositions = [];
 
     this.setupInputHandlers();
@@ -108,51 +107,51 @@ export class NESConsole {
   buildSpriteMap() {
     if (!this.gameDefinition) return;
 
-    this.spriteIdMap.clear();
-    this.spritePositions = [{ x: 0, y: 0, width: 8, height: 8 }]; // sprite 0 = empty
+    this.spritePositions = []; // No reserved empty slot, use -1 for empty
 
-    let spriteId = 1;
-    let currentX = 8; // Start after empty sprite
+    let currentX = 0;
     let currentY = 0;
     const sheetWidth = 256;
 
-    // Add sprites
-    Object.values(this.gameDefinition.sprites).forEach(sprite => {
-      if (currentX + sprite.width > sheetWidth) {
-        currentX = 0;
-        currentY += 8; // Assume 8px row height for now
-      }
+    // Add sprites (array indices map directly to sprite IDs)
+    if (Array.isArray(this.gameDefinition.sprites)) {
+      this.gameDefinition.sprites.forEach((sprite, index) => {
+        if (currentX + sprite.width > sheetWidth) {
+          currentX = 0;
+          currentY += 8;
+        }
 
-      this.spriteIdMap.set(sprite.id, spriteId);
-      this.spritePositions[spriteId] = {
-        x: currentX,
-        y: currentY,
-        width: sprite.width,
-        height: sprite.height
-      };
+        this.spritePositions[index] = {
+          x: currentX,
+          y: currentY,
+          width: sprite.width,
+          height: sprite.height
+        };
 
-      currentX += sprite.width;
-      spriteId++;
-    });
+        currentX += sprite.width;
+      });
+    }
 
-    // Add tiles
-    Object.values(this.gameDefinition.tiles).forEach(tile => {
-      if (currentX + tile.width > sheetWidth) {
-        currentX = 0;
-        currentY += 8;
-      }
+    // Add tiles (they continue the sprite position array after sprites)
+    let nextIndex = this.spritePositions.length;
+    if (this.gameDefinition.tiles) {
+      Object.values(this.gameDefinition.tiles).forEach(tile => {
+        if (currentX + tile.width > sheetWidth) {
+          currentX = 0;
+          currentY += 8;
+        }
 
-      this.spriteIdMap.set(tile.id, spriteId);
-      this.spritePositions[spriteId] = {
-        x: currentX,
-        y: currentY,
-        width: tile.width,
-        height: tile.height
-      };
+        this.spritePositions[nextIndex] = {
+          x: currentX,
+          y: currentY,
+          width: tile.width,
+          height: tile.height
+        };
 
-      currentX += tile.width;
-      spriteId++;
-    });
+        currentX += tile.width;
+        nextIndex++;
+      });
+    }
   }
 
   preRenderSprites() {
@@ -163,16 +162,22 @@ export class NESConsole {
     this.spriteCtx.fillRect(0, 0, 256, 256);
 
     // Render all sprites to the sprite sheet
-    Object.values(this.gameDefinition.sprites).forEach(sprite => {
-      this.renderSpriteToSheet(sprite);
-    });
+    if (Array.isArray(this.gameDefinition.sprites)) {
+      this.gameDefinition.sprites.forEach((sprite, index) => {
+        this.renderSpriteToSheet(sprite, index);
+      });
+    }
 
-    Object.values(this.gameDefinition.tiles).forEach(tile => {
-      this.renderSpriteToSheet(tile);
-    });
+    if (this.gameDefinition.tiles) {
+      let tileIndex = this.gameDefinition.sprites ? this.gameDefinition.sprites.length : 0;
+      Object.values(this.gameDefinition.tiles).forEach(tile => {
+        this.renderSpriteToSheet(tile, tileIndex);
+        tileIndex++;
+      });
+    }
   }
 
-  renderSpriteToSheet(sprite) {
+  renderSpriteToSheet(sprite, index) {
     const imageData = this.spriteCtx.createImageData(sprite.width, sprite.height);
     const data = imageData.data;
 
@@ -199,10 +204,7 @@ export class NESConsole {
       }
     }
 
-    const spriteId = this.spriteIdMap.get(sprite.id);
-    if (spriteId === undefined) return;
-
-    const position = this.spritePositions[spriteId];
+    const position = this.spritePositions[index];
     if (!position) return;
 
     // Render to sprite sheet canvas at calculated position
@@ -211,27 +213,25 @@ export class NESConsole {
 
   setSprite(slotId, spriteId, x, y) {
     if (slotId >= 0 && slotId < 64) {
-      const id = this.spriteIdMap.get(spriteId) || 0;
-      this.state.sprites[slotId] = { spriteId: id, x, y };
+      this.state.sprites[slotId] = { spriteId: spriteId, x, y };
     }
   }
 
   clearSprite(slotId) {
     if (slotId >= 0 && slotId < 64) {
-      this.state.sprites[slotId] = { spriteId: 0, x: 0, y: 0 };
+      this.state.sprites[slotId] = { spriteId: -1, x: 0, y: 0 };
     }
   }
 
   setTile(x, y, tileId) {
     if (x >= 0 && x < 32 && y >= 0 && y < 32) {
-      const id = this.spriteIdMap.get(tileId) || 0;
-      this.state.tiles[y][x] = id;
+      this.state.tiles[y][x] = tileId;
     }
   }
 
   clearTile(x, y) {
     if (x >= 0 && x < 32 && y >= 0 && y < 32) {
-      this.state.tiles[y][x] = 0;
+      this.state.tiles[y][x] = -1;
     }
   }
 
@@ -279,13 +279,13 @@ export class NESConsole {
   resetGame() {
     // Clear all sprites
     for (let i = 0; i < 64; i++) {
-      this.state.sprites[i] = { spriteId: 0, x: 0, y: 0 };
+      this.state.sprites[i] = { spriteId: -1, x: 0, y: 0 };
     }
 
     // Clear all tiles
     for (let y = 0; y < 32; y++) {
       for (let x = 0; x < 32; x++) {
-        this.state.tiles[y][x] = 0;
+        this.state.tiles[y][x] = -1;
       }
     }
 
@@ -328,7 +328,7 @@ export class NESConsole {
     for (let y = 0; y < 32; y++) {
       for (let x = 0; x < 32; x++) {
         const tileId = this.state.tiles[y][x];
-        if (tileId > 0) {
+        if (tileId >= 0) {
           const position = this.spritePositions[tileId];
           if (position) {
             this.ctx.drawImage(
@@ -345,13 +345,13 @@ export class NESConsole {
   renderSprites() {
     for (let i = 0; i < 64; i++) {
       const sprite = this.state.sprites[i];
-      if (sprite.spriteId > 0) {
+      if (sprite.spriteId >= 0) {
         const position = this.spritePositions[sprite.spriteId];
         if (position) {
           this.ctx.drawImage(
             this.spriteCanvas,
             position.x, position.y, position.width, position.height,
-            sprite.x, sprite.y, position.width, position.height
+            Math.round(sprite.x), Math.round(sprite.y), position.width, position.height
           );
         }
       }

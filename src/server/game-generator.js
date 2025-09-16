@@ -13,6 +13,13 @@ export async function generateGameWithAI(description, settings) {
       throw new Error('OpenAI API key not configured. Please add your OpenAI API key in app settings.');
     }
 
+    // Try Gemini first, fall back to OpenAI
+    const geminiKey = await settings.get('geminiKey');
+    if (geminiKey) {
+      console.log("Generating game with Gemini for:", description);
+      return await generateGameWithGemini(description, geminiKey);
+    }
+
     console.log("Generating game with OpenAI for:", description);
     return await generateGameWithOpenAI(description, apiKey);
   } catch (error) {
@@ -21,6 +28,50 @@ export async function generateGameWithAI(description, settings) {
     console.error("Error stack:", error.stack);
     throw error;
   }
+}
+
+async function generateGameWithGemini(description, apiKey) {
+  const prompt = createGameGenerationPrompt(description);
+
+  console.log("Calling Gemini API...");
+
+  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' + apiKey, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{
+          text: `You are a retro game designer that creates NES-style games. You must respond with a JSON block in markdown format (\`\`\`json) followed by a JavaScript block (\`\`\`javascript) containing the updateCode function.\n\n${prompt}`
+        }]
+      }],
+      generationConfig: {
+        maxOutputTokens: 8000,
+        temperature: 0.7
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini API error: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  const gameJson = data.candidates[0].content.parts[0].text;
+
+  // Parse the markdown response to extract JSON and JavaScript
+  let gameDefinition;
+  try {
+    gameDefinition = parseMarkdownResponse(gameJson);
+  } catch (parseError) {
+    console.error("Failed to parse Gemini response:", parseError);
+    console.error("Raw response:", gameJson);
+    throw new Error("Gemini returned invalid format");
+  }
+
+  return gameDefinition;
 }
 
 async function generateGameWithOpenAI(description, apiKey) {

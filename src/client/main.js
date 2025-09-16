@@ -1,7 +1,7 @@
 import { navigateTo } from "@devvit/web/client";
 import { NESConsole } from "./console.js";
 import { getGameRunner } from "./quickjs-game-runner.js";
-import { getQuickJS } from "quickjs-emscripten";
+import { getQuickJS, RELEASE_SYNC } from "quickjs-emscripten";
 
 const titleElement = document.getElementById("title");
 const gameInfoElement = document.getElementById("game-info");
@@ -77,7 +77,9 @@ function loadGame(gameDefinition) {
   currentGameNameElement.textContent = gameDefinition.name;
   gameInfoElement.textContent = gameDefinition.description;
 
-  if (gameConsole) {
+  if (gameRunner) {
+    loadQuickJSGame(gameDefinition);
+  } else if (gameConsole) {
     gameConsole.loadGame(gameDefinition);
     showGameReadyState();
   }
@@ -136,13 +138,48 @@ async function generateGame(description) {
     }
 
     const data = await response.json();
+    console.log("Received game definition from server:", data.gameDefinition);
+
     if (data.type === "generate") {
       await loadQuickJSGame(data.gameDefinition);
       hideGamePrompt();
     }
   } catch (error) {
     console.error("Error generating game:", error);
-    alert("Failed to generate game. Please try again.");
+
+    let errorMessage = "Failed to generate game. Please try again.";
+    if (error.message && error.message.includes('OpenAI API key')) {
+      errorMessage = "OpenAI API key not configured. Please contact an admin to set up the API key in app settings.";
+    }
+
+    gameInfoElement.textContent = errorMessage;
+    gameInfoElement.style.color = "#f44336";
+  }
+}
+
+async function loadTestGame(gameName) {
+  try {
+    const request = { gameName };
+    const response = await fetch("/api/game/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`Received test game "${gameName}" from server:`, data.gameDefinition);
+
+    if (data.type === "generate") {
+      await loadQuickJSGame(data.gameDefinition);
+    }
+  } catch (error) {
+    console.error(`Error loading test game "${gameName}":`, error);
+    gameInfoElement.textContent = `Failed to load test game: ${error.message}`;
+    gameInfoElement.style.color = "#f44336";
   }
 }
 
@@ -223,80 +260,14 @@ function hideLeaderboard() {
   leaderboardElement.style.display = "none";
 }
 
-// WASM test function
-async function testWasm() {
-  try {
-    console.log("Testing WASM execution...");
-    gameInfoElement.textContent = "Testing WASM execution...";
-
-    // Try different paths for the WASM file
-    let wasmResponse;
-    const possiblePaths = ["/test.wasm", "./test.wasm", "test.wasm"];
-
-    for (const path of possiblePaths) {
-      try {
-        console.log(`Trying to fetch WASM from: ${path}`);
-        wasmResponse = await fetch(path);
-        if (wasmResponse.ok) {
-          console.log(`Successfully fetched WASM from: ${path}`);
-          break;
-        }
-      } catch (e) {
-        console.log(`Failed to fetch from ${path}:`, e.message);
-      }
-    }
-
-    if (!wasmResponse || !wasmResponse.ok) {
-      throw new Error(`Failed to fetch WASM from any path. Last status: ${wasmResponse?.status || 'unknown'}`);
-    }
-
-    const wasmBytes = await wasmResponse.arrayBuffer();
-    console.log("WASM file loaded, size:", wasmBytes.byteLength, "bytes");
-    gameInfoElement.textContent = `WASM file loaded (${wasmBytes.byteLength} bytes), compiling...`;
-
-    // Compile and instantiate the WASM module
-    const wasmModule = await WebAssembly.compile(wasmBytes);
-    console.log("WASM module compiled successfully!");
-    gameInfoElement.textContent = "WASM module compiled, instantiating...";
-
-    const wasmInstance = await WebAssembly.instantiate(wasmModule);
-    console.log("WASM module instantiated successfully!");
-    gameInfoElement.textContent = "WASM module instantiated, testing functions...";
-
-    // Test the exported functions
-    const addResult = wasmInstance.exports.add(5, 3);
-    const multiplyResult = wasmInstance.exports.multiply(4, 7);
-
-    console.log("WASM add(5, 3) =", addResult);
-    console.log("WASM multiply(4, 7) =", multiplyResult);
-
-    if (addResult === 8 && multiplyResult === 28) {
-      const successMessage = `✅ WASM Test PASSED! add(5, 3) = ${addResult}, multiply(4, 7) = ${multiplyResult}`;
-      console.log(successMessage);
-      gameInfoElement.textContent = "🎉 WASM execution test PASSED! Dynamic code execution works!";
-      gameInfoElement.style.color = "#4CAF50";
-    } else {
-      const failMessage = `❌ WASM Test FAILED! Expected: add=8, multiply=28. Got: add=${addResult}, multiply=${multiplyResult}`;
-      console.log(failMessage);
-      gameInfoElement.textContent = "❌ WASM test failed - unexpected results";
-      gameInfoElement.style.color = "#f44336";
-    }
-
-  } catch (error) {
-    console.error("WASM test failed:", error);
-    gameInfoElement.textContent = `❌ WASM test failed: ${error.message}`;
-    gameInfoElement.style.color = "#f44336";
-  }
-}
-
 // QuickJS test function
 async function testQuickJS() {
   try {
     console.log("Testing QuickJS execution...");
     gameInfoElement.textContent = "Testing QuickJS execution...";
 
-    // Initialize QuickJS
-    const QuickJS = await getQuickJS();
+    // Initialize QuickJS with synchronous variant
+    const QuickJS = await getQuickJS({ variant: RELEASE_SYNC });
     console.log("QuickJS loaded successfully!");
     gameInfoElement.textContent = "QuickJS loaded, creating context...";
 
@@ -375,13 +346,25 @@ async function testQuickJS() {
   }
 }
 
+
+
 // Event Listeners
 document.getElementById("btn-new-game")?.addEventListener("click", showGamePrompt);
 document.getElementById("btn-leaderboard")?.addEventListener("click", loadLeaderboard);
-document.getElementById("btn-test-wasm")?.addEventListener("click", testWasm);
-document.getElementById("btn-test-quickjs")?.addEventListener("click", testQuickJS);
 document.getElementById("btn-cancel")?.addEventListener("click", hideGamePrompt);
 document.getElementById("btn-close-leaderboard")?.addEventListener("click", hideLeaderboard);
+
+// Tech test buttons
+document.getElementById("btn-test-quickjs")?.addEventListener("click", testQuickJS);
+
+// Test game buttons
+document.getElementById("btn-test-movement")?.addEventListener("click", () => {
+  loadTestGame("simple-movement");
+});
+
+document.getElementById("btn-test-pong")?.addEventListener("click", () => {
+  loadTestGame("pong");
+});
 
 document.getElementById("btn-generate")?.addEventListener("click", () => {
   const description = gameDescriptionElement.value.trim();
