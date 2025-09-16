@@ -32,7 +32,10 @@ A retro 8-bit game console built on Reddit's Devvit platform featuring authentic
 - [Devvit](https://developers.reddit.com/): Reddit's developer platform
 - [Express](https://expressjs.com/): Backend API server
 - [TypeScript](https://www.typescriptlang.org/): Type-safe development
+- [QuickJS](https://bellard.org/quickjs/): Sandboxed JavaScript execution for user games
 - HTML5 Canvas: Hardware-accelerated graphics rendering
+- OpenAI/Gemini APIs: AI-powered game generation
+- [Vite](https://vitejs.dev/): Build system with WebAssembly support
 
 ## Architecture
 
@@ -86,12 +89,14 @@ function gameUpdate() {
 ### Prerequisites
 - Node.js 22+
 - Reddit Developer Account
+- OpenAI/Gemini API keys (for AI game generation)
 
 ### Setup
 1. Clone this repository
 2. `npm install`
 3. `npm run login` - Authenticate with Reddit
-4. `npm run dev` - Start development server
+4. Configure API keys in Devvit app settings (`openAIKey`, `geminiKey`)
+5. `npm run dev` - Start development server
 
 ### Commands
 - `npm run dev`: Live development on Reddit
@@ -99,6 +104,12 @@ function gameUpdate() {
 - `npm run deploy`: Upload to Reddit (staging)
 - `npm run launch`: Publish for review
 - `npm run type-check`: TypeScript validation
+
+### AI Game Generation Testing
+- `node scripts/test-generation.js --model "openai/gpt-4o-mini" --prompt "snake game"`: Test single model
+- `node scripts/test-generation.js --models "openai/gpt-4o-mini,anthropic/claude-3.5-sonnet"`: Test multiple models
+- Set `OPENROUTER_API_KEY` environment variable for testing
+- Generated games saved to `./generated-games/` directory
 
 ## Dynamic Game Generation Architecture
 
@@ -219,15 +230,16 @@ const generatedGame = {
 
 ### API Endpoints
 
-#### Game Generation
-• `POST /api/games/generate` - Generate game from description
-• `POST /api/games/validate` - Validate game schema
-• `GET /api/games/:id` - Get game definition
-
-#### Game State Management
-• `POST /api/games/:id/save` - Save game state to Redis
+#### Game Generation & Management
+• `POST /api/games/generate` - Generate game from natural language description
+• `GET /api/games/:id` - Retrieve game definition and state
+• `POST /api/games/:id/save` - Persist game state to Redis
 • `POST /api/games/:id/load` - Load saved game state
-• `POST /api/games/:id/score` - Submit high score
+
+#### App Integration
+• `GET /api/init` - Initialize application state and user context
+• `POST /internal/on-app-install` - App installation handler
+• `POST /internal/menu/post-create` - Create new game post from subreddit menu
 
 ### Security & Sandboxing
 

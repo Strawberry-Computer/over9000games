@@ -4,26 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Devvit web application for Reddit that implements a simple counter game. It's built using the Reddit Developer Platform (Devvit) and consists of a client-server architecture with TypeScript.
+This is a Devvit web application that implements a retro NES-style game console for Reddit with AI-powered game generation. It features authentic 8-bit graphics, a QuickJS sandbox for dynamic game execution, and LLM integration for procedural game creation.
 
 ## Architecture
 
 ### Key Components
-- **Client** (`src/client/`): Vanilla TypeScript frontend that renders in Reddit posts
-- **Server** (`src/server/`): Express.js backend with Redis state management
-- **Shared Types** (`src/shared/types/`): Common TypeScript interfaces between client and server
+- **Client** (`src/client/`): NES console emulator with HTML5 Canvas rendering
+- **Server** (`src/server/`): Express.js backend with AI game generation and Redis state
+- **Shared** (`src/shared/`): Game schema validation, prompts, and shared utilities
+- **Scripts** (`scripts/`): AI model testing and game generation tools
+
+### Core Systems
+- **NES Console**: 256×256 pixel display, 4-bit color depth, 8×8 sprites and tiles
+- **QuickJS Engine**: Sandboxed JavaScript execution for user-generated games
+- **AI Generation**: OpenAI/Gemini integration for procedural game creation
+- **Game Schema**: Validation system for sprites, palettes, and game logic
 
 ### Build System
-- Uses Vite for both client and server builds
-- Client builds to `dist/client/` (static assets)
+- Uses Vite for both client and server builds with WebAssembly support
+- Client builds to `dist/client/` (includes QuickJS WASM)
 - Server builds to `dist/server/index.cjs` (Node.js bundle)
-- Devvit configuration in `devvit.json` defines entry points and deployment settings
-
-### Data Flow
-1. Client fetches initial state via `/api/init` endpoint
-2. Counter operations use `/api/increment` and `/api/decrement` POST endpoints
-3. Server uses Redis for persistent state storage across Reddit posts
-4. Context (`postId`, `subredditName`, `username`) provided by Devvit runtime
+- Devvit configuration defines entry points and API key settings
 
 ## Essential Commands
 
@@ -42,44 +43,76 @@ This is a Devvit web application for Reddit that implements a simple counter gam
 ### Authentication
 - `npm run login`: Authenticate CLI with Reddit account
 
-## Devvit-Specific Patterns
+### Testing & Scripts
+- `node scripts/test-generation.js --model "openai/gpt-4o-mini" --prompt "snake game"`: Test AI generation
+- `node scripts/test-generation.js --models "openai/gpt-4o-mini,anthropic/claude-3.5-sonnet"`: Test multiple models
+- Set `OPENROUTER_API_KEY` environment variable for testing
 
-### Menu Integration
-The app registers a subreddit menu item for moderators to create new posts (`/internal/menu/post-create`).
+## Core Architecture Patterns
 
-### App Lifecycle
-- `onAppInstall` trigger automatically creates an initial post when installed
-- Posts are created using `reddit.submitCustomPost()` with custom splash screen
+### AI Game Generation Flow
+1. User provides natural language game description
+2. Server generates game using OpenAI/Gemini via `src/server/game-generator.js`
+3. Response parsed by `src/shared/game-prompt.js` (markdown → JSON + JavaScript)
+4. Game validated using `src/shared/game-schema.js`
+5. QuickJS executes game in client sandbox
 
-### Context Access
-Server routes access Reddit context via `@devvit/web/server`:
-```typescript
-const { postId, subredditName } = context;
-const username = await reddit.getCurrentUsername();
+### QuickJS Game Execution
+Games are self-contained JavaScript modules with this pattern:
+```javascript
+function gameUpdate(deltaTime, input) {
+  // Game logic here
+  return [
+    {type: 'sprite', slotId: 0, spriteId: 1, x: 10, y: 20},
+    {type: 'score', value: 100}
+  ];
+}
 ```
 
-### Redis Integration
-State persisted using Redis instance provided by Devvit runtime:
-```typescript
-await redis.get("count");
-await redis.incrBy("count", 1);
-```
+### NES Console Rendering
+- Sprites: 4-layer bitmask arrays defining 8×8 pixel graphics
+- Commands: Games return command arrays, console handles rendering
+- Performance: Single-pass canvas rendering with pre-compiled sprite sheets
+
+### Devvit Integration
+App registers subreddit menu for moderators (`/internal/menu/post-create`) and automatically creates posts on install (`onAppInstall`). Server accesses Reddit context via `@devvit/web/server` for user/post identification.
 
 ## API Endpoints
 
-- `GET /api/init`: Initialize counter state and user context
-- `POST /api/increment`: Increment counter by 1
-- `POST /api/decrement`: Decrement counter by 1
+### Game Management
+- `POST /api/games/generate`: Generate game from natural language description
+- `GET /api/games/:id`: Retrieve game definition and state
+- `POST /api/games/:id/save`: Persist game state to Redis
+- `POST /api/games/:id/load`: Load saved game state
+
+### Legacy Endpoints
+- `GET /api/init`: Initialize application state and user context
 - `POST /internal/on-app-install`: App installation handler
-- `POST /internal/menu/post-create`: Create new post from subreddit menu
+- `POST /internal/menu/post-create`: Create new game post from subreddit menu
 
 ## Development Notes
 
 ### Environment Setup
-Requires Node.js 22+ and Reddit developer account connected via `npm run login`.
+- Requires Node.js 22+ and Reddit developer account via `npm run login`
+- Configure API keys in Devvit settings: `openAIKey` and `geminiKey` (secrets)
+- For testing: Set `OPENROUTER_API_KEY` environment variable
 
 ### Local Testing
-Use `npm run dev` which starts playtest mode in the configured development subreddit (`over9000games_dev`).
+- `npm run dev`: Full development mode with live reload and playtest
+- Uses development subreddit `over9000games_dev` for testing
+- QuickJS games run in sandboxed environment with memory/execution limits
+
+### Game Development Workflow
+1. Test AI generation: `node scripts/test-generation.js --model "openai/gpt-4o-mini" --prompt "your game idea"`
+2. Generated games saved to `./generated-games/` directory
+3. Manual games can be placed in `src/shared/test-games/` for testing
+4. Use browser dev tools to debug QuickJS execution errors
+
+### Architecture Considerations
+- Games must be self-contained (no external dependencies)
+- Sprite data uses 4-layer bitmask format for NES-style color composition
+- All rendering deferred through command system (no direct canvas access)
+- State persistence handled by Redis with post-specific namespacing
 
 ### TypeScript Configuration
-Project uses ES modules (`"type": "module"`) with strict TypeScript compilation via `tsc --build`.
+Project uses ES modules (`"type": "module"`) with separate tsconfig for client/server/shared. Vite handles WASM integration for QuickJS in client build.
