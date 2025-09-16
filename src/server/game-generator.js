@@ -1,17 +1,26 @@
+import { getTestGame } from '../shared/test-games.js';
+
 export async function generateGameWithAI(description, settings) {
-  console.log("generateGameWithAI called with:", description);
+  try {
+    console.log("generateGameWithAI called with:", description);
 
-  // Get OpenAI API key from Devvit settings
-  console.log("Getting OpenAI API key from settings...");
-  const apiKey = await settings.get('openAIKey');
-  console.log("API key retrieved:", apiKey ? "***configured***" : "not found");
+    // Get OpenAI API key from Devvit settings
+    console.log("Getting OpenAI API key from settings...");
+    const apiKey = await settings.get('openAIKey');
+    console.log("API key retrieved:", apiKey ? "***configured***" : "not found");
 
-  if (!apiKey) {
-    throw new Error('OpenAI API key not configured. Please add your OpenAI API key in app settings.');
+    if (!apiKey) {
+      throw new Error('OpenAI API key not configured. Please add your OpenAI API key in app settings.');
+    }
+
+    console.log("Generating game with OpenAI for:", description);
+    return await generateGameWithOpenAI(description, apiKey);
+  } catch (error) {
+    console.error("Error in generateGameWithAI:", error);
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+    throw error;
   }
-
-  console.log("Generating game with OpenAI for:", description);
-  return await generateGameWithOpenAI(description, apiKey);
 }
 
 async function generateGameWithOpenAI(description, apiKey) {
@@ -26,19 +35,18 @@ async function generateGameWithOpenAI(description, apiKey) {
       'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini', // Using cheaper/faster model
+      model: 'gpt-5-nano', // Using faster model
       messages: [
         {
           role: 'system',
-          content: 'You are a retro game designer that creates NES-style games. You must respond with valid JSON only, no other text.'
+          content: 'You are a retro game designer that creates NES-style games. You must respond with a JSON block in markdown format (```json) followed by a JavaScript block (```javascript) containing the updateCode function.'
         },
         {
           role: 'user',
           content: prompt
         }
       ],
-      temperature: 0.7,
-      max_tokens: 2000
+      max_completion_tokens: 9000
     })
   });
 
@@ -97,72 +105,52 @@ function parseMarkdownResponse(response) {
 }
 
 function createGameGenerationPrompt(description) {
+  try {
+    console.log("Creating game generation prompt for:", description);
+
+    // Use imported test games as examples
+    const simpleMovement = getTestGame('simple-movement');
+    const pong = getTestGame('pong');
+
+    console.log("Test games loaded successfully:", simpleMovement?.metadata?.title, pong?.metadata?.title);
+
   return `Create a NES-style game based on: "${description}"
 
-Return your response in this exact format with JSON config and JavaScript code in separate markdown blocks:
+## Examples from our test games:
 
+### Simple Movement Game:
 \`\`\`json
-{
-  "metadata": {
-    "title": "Game Title",
-    "description": "Brief description",
-    "controls": [
-      {"key": "arrow keys", "action": "move"},
-      {"key": "a", "action": "action"}
-    ]
-  },
-  "sprites": {
-    "player": {
-      "id": "player",
-      "width": 8,
-      "height": 8,
-      "layers": [
-        [255,129,129,129,129,129,129,255],
-        [0,126,66,66,66,66,126,0],
-        [0,0,60,36,36,60,0,0],
-        [0,0,0,24,24,0,0,0]
-      ]
-    }
-  },
-  "tiles": {
-    "wall": {
-      "id": "wall",
-      "width": 8,
-      "height": 8,
-      "layers": [
-        [255,255,255,255,255,255,255,255],
-        [0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0]
-      ]
-    }
-  },
-  "palette": ["0x000000", "0x666666", "0x888888", "0xAAAAAA", "0xCCCCCC", "0xFFFFFF", "0xFF0000", "0x00FF00", "0x0000FF", "0xFFFF00", "0xFF00FF", "0x00FFFF", "0x800000", "0x008000", "0x000080", "0x808080"],
-  "initialState": {}
-}
+${JSON.stringify({...simpleMovement, updateCode: undefined}, null, 2)}
 \`\`\`
 
 \`\`\`javascript
-function(sys) {
-  if (!globalThis.gameState) {
-    globalThis.gameState = {
-      player: { x: 120, y: 120 }
-    };
-  }
-
-  if (sys.isPressed('up')) globalThis.gameState.player.y -= 2;
-  if (sys.isPressed('down')) globalThis.gameState.player.y += 2;
-  if (sys.isPressed('left')) globalThis.gameState.player.x -= 2;
-  if (sys.isPressed('right')) globalThis.gameState.player.x += 2;
-
-  sys.setSprite(0, 'player', globalThis.gameState.player.x, globalThis.gameState.player.y);
-}
+${simpleMovement.updateCode}
 \`\`\`
 
-Requirements:
-- 8x8 sprites with 4 layers (arrays of 8 numbers each, 0-255)
-- Use hex strings in palette like "0xFF0000"
-- sys.setSprite(slot, id, x, y), sys.isPressed('up'/'down'/'left'/'right'/'a'/'b')
-- Keep it simple but fun!`;
+### Pong Game (multi-sprite objects):
+\`\`\`json
+${JSON.stringify({...pong, updateCode: undefined}, null, 2)}
+\`\`\`
+
+\`\`\`javascript
+${pong.updateCode}
+\`\`\`
+
+## Key Features You Must Follow:
+- **gameUpdate(deltaTime, input)** function that returns command arrays
+- **Sprites**: 8x8 pixels with 4 layers of hex bytes (e.g., [0xFF, 0x81, ...])
+- **Commands**: Return arrays like [{type: 'sprite', slotId: 0, spriteId: 0, x: 10, y: 20}]
+- **Multi-sprite objects**: Use multiple sprites for larger objects (see pong paddles)
+- **initialState**: Can include complex game state like Tetris boards:
+  \`"initialState": {"board": Array(20).fill().map(() => Array(10).fill(0))}\`
+
+## Your Task
+Follow the same structure to create a game for: "${description}"`;
+
+  } catch (error) {
+    console.error("Error creating game generation prompt:", error);
+    console.error("Error stack:", error.stack);
+    throw error;
+  }
 }
 
