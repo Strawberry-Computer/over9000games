@@ -26,23 +26,17 @@ export function validateGameSchema(gameDefinition) {
     }
   }
 
-  // Validate sprites
+  // Validate sprites (new simplified format)
   if (gameDefinition.sprites && !Array.isArray(gameDefinition.sprites)) {
     errors.push('Sprites must be an array');
   } else if (gameDefinition.sprites) {
     gameDefinition.sprites.forEach((sprite, spriteIndex) => {
-      if (typeof sprite.width !== 'number' || sprite.width !== 8) {
-        errors.push(`Sprite ${spriteIndex} width must be 8 pixels`);
-      }
-      if (typeof sprite.height !== 'number' || sprite.height !== 8) {
-        errors.push(`Sprite ${spriteIndex} height must be 8 pixels`);
-      }
-      if (!Array.isArray(sprite.layers) || sprite.layers.length !== 4) {
-        errors.push(`Sprite ${spriteIndex} must have exactly 4 layers`);
+      if (!Array.isArray(sprite)) {
+        errors.push(`Sprite ${spriteIndex} must be an array of layers`);
       } else {
-        sprite.layers.forEach((layer, i) => {
+        sprite.forEach((layer, layerIndex) => {
           if (!Array.isArray(layer) || layer.length !== 8) {
-            errors.push(`Sprite ${spriteIndex} layer ${i} must be an array of 8 bytes`);
+            errors.push(`Sprite ${spriteIndex} layer ${layerIndex} must be an array of 8 bytes`);
           }
         });
       }

@@ -58,8 +58,12 @@ async function fetchInitialData() {
       currentHighScores = data.highScores;
       titleElement.textContent = `Hey ${data.username} 👋`;
 
-      if (data.gameDefinition) {
-        loadGame(data.gameDefinition);
+      if (data.gameDefinition && data.gameDefinition.gameCode) {
+        // Load all games via QuickJS runner
+        await gameRunner.loadCode(data.gameDefinition.gameCode);
+        gameInfoElement.textContent = "🎮 Game loaded! Use arrow keys to play.";
+        gameInfoElement.style.color = "#4caf50";
+        showGameReadyState();
       } else {
         showNoGameState();
       }
@@ -70,18 +74,6 @@ async function fetchInitialData() {
   } catch (error) {
     console.error("Error fetching initial data:", error);
     showErrorState("Connection error");
-  }
-}
-
-function loadGame(gameDefinition) {
-  currentGameNameElement.textContent = gameDefinition.name;
-  gameInfoElement.textContent = gameDefinition.description;
-
-  if (gameRunner) {
-    loadQuickJSGame(gameDefinition);
-  } else if (gameConsole) {
-    gameConsole.loadGame(gameDefinition);
-    showGameReadyState();
   }
 }
 
@@ -99,30 +91,6 @@ function showGameReadyState() {
   gameInfoElement.textContent += " - Press START to play!";
 }
 
-async function loadQuickJSGame(gameDefinition) {
-  try {
-    if (!gameRunner) {
-      throw new Error("Game runner not initialized");
-    }
-
-    console.log("Loading QuickJS game:", gameDefinition.metadata?.title || "Untitled");
-    await gameRunner.loadGame(gameDefinition);
-
-    // Update UI with game info
-    if (gameDefinition.metadata) {
-      titleElement.textContent = gameDefinition.metadata.title || "Generated Game";
-      gameInfoElement.textContent = gameDefinition.metadata.description || "A dynamically generated game";
-      gameInfoElement.style.color = "#4CAF50";
-    }
-
-    console.log("QuickJS game loaded successfully");
-  } catch (error) {
-    console.error("Failed to load QuickJS game:", error);
-    gameInfoElement.textContent = `Failed to load game: ${error.message}`;
-    gameInfoElement.style.color = "#f44336";
-    throw error;
-  }
-}
 
 async function generateGame(description) {
   try {
@@ -141,7 +109,11 @@ async function generateGame(description) {
     console.log("Received game definition from server:", data.gameDefinition);
 
     if (data.type === "generate") {
-      await loadQuickJSGame(data.gameDefinition);
+      // AI-generated games return { gameCode }
+      // Load the raw game code directly into QuickJS
+      await gameRunner.loadCode(data.gameDefinition.gameCode);
+      gameInfoElement.textContent = "🎮 AI-generated game loaded! Use arrow keys to play.";
+      gameInfoElement.style.color = "#4caf50";
       hideGamePrompt();
     }
   } catch (error) {
@@ -174,7 +146,11 @@ async function loadTestGame(gameName) {
     console.log(`Received test game "${gameName}" from server:`, data.gameDefinition);
 
     if (data.type === "generate") {
-      await loadQuickJSGame(data.gameDefinition);
+      // Both AI-generated and test games now return { gameCode }
+      // Load the raw game code directly into QuickJS
+      await gameRunner.loadCode(data.gameDefinition.gameCode);
+      gameInfoElement.textContent = `🎮 Test game "${gameName}" loaded! Use arrow keys to play.`;
+      gameInfoElement.style.color = "#4caf50";
     }
   } catch (error) {
     console.error(`Error loading test game "${gameName}":`, error);

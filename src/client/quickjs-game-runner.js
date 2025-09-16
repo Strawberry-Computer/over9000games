@@ -19,7 +19,16 @@ export class QuickJSGameRunner {
     try {
       console.log("Initializing QuickJS game runner...");
       this.QuickJS = await getQuickJS();
-      this.vm = this.QuickJS.newContext();//{ variant: RELEASE_SYNC });
+
+      // Set up module loader for ES6 modules
+      this.runtime = this.QuickJS.newRuntime({ variant: RELEASE_SYNC });
+      this.runtime.setModuleLoader((moduleName) => {
+        console.log("Module loader called for:", moduleName);
+        // Return empty string or handle module loading if needed
+        return "";
+      });
+
+      this.vm = this.runtime.newContext();
 
       this.isInitialized = true;
       console.log("QuickJS game runner initialized successfully");
@@ -29,7 +38,7 @@ export class QuickJSGameRunner {
     }
   }
 
-  async loadGame(gameDefinition) {
+  async loadCode(gameCode) {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -40,27 +49,63 @@ export class QuickJSGameRunner {
       this.vm = null;
     }
 
-    // Create fresh VM context for new game
-    this.vm = this.QuickJS.newContext();
+    // Create fresh VM context for new game (reuse existing runtime)
+    this.vm = this.runtime.newContext();
 
-    // Validate and sanitize game definition
-    const validation = validateGameSchema(gameDefinition);
-    if (!validation.valid) {
-      throw new Error(`Invalid game definition: ${validation.errors.join(', ')}`);
+    // Load the game code as regular JavaScript (not ES6 module)
+    console.log("Loading game code into QuickJS VM...");
+
+    // Evaluate the game code directly
+    const result = this.vm.evalCode(gameCode, "game.js");
+    if (result.error) {
+      const errorMsg = this.vm.dump(result.error);
+      result.dispose();
+      throw new Error(`Failed to load game code: ${errorMsg}`);
+    }
+    result.dispose();
+
+    // Get the exported functions from the global scope
+    const metadataHandle = this.vm.getProp(this.vm.global, "metadata");
+    const resourcesHandle = this.vm.getProp(this.vm.global, "resources");
+    const updateHandle = this.vm.getProp(this.vm.global, "update");
+
+    if (!metadataHandle || !resourcesHandle || !updateHandle) {
+      throw new Error("Game code must define metadata, resources, and update functions");
     }
 
-    const sanitizedGame = sanitizeGameDefinition(gameDefinition);
-    this.gameDefinition = sanitizedGame;
+    // Call the functions to get data
+    const metadataResult = this.vm.callFunction(metadataHandle, this.vm.undefined);
+    const resourcesResult = this.vm.callFunction(resourcesHandle, this.vm.undefined);
 
-    // Load assets into NES console
+    if (metadataResult.error || resourcesResult.error) {
+      const errorMsg = metadataResult.error ? this.vm.dump(metadataResult.error) : this.vm.dump(resourcesResult.error);
+      metadataResult.dispose();
+      resourcesResult.dispose();
+      throw new Error(`Failed to call game functions: ${errorMsg}`);
+    }
+
+    const metadata = this.vm.dump(this.vm.unwrapResult(metadataResult));
+    const resources = this.vm.dump(this.vm.unwrapResult(resourcesResult));
+
+    // Store the update function handle for runtime execution
+    this.updateFunction = updateHandle;
+
+    // Clean up temporary results
+    metadataResult.dispose();
+    resourcesResult.dispose();
+    metadataHandle.dispose();
+    resourcesHandle.dispose();
+
+    // Load sprites and palette into NES console
     const nesGameDef = {
-      ...sanitizedGame,
+      metadata,
+      ...resources,
       gameLogic: null // Game logic handled by QuickJS
     };
 
     this.nesConsole.loadGame(nesGameDef);
 
-    // Override NES console game loop
+    // Override NES console game loop to use update() function
     const originalGameLoop = this.nesConsole.gameLoop;
     this.nesConsole.gameLoop = () => {
       if (!this.nesConsole.state.gameRunning) return;
@@ -79,21 +124,11 @@ export class QuickJSGameRunner {
       this.nesConsole.animationId = requestAnimationFrame(this.nesConsole.gameLoop);
     };
 
-
-    // Load game code directly
-    console.log("Loading game code:", sanitizedGame.updateCode?.substring(0, 100) + "...");
-    const updateResult = this.vm.evalCode(sanitizedGame.updateCode);
-    if (updateResult.error) {
-      const errorMsg = this.vm.dump(updateResult.error);
-      throw new Error(`Failed to load game code: ${errorMsg}`);
-    }
-    updateResult.dispose();
-
-    console.log("Game loaded successfully into QuickJS sandbox");
+    console.log("Game loaded successfully:", metadata.title);
   }
 
   executeGameUpdate() {
-    if (!this.vm || !this.gameDefinition) return [];
+    if (!this.vm || !this.updateFunction) return [];
 
     try {
       // Calculate delta time
@@ -104,15 +139,34 @@ export class QuickJSGameRunner {
       // Get current input state
       const inputState = this.getInputState();
 
-      // Execute game update function and get returned commands
-      const result = this.vm.evalCode(`gameUpdate(${deltaTime}, ${JSON.stringify(inputState)})`);
+      // Create JS values for the parameters
+      const deltaTimeHandle = this.vm.newNumber(deltaTime);
+      const inputStateHandle = this.vm.newObject();
+
+      // Set input state properties
+      Object.entries(inputState).forEach(([key, value]) => {
+        const keyHandle = this.vm.newString(key);
+        const valueHandle = this.vm.newNumber(value ? 1 : 0);
+        this.vm.setProp(inputStateHandle, keyHandle, valueHandle);
+        keyHandle.dispose();
+        valueHandle.dispose();
+      });
+
+      // Call the update function with QuickJS
+      const result = this.vm.callFunction(this.updateFunction, this.vm.undefined, deltaTimeHandle, inputStateHandle);
+
+      // Clean up parameters
+      deltaTimeHandle.dispose();
+      inputStateHandle.dispose();
+
       if (result.error) {
         const errorMsg = this.vm.dump(result.error);
-        console.error("Game update execution error:", errorMsg);
-        return [];
+        result.dispose();
+        throw new Error(`Update function error: ${errorMsg}`);
       }
 
-      const commands = this.vm.dump(result.value);
+      // Get the commands array
+      const commands = this.vm.dump(this.vm.unwrapResult(result));
       result.dispose();
 
       return Array.isArray(commands) ? commands : [];
@@ -212,9 +266,19 @@ export class QuickJSGameRunner {
   }
 
   dispose() {
+    if (this.updateFunction) {
+      this.updateFunction.dispose();
+      this.updateFunction = null;
+    }
+
     if (this.vm) {
       this.vm.dispose();
       this.vm = null;
+    }
+
+    if (this.runtime) {
+      this.runtime.dispose();
+      this.runtime = null;
     }
 
     this.QuickJS = null;

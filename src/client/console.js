@@ -116,7 +116,7 @@ export class NESConsole {
     // Add sprites (array indices map directly to sprite IDs)
     if (Array.isArray(this.gameDefinition.sprites)) {
       this.gameDefinition.sprites.forEach((sprite, index) => {
-        if (currentX + sprite.width > sheetWidth) {
+        if (currentX + 8 > sheetWidth) {
           currentX = 0;
           currentY += 8;
         }
@@ -124,11 +124,11 @@ export class NESConsole {
         this.spritePositions[index] = {
           x: currentX,
           y: currentY,
-          width: sprite.width,
-          height: sprite.height
+          width: 8,
+          height: 8
         };
 
-        currentX += sprite.width;
+        currentX += 8;
       });
     }
 
@@ -178,24 +178,25 @@ export class NESConsole {
   }
 
   renderSpriteToSheet(sprite, index) {
-    const imageData = this.spriteCtx.createImageData(sprite.width, sprite.height);
+    const imageData = this.spriteCtx.createImageData(8, 8);
     const data = imageData.data;
 
-    for (let y = 0; y < sprite.height; y++) {
-      for (let x = 0; x < sprite.width; x++) {
-        const pixelIndex = y * sprite.width + x;
+    for (let y = 0; y < 8; y++) {
+      for (let x = 0; x < 8; x++) {
+        const pixelIndex = y * 8 + x;
         const byteIndex = Math.floor(pixelIndex / 8);
         const bitIndex = 7 - (pixelIndex % 8);
 
         let colorIndex = 0;
-        for (let layer = 0; layer < 4; layer++) {
-          if (sprite.layers[layer][byteIndex] & (1 << bitIndex)) {
+        // New format: sprite is array of layers
+        for (let layer = 0; layer < sprite.length; layer++) {
+          if (sprite[layer] && sprite[layer][byteIndex] & (1 << bitIndex)) {
             colorIndex |= (1 << layer);
           }
         }
 
         const color = this.state.palette[colorIndex] || 0x000000;
-        const dataIndex = (y * sprite.width + x) * 4;
+        const dataIndex = (y * 8 + x) * 4;
 
         data[dataIndex] = (color >> 16) & 0xFF;     // R
         data[dataIndex + 1] = (color >> 8) & 0xFF;  // G

@@ -1,45 +1,159 @@
-function(sys) {
-  if (!globalThis.gameState) {
-    globalThis.gameState = {
+function metadata() {
+  return {
+    title: "Pong NES",
+    description: "A classic Pong game with two paddles and a ball",
+    controls: [
+      {key: "up", action: "move player 1 paddle up"},
+      {key: "down", action: "move player 1 paddle down"}
+    ]
+  };
+}
+
+function resources() {
+  return {
+    sprites: [
+      // Sprite 0: Square (for paddle middle) - white
+      [
+        [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]
+      ],
+
+      // Sprite 1: Paddle top (rounded top) - white
+      [
+        [0x3C, 0x7E, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]
+      ],
+
+      // Sprite 2: Paddle bottom (rounded bottom) - white
+      [
+        [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C]
+      ],
+
+      // Sprite 3: Ball (round) - white
+      [
+        [0x3C, 0x7E, 0xFF, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C]
+      ]
+    ],
+    palette: [0x000000, 0xFFFFFF, 0xFF0000, 0x00FF00, 0x0000FF, 0xFFFF00, 0xFF00FF, 0x00FFFF, 0x808080, 0x800000, 0x008000, 0x000080, 0x808000, 0x800080, 0x008080, 0xC0C0C0]
+  };
+}
+
+let gameState;
+
+function update(deltaTime, input) {
+  // Initialize game state if needed
+  if (!gameState) {
+    gameState = {
       player1: { x: 10, y: 100 },
       player2: { x: 238, y: 100 },
       ball: { x: 130, y: 100, dx: 2, dy: 2 }
     };
   }
 
-  // Player 1 controls
-  if (sys.isPressed('up') && globalThis.gameState.player1.y > 0) globalThis.gameState.player1.y -= 2;
-  if (sys.isPressed('down') && globalThis.gameState.player1.y < 232) globalThis.gameState.player1.y += 2;
+  // Player 1 controls (paddle is 32 pixels tall)
+  if (input.up && gameState.player1.y > 0) gameState.player1.y -= 2;
+  if (input.down && gameState.player1.y < 224) gameState.player1.y += 2; // 256 - 32 = 224
 
-  // Player 2 controls (AI or second player)
-  if (globalThis.gameState.ball.y < globalThis.gameState.player2.y) globalThis.gameState.player2.y -= 2;
-  if (globalThis.gameState.ball.y > globalThis.gameState.player2.y + 8) globalThis.gameState.player2.y += 2;
+  // Player 2 controls (AI) - target center of paddle
+  const player2Center = gameState.player2.y + 16; // Center of 32px paddle
+  if (gameState.ball.y < player2Center - 4) gameState.player2.y -= 2;
+  if (gameState.ball.y > player2Center + 4) gameState.player2.y += 2;
+  // Keep AI paddle in bounds
+  if (gameState.player2.y < 0) gameState.player2.y = 0;
+  if (gameState.player2.y > 224) gameState.player2.y = 224;
 
   // Update ball position
-  globalThis.gameState.ball.x += globalThis.gameState.ball.dx;
-  globalThis.gameState.ball.y += globalThis.gameState.ball.dy;
+  gameState.ball.x += gameState.ball.dx;
+  gameState.ball.y += gameState.ball.dy;
 
   // Ball collision with top and bottom
-  if (globalThis.gameState.ball.y <= 0 || globalThis.gameState.ball.y >= 232) {
-    globalThis.gameState.ball.dy *= -1; // Reverse direction
+  if (gameState.ball.y <= 0 || gameState.ball.y >= 232) {
+    gameState.ball.dy *= -1;
   }
 
-  // Ball collision with paddles
-  if ((globalThis.gameState.ball.x <= globalThis.gameState.player1.x + 8 && globalThis.gameState.ball.y >= globalThis.gameState.player1.y && globalThis.gameState.ball.y <= globalThis.gameState.player1.y + 8) ||
-      (globalThis.gameState.ball.x >= globalThis.gameState.player2.x - 8 && globalThis.gameState.ball.y >= globalThis.gameState.player2.y && globalThis.gameState.ball.y <= globalThis.gameState.player2.y + 8)) {
-    globalThis.gameState.ball.dx *= -1; // Reverse direction
+  // Ball collision with paddles (32 pixels tall)
+  if ((gameState.ball.x <= gameState.player1.x + 8 &&
+       gameState.ball.y + 8 >= gameState.player1.y &&
+       gameState.ball.y <= gameState.player1.y + 32) ||
+      (gameState.ball.x + 8 >= gameState.player2.x &&
+       gameState.ball.y + 8 >= gameState.player2.y &&
+       gameState.ball.y <= gameState.player2.y + 32)) {
+    gameState.ball.dx *= -1;
   }
 
   // Reset ball if it goes off screen
-  if (globalThis.gameState.ball.x < 0 || globalThis.gameState.ball.x > 256) {
-    globalThis.gameState.ball.x = 130;
-    globalThis.gameState.ball.y = 100;
-    globalThis.gameState.ball.dx = globalThis.gameState.ball.dx > 0 ? 2 : -2;
-    globalThis.gameState.ball.dy = 2;
+  if (gameState.ball.x < 0 || gameState.ball.x > 256) {
+    gameState.ball.x = 130;
+    gameState.ball.y = 100;
+    gameState.ball.dx = gameState.ball.dx > 0 ? 2 : -2;
+    gameState.ball.dy = 2;
   }
 
-  // Set sprites using DIFFERENT SLOTS
-  sys.setSprite(0, 1, globalThis.gameState.player1.x, globalThis.gameState.player1.y); // Player 1 paddle
-  sys.setSprite(1, 1, globalThis.gameState.player2.x, globalThis.gameState.player2.y); // Player 2 paddle
-  sys.setSprite(2, 0, globalThis.gameState.ball.x, globalThis.gameState.ball.y); // Ball
+  // Return command array with rounded paddles
+  return [
+    // Player 1 paddle (rounded)
+    {
+      type: 'sprite',
+      slotId: 0,
+      spriteId: 1, // Top rounded
+      x: gameState.player1.x,
+      y: gameState.player1.y
+    },
+    {
+      type: 'sprite',
+      slotId: 1,
+      spriteId: 0, // Middle square
+      x: gameState.player1.x,
+      y: gameState.player1.y + 8
+    },
+    {
+      type: 'sprite',
+      slotId: 2,
+      spriteId: 0, // Middle square
+      x: gameState.player1.x,
+      y: gameState.player1.y + 16
+    },
+    {
+      type: 'sprite',
+      slotId: 3,
+      spriteId: 2, // Bottom rounded
+      x: gameState.player1.x,
+      y: gameState.player1.y + 24
+    },
+    // Player 2 paddle (rounded)
+    {
+      type: 'sprite',
+      slotId: 4,
+      spriteId: 1, // Top rounded
+      x: gameState.player2.x,
+      y: gameState.player2.y
+    },
+    {
+      type: 'sprite',
+      slotId: 5,
+      spriteId: 0, // Middle square
+      x: gameState.player2.x,
+      y: gameState.player2.y + 8
+    },
+    {
+      type: 'sprite',
+      slotId: 6,
+      spriteId: 0, // Middle square
+      x: gameState.player2.x,
+      y: gameState.player2.y + 16
+    },
+    {
+      type: 'sprite',
+      slotId: 7,
+      spriteId: 2, // Bottom rounded
+      x: gameState.player2.x,
+      y: gameState.player2.y + 24
+    },
+    // Ball
+    {
+      type: 'sprite',
+      slotId: 8,
+      spriteId: 3, // Round ball
+      x: gameState.ball.x,
+      y: gameState.ball.y
+    }
+  ];
 }
