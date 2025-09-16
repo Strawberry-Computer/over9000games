@@ -12,7 +12,17 @@ function metadata() {
 function resources() {
   return {
     sprites: [
-      // Sprite 0: Layered square (multicolor)
+      // Sprite 0: 4-layer multicolor square (16 colors possible)
+      // Layer 0 (border):    Layer 1 (outer):     Layer 2 (middle):    Layer 3 (center):
+      // 11111111 ← 0xFF      00000000 ← 0x00       00000000 ← 0x00       00000000 ← 0x00
+      // 10000001 ← 0x81      01111110 ← 0x7E       00000000 ← 0x00       00000000 ← 0x00
+      // 10000001 ← 0x81      01000010 ← 0x42       00111100 ← 0x3C       00000000 ← 0x00
+      // 10000001 ← 0x81      01000010 ← 0x42       00100100 ← 0x24       00011000 ← 0x18
+      // 10000001 ← 0x81      01000010 ← 0x42       00100100 ← 0x24       00011000 ← 0x18
+      // 10000001 ← 0x81      01000010 ← 0x42       00111100 ← 0x3C       00000000 ← 0x00
+      // 10000001 ← 0x81      01111110 ← 0x7E       00000000 ← 0x00       00000000 ← 0x00
+      // 11111111 ← 0xFF      00000000 ← 0x00       00000000 ← 0x00       00000000 ← 0x00
+      // Combines to: border (palette[1]), outer ring (palette[3]), middle ring (palette[5]), center (palette[9])
       [
         [0xFF, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0xFF],
         [0x00, 0x7E, 0x42, 0x42, 0x42, 0x42, 0x7E, 0x00],

@@ -27,7 +27,15 @@ function resources() {
         [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C]
       ],
 
-      // Sprite 3: Ball (round) - white
+      // Sprite 3: Ball (round) - 1 layer sprite
+      // 00111100 ← 0x3C
+      // 01111110 ← 0x7E
+      // 11111111 ← 0xFF
+      // 11111111 ← 0xFF
+      // 11111111 ← 0xFF
+      // 11111111 ← 0xFF
+      // 01111110 ← 0x7E
+      // 00111100 ← 0x3C
       [
         [0x3C, 0x7E, 0xFF, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C]
       ]

@@ -26,9 +26,11 @@ ${pongCode}
 
 ## Key Requirements:
 - **Three functions**: metadata(), resources(), update(deltaTime, input)
-- **Sprites**: 8x8 pixels as array of layers, each layer is 8 bytes
+- **Sprites**: 8x8 pixels as array of 1-4 layers, each layer is 8 bytes
 - **Sprite format**: \`[layer0, layer1, ...]\` where each layer is \`[byte0, byte1, ..., byte7]\`
-- **update() returns**: Command arrays like [{type: 'sprite', slotId: 0, spriteId: 0, x: 10, y: 20}]
+- **Layer system**: Bits from layers combine to create palette index: \`palette_index = layer0_bit + (layer1_bit << 1) + (layer2_bit << 2) + (layer3_bit << 3)\`
+- **Color options**: 1 layer = 2 colors, 2 layers = 4 colors, 3 layers = 8 colors, 4 layers = 16 colors
+- **update() returns**: Command object with sprites array: \`{sprites: [{spriteId: 0, x: 10, y: 20}]}\`
 - **Module-level gameState**: Use \`let gameState;\` not globalThis
 - **Input**: Use input.up, input.down, input.left, input.right, input.a, input.b
 - **Complex games**: Can have complex gameState (like Tetris boards)
