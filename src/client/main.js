@@ -342,6 +342,10 @@ document.getElementById("btn-test-pong")?.addEventListener("click", () => {
   loadTestGame("pong");
 });
 
+document.getElementById("btn-test-platformer")?.addEventListener("click", () => {
+  loadTestGame("platformer");
+});
+
 document.getElementById("btn-generate")?.addEventListener("click", () => {
   const description = gameDescriptionElement.value.trim();
   if (description) {

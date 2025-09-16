@@ -9,7 +9,7 @@ import {
 } from "@devvit/web/server";
 import { createPost } from "./core/post.js";
 import { generateGameWithAI } from "./game-generator.js";
-import { getTestGame, getAvailableTestGames } from "../shared/test-games.js";
+import { getTestGameCode, getAvailableTestGames } from "../shared/test-games/server-loader.js";
 
 const app = express();
 
@@ -138,7 +138,8 @@ router.post("/api/game/test", async (req, res) => {
       return;
     }
 
-    const testGameDefinition = getTestGame(gameName);
+    const gameCode = getTestGameCode(gameName);
+    const testGameDefinition = { gameCode };
 
     console.log(`Loaded test game "${gameName}":`, JSON.stringify(testGameDefinition, null, 2));
 
