@@ -264,16 +264,16 @@ function update(deltaTime, input) {
     }
   }
 
-  // Build render commands
-  const commands = [];
+  // Build render commands (new grouped format)
+  const tiles = [];
+  const sprites = [];
 
-  // Render platforms as tiles (much more efficient than sprites)
+  // Render platforms as tiles
   for (const platform of gameState.platforms) {
     for (let x = 0; x < platform.width; x += 8) {
       const tileX = Math.floor((platform.x + x) / 8);
       const tileY = Math.floor(platform.y / 8);
-      commands.push({
-        type: 'tile',
+      tiles.push({
         x: tileX,
         y: tileY,
         tileId: 4 // Platform sprite used as tile (gray)
@@ -281,14 +281,10 @@ function update(deltaTime, input) {
     }
   }
 
-  let slotId = 0;
-
   // Render coins
   for (const coin of gameState.coins) {
     if (!coin.collected) {
-      commands.push({
-        type: 'sprite',
-        slotId: slotId++,
+      sprites.push({
         spriteId: 5, // Yellow coin
         x: coin.x,
         y: coin.y
@@ -297,9 +293,7 @@ function update(deltaTime, input) {
   }
 
   // Render player (blue sprite)
-  commands.push({
-    type: 'sprite',
-    slotId: slotId++,
+  sprites.push({
     spriteId: 0, // Blue player
     x: gameState.player.x,
     y: gameState.player.y
@@ -308,23 +302,17 @@ function update(deltaTime, input) {
   // Render enemies (multi-sprite)
   for (const enemy of gameState.enemies) {
     if (enemy.health > 0) {
-      commands.push({
-        type: 'sprite',
-        slotId: slotId++,
+      sprites.push({
         spriteId: 1, // Enemy head (red)
         x: enemy.x,
         y: enemy.y
       });
-      commands.push({
-        type: 'sprite',
-        slotId: slotId++,
+      sprites.push({
         spriteId: 2, // Enemy body (red)
         x: enemy.x,
         y: enemy.y + 8
       });
-      commands.push({
-        type: 'sprite',
-        slotId: slotId++,
+      sprites.push({
         spriteId: 3, // Enemy legs (red)
         x: enemy.x,
         y: enemy.y + 16
@@ -334,14 +322,16 @@ function update(deltaTime, input) {
 
   // Render projectiles
   for (const proj of gameState.projectiles) {
-    commands.push({
-      type: 'sprite',
-      slotId: slotId++,
+    sprites.push({
       spriteId: 6, // White projectile
       x: proj.x,
       y: proj.y
     });
   }
 
-  return commands;
+  return {
+    tiles,
+    sprites,
+    score: gameState.score
+  };
 }

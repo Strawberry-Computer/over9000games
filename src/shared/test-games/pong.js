@@ -87,73 +87,57 @@ function update(deltaTime, input) {
     gameState.ball.dy = 2;
   }
 
-  // Return command array with rounded paddles
-  return [
-    // Player 1 paddle (rounded)
-    {
-      type: 'sprite',
-      slotId: 0,
-      spriteId: 1, // Top rounded
-      x: gameState.player1.x,
-      y: gameState.player1.y
-    },
-    {
-      type: 'sprite',
-      slotId: 1,
-      spriteId: 0, // Middle square
-      x: gameState.player1.x,
-      y: gameState.player1.y + 8
-    },
-    {
-      type: 'sprite',
-      slotId: 2,
-      spriteId: 0, // Middle square
-      x: gameState.player1.x,
-      y: gameState.player1.y + 16
-    },
-    {
-      type: 'sprite',
-      slotId: 3,
-      spriteId: 2, // Bottom rounded
-      x: gameState.player1.x,
-      y: gameState.player1.y + 24
-    },
-    // Player 2 paddle (rounded)
-    {
-      type: 'sprite',
-      slotId: 4,
-      spriteId: 1, // Top rounded
-      x: gameState.player2.x,
-      y: gameState.player2.y
-    },
-    {
-      type: 'sprite',
-      slotId: 5,
-      spriteId: 0, // Middle square
-      x: gameState.player2.x,
-      y: gameState.player2.y + 8
-    },
-    {
-      type: 'sprite',
-      slotId: 6,
-      spriteId: 0, // Middle square
-      x: gameState.player2.x,
-      y: gameState.player2.y + 16
-    },
-    {
-      type: 'sprite',
-      slotId: 7,
-      spriteId: 2, // Bottom rounded
-      x: gameState.player2.x,
-      y: gameState.player2.y + 24
-    },
-    // Ball
-    {
-      type: 'sprite',
-      slotId: 8,
-      spriteId: 3, // Round ball
-      x: gameState.ball.x,
-      y: gameState.ball.y
-    }
-  ];
+  // Return grouped commands
+  return {
+    sprites: [
+      // Player 1 paddle (rounded)
+      {
+        spriteId: 1, // Top rounded
+        x: gameState.player1.x,
+        y: gameState.player1.y
+      },
+      {
+        spriteId: 0, // Middle square
+        x: gameState.player1.x,
+        y: gameState.player1.y + 8
+      },
+      {
+        spriteId: 0, // Middle square
+        x: gameState.player1.x,
+        y: gameState.player1.y + 16
+      },
+      {
+        spriteId: 2, // Bottom rounded
+        x: gameState.player1.x,
+        y: gameState.player1.y + 24
+      },
+      // Player 2 paddle (rounded)
+      {
+        spriteId: 1, // Top rounded
+        x: gameState.player2.x,
+        y: gameState.player2.y
+      },
+      {
+        spriteId: 0, // Middle square
+        x: gameState.player2.x,
+        y: gameState.player2.y + 8
+      },
+      {
+        spriteId: 0, // Middle square
+        x: gameState.player2.x,
+        y: gameState.player2.y + 16
+      },
+      {
+        spriteId: 2, // Bottom rounded
+        x: gameState.player2.x,
+        y: gameState.player2.y + 24
+      },
+      // Ball
+      {
+        spriteId: 3, // Round ball
+        x: gameState.ball.x,
+        y: gameState.ball.y
+      }
+    ]
+  };
 }

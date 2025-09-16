@@ -40,14 +40,14 @@ function update(deltaTime, input) {
   if (input.left) gameState.player.x -= 2;
   if (input.right) gameState.player.x += 2;
 
-  // Return command array
-  return [
-    {
-      type: 'sprite',
-      slotId: 0,
-      spriteId: 0,
-      x: gameState.player.x,
-      y: gameState.player.y
-    }
-  ];
+  // Return grouped commands
+  return {
+    sprites: [
+      {
+        spriteId: 0,
+        x: gameState.player.x,
+        y: gameState.player.y
+      }
+    ]
+  };
 }

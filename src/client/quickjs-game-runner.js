@@ -165,15 +165,15 @@ export class QuickJSGameRunner {
         throw new Error(`Update function error: ${errorMsg}`);
       }
 
-      // Get the commands array
+      // Get the commands object
       const commands = this.vm.dump(this.vm.unwrapResult(result));
       result.dispose();
 
-      return Array.isArray(commands) ? commands : [];
+      return commands;
 
     } catch (error) {
       console.error("Failed to execute game update:", error);
-      return [];
+      return {};
     }
   }
 
@@ -200,46 +200,37 @@ export class QuickJSGameRunner {
 
 
   processCommands(commands) {
-    if (!Array.isArray(commands)) return;
+    if (!commands) return;
 
-    for (const cmd of commands) {
-      try {
-        switch (cmd.type) {
-          case 'sprite':
-            this.nesConsole.setSprite(cmd.slotId, cmd.spriteId, cmd.x, cmd.y);
-            break;
+    // Clear all sprites first
+    for (let i = 0; i < 64; i++) {
+      this.nesConsole.clearSprite(i);
+    }
 
-          case 'clearSprite':
-            this.nesConsole.clearSprite(cmd.slotId);
-            break;
-
-          case 'tile':
-            this.nesConsole.setTile(cmd.x, cmd.y, cmd.tileId);
-            break;
-
-          case 'clearTile':
-            this.nesConsole.clearTile(cmd.x, cmd.y);
-            break;
-
-          case 'background':
-            this.nesConsole.setBackgroundColor(cmd.colorIndex);
-            break;
-
-          case 'score':
-            this.nesConsole.setScore(cmd.value);
-            break;
-
-          case 'sound':
-            // TODO: Implement sound system
-            console.log('Sound:', cmd.soundId);
-            break;
-
-          default:
-            console.warn('Unknown command type:', cmd.type);
+    // Process sprites
+    if (commands.sprites && Array.isArray(commands.sprites)) {
+      commands.sprites.forEach((sprite, index) => {
+        if (index < 64) { // Stay within sprite limit
+          this.nesConsole.setSprite(index, sprite.spriteId, sprite.x, sprite.y);
         }
-      } catch (error) {
-        console.error('Error processing command:', cmd, error);
-      }
+      });
+    }
+
+    // Process tiles
+    if (commands.tiles && Array.isArray(commands.tiles)) {
+      commands.tiles.forEach(tile => {
+        this.nesConsole.setTile(tile.x, tile.y, tile.tileId);
+      });
+    }
+
+    // Process background color
+    if (commands.background !== undefined) {
+      this.nesConsole.setBackgroundColor(commands.background);
+    }
+
+    // Process score
+    if (commands.score !== undefined) {
+      this.nesConsole.setScore(commands.score);
     }
   }
 
