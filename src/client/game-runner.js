@@ -29,7 +29,6 @@ export class GameRunner {
     this.inputState = {};
     this.prevInputState = {};
     this.animationId = null;
-    this.spritePositions = [];
 
     // QuickJS properties
     this.vm = null;
@@ -205,58 +204,15 @@ export class GameRunner {
   loadGame(gameDefinition) {
     this.gameDefinition = gameDefinition;
     this.state.palette = gameDefinition.palette;
-    this.buildSpriteMap();
     this.preRenderSprites();
     this.state.score = 0;
     this.resetGame();
   }
 
-  buildSpriteMap() {
-    if (!this.gameDefinition) return;
-
-    this.spritePositions = [];
-
-    let currentX = 0;
-    let currentY = 0;
-    const sheetWidth = 256;
-
-    if (Array.isArray(this.gameDefinition.sprites)) {
-      this.gameDefinition.sprites.forEach((sprite, index) => {
-        if (currentX + 8 > sheetWidth) {
-          currentX = 0;
-          currentY += 8;
-        }
-
-        this.spritePositions[index] = {
-          x: currentX,
-          y: currentY,
-          width: 8,
-          height: 8
-        };
-
-        currentX += 8;
-      });
-    }
-
-    let nextIndex = this.spritePositions.length;
-    if (this.gameDefinition.tiles) {
-      Object.values(this.gameDefinition.tiles).forEach(tile => {
-        if (currentX + tile.width > sheetWidth) {
-          currentX = 0;
-          currentY += 8;
-        }
-
-        this.spritePositions[nextIndex] = {
-          x: currentX,
-          y: currentY,
-          width: tile.width,
-          height: tile.height
-        };
-
-        currentX += tile.width;
-        nextIndex++;
-      });
-    }
+  getSpritePosition(spriteId) {
+    const x = ((spriteId | 0) % 32) * 8;  // 32 sprites per row (256px ÷ 8px)
+    const y = Math.floor((spriteId | 0) / 32) * 8;
+    return { x, y, width: 8, height: 8 };
   }
 
   preRenderSprites() {
@@ -268,14 +224,6 @@ export class GameRunner {
     if (Array.isArray(this.gameDefinition.sprites)) {
       this.gameDefinition.sprites.forEach((sprite, index) => {
         this.renderSpriteToSheet(sprite, index);
-      });
-    }
-
-    if (this.gameDefinition.tiles) {
-      let tileIndex = this.gameDefinition.sprites ? this.gameDefinition.sprites.length : 0;
-      Object.values(this.gameDefinition.tiles).forEach(tile => {
-        this.renderSpriteToSheet(tile, tileIndex);
-        tileIndex++;
       });
     }
   }
@@ -307,9 +255,7 @@ export class GameRunner {
       }
     }
 
-    const position = this.spritePositions[index];
-    if (!position) return;
-
+    const position = this.getSpritePosition(index);
     this.spriteCtx.putImageData(imageData, position.x, position.y);
   }
 
@@ -530,14 +476,12 @@ export class GameRunner {
       for (let x = 0; x < 32; x++) {
         const tileId = this.state.tiles[y][x];
         if (tileId >= 0) {
-          const position = this.spritePositions[tileId];
-          if (position) {
-            this.ctx.drawImage(
-              this.spriteCanvas,
-              position.x, position.y, position.width, position.height,
-              x * 8, y * 8, position.width, position.height
-            );
-          }
+          const position = this.getSpritePosition(tileId);
+          this.ctx.drawImage(
+            this.spriteCanvas,
+            position.x, position.y, position.width, position.height,
+            x * 8, y * 8, position.width, position.height
+          );
         }
       }
     }
@@ -547,14 +491,12 @@ export class GameRunner {
     for (let i = 0; i < 64; i++) {
       const sprite = this.state.sprites[i];
       if (sprite.spriteId >= 0) {
-        const position = this.spritePositions[sprite.spriteId];
-        if (position) {
-          this.ctx.drawImage(
-            this.spriteCanvas,
-            position.x, position.y, position.width, position.height,
-            Math.round(sprite.x), Math.round(sprite.y), position.width, position.height
-          );
-        }
+        const position = this.getSpritePosition(sprite.spriteId);
+        this.ctx.drawImage(
+          this.spriteCanvas,
+          position.x, position.y, position.width, position.height,
+          Math.round(sprite.x), Math.round(sprite.y), position.width, position.height
+        );
       }
     }
   }

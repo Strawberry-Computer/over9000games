@@ -43,25 +43,6 @@ export function validateGameSchema(gameDefinition) {
     });
   }
 
-  // Validate tiles
-  if (gameDefinition.tiles && typeof gameDefinition.tiles !== 'object') {
-    errors.push('Tiles must be an object');
-  } else if (gameDefinition.tiles) {
-    Object.entries(gameDefinition.tiles).forEach(([tileId, tile]) => {
-      if (!tile.id || typeof tile.id !== 'string') {
-        errors.push(`Tile ${tileId} must have a valid id`);
-      }
-      if (typeof tile.width !== 'number' || tile.width !== 8) {
-        errors.push(`Tile ${tileId} width must be 8 pixels`);
-      }
-      if (typeof tile.height !== 'number' || tile.height !== 8) {
-        errors.push(`Tile ${tileId} height must be 8 pixels`);
-      }
-      if (!Array.isArray(tile.layers) || tile.layers.length !== 4) {
-        errors.push(`Tile ${tileId} must have exactly 4 layers`);
-      }
-    });
-  }
 
   // Validate palette
   if (gameDefinition.palette) {
