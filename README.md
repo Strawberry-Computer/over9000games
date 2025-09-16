@@ -69,13 +69,13 @@ function gameUpdate() {
   player.x += velocity;
 
   // Set sprite positions (deferred)
-  setSprite(0, 'player_walk', player.x, player.y);
-  setSprite(1, 'enemy', enemy.x, enemy.y);
-  setTile(15, 20, 'grass');
+  setSprite(0, 0, player.x, player.y); // 0 = player_walk sprite
+  setSprite(1, 1, enemy.x, enemy.y);   // 1 = enemy sprite
+  setTile(15, 20, 0); // 0 = grass tile
 
   // Animation handled by changing sprite ID
   const coinFrame = Math.floor(time / 10) % 4;
-  setSprite(2, `coin_frame_${coinFrame}`, coin.x, coin.y);
+  setSprite(2, 2 + coinFrame, coin.x, coin.y); // 2-5 = coin animation frames
 }
 
 // Console handles actual rendering after game update
@@ -102,10 +102,10 @@ function gameUpdate() {
 
 ## Dynamic Game Generation Architecture
 
-### QuickJS Game Execution System
+### Ultra-Minimal QuickJS Game System
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    DYNAMIC GAME ARCHITECTURE                    │
+│                    MINIMAL GAME ARCHITECTURE                    │
 └─────────────────────────────────────────────────────────────────┘
 
 User Input: "Make a snake game"
@@ -119,34 +119,29 @@ User Input: "Make a snake game"
                                 │                        │
                                 ▼                        ▼
                        ┌──────────────────┐    ┌─────────────────┐
-                       │  Generated Game  │    │   NES Console   │
-                       │     Object       │    │   Integration   │
+                       │  Self-Contained  │    │   NES Console   │
+                       │      Game        │    │   Integration   │
                        └──────────────────┘    └─────────────────┘
 ```
 
-### Game Generation Flow
+### Game Execution Flow
 • **User Request**: Natural language game description
-• **LLM Processing**: Generate complete game definition (sprites, logic, metadata)
-• **Schema Validation**: Ensure generated game follows NES console API
-• **QuickJS Execution**: Sandboxed JavaScript execution on client
-• **Console Integration**: Game manipulates NES console through `sys` interface
+• **LLM Processing**: Generate self-contained game with sprites and logic
+• **Schema Validation**: Basic structure validation only
+• **QuickJS Execution**: Pure function call: `gameUpdate(deltaTime, input)`
+• **Console Integration**: Games return command arrays for rendering
 
-### Generated Game Object Structure
+### Generated Game Structure
 ```javascript
 const generatedGame = {
   metadata: {
     title: "Snake Game",
-    description: "Classic snake game with apples",
-    controls: [
-      {key: "arrow keys", action: "move snake"},
-      {key: "a", action: "boost speed"}
-    ]
+    description: "Classic snake game with apples"
   },
 
   // NES-style sprite definitions
-  sprites: {
-    "snake_head": {
-      id: "snake_head",
+  sprites: [
+    {
       width: 8, height: 8,
       layers: [
         [0xFF, 0x81, 0x81, 0xFF, 0xFF, 0x81, 0x81, 0xFF], // Layer 0
@@ -154,53 +149,72 @@ const generatedGame = {
         [0x00, 0x00, 0x3C, 0x24, 0x24, 0x3C, 0x00, 0x00], // Layer 2
         [0x00, 0x00, 0x00, 0x18, 0x18, 0x00, 0x00, 0x00]  // Layer 3
       ]
-    },
+    }
     // ... more sprites
-  },
-
-  tiles: {
-    "wall": { /* tile definition */ }
-  },
+  ],
 
   palette: [
     0x000000, 0x00FF00, 0xFF0000, 0x808080, // Snake colors
     0xFFFF00, 0xFF8000, 0x8000FF, 0x00FFFF  // Food/UI colors
   ],
 
-  // Game logic executed in QuickJS sandbox
-  update: (sys) => {
-    // Handle input
-    if (sys.isPressed('up') && gameState.direction !== 'down') {
-      gameState.direction = 'up';
+  // Self-contained game code
+  updateCode: `
+    // Game state (games manage their own variables)
+    let snake = [{x: 10, y: 10}, {x: 9, y: 10}];
+    let apple = {x: 15, y: 15};
+    let direction = 'right';
+    let score = 0;
+
+    // Command builder functions
+    function setSprite(slot, id, x, y) {
+      return {type: 'sprite', slotId: slot, spriteId: id, x, y};
     }
 
-    // Update snake position
-    moveSnake(gameState);
-    checkCollisions(gameState);
+    function setScore(value) {
+      return {type: 'score', value};
+    }
 
-    // Clear all sprites
-    for(let i = 0; i < 64; i++) sys.clearSprite(i);
+    // Main game function
+    function gameUpdate(deltaTime, input) {
+      let commands = [];
 
-    // Draw snake body
-    gameState.snake.forEach((segment, i) => {
-      const spriteId = i === 0 ? 'snake_head' : 'snake_body';
-      sys.setSprite(i, spriteId, segment.x * 8, segment.y * 8);
-    });
+      // Handle input
+      if (input.up && direction !== 'down') direction = 'up';
+      if (input.down && direction !== 'up') direction = 'down';
+      if (input.left && direction !== 'right') direction = 'left';
+      if (input.right && direction !== 'left') direction = 'right';
 
-    // Draw apple
-    sys.setSprite(60, 'apple', gameState.apple.x * 8, gameState.apple.y * 8);
+      // Move snake (simplified)
+      const head = {...snake[0]};
+      if (direction === 'up') head.y--;
+      if (direction === 'down') head.y++;
+      if (direction === 'left') head.x--;
+      if (direction === 'right') head.x++;
 
-    sys.setScore(gameState.score);
-  },
+      snake.unshift(head);
 
-  initialState: {
-    snake: [{x: 10, y: 10}, {x: 9, y: 10}],
-    apple: {x: 15, y: 15},
-    direction: 'right',
-    score: 0,
-    gameOver: false
-  }
-}
+      // Check apple collision
+      if (head.x === apple.x && head.y === apple.y) {
+        score += 10;
+        apple = {x: Math.floor(Math.random() * 32), y: Math.floor(Math.random() * 32)};
+      } else {
+        snake.pop();
+      }
+
+      // Draw snake
+      snake.forEach((segment, i) => {
+        commands.push(setSprite(i, i === 0 ? 0 : 1, segment.x * 8, segment.y * 8));
+      });
+
+      // Draw apple
+      commands.push(setSprite(60, 2, apple.x * 8, apple.y * 8));
+      commands.push(setScore(score));
+
+      return commands;
+    }
+  `
+}`
 ```
 
 ### API Endpoints
@@ -230,35 +244,40 @@ const generatedGame = {
 
 ### Game Development
 
-#### System Interface (sys parameter)
+#### Minimal Game Interface
 ```javascript
-// Available in QuickJS game update function
-function update(sys) {
-  // Sprite management
-  sys.setSprite(slotId, spriteId, x, y);    // Place sprite in slot
-  sys.clearSprite(slotId);                   // Remove sprite from slot
+// Games must define this function
+function gameUpdate(deltaTime, input) {
+  // deltaTime: seconds since last frame (e.g., 0.016 for 60fps)
+  // input: { up, down, left, right, a, b, start, select,
+  //          upPressed, downPressed, leftPressed, rightPressed,
+  //          aPressed, bPressed, startPressed, selectPressed }
 
-  // Tile management
-  sys.setTile(x, y, tileId);                // Set background tile
-  sys.clearTile(x, y);                      // Clear tile to transparent
-
-  // Screen properties
-  sys.setBackgroundColor(colorIndex);       // Set screen clear color
-
-  // Input (read-only)
-  sys.isPressed(button);     // 'up', 'down', 'left', 'right', 'a', 'b'
-  sys.justPressed(button);   // True for single frame
-
-  // Score management
-  sys.setScore(score);
-  sys.addScore(points);
-  sys.getScore();
+  // Return array of commands
+  return [
+    {type: 'sprite', slotId: 0, spriteId: 1, x: 10, y: 20},
+    {type: 'clearSprite', slotId: 1},
+    {type: 'tile', x: 5, y: 3, tileId: 2},
+    {type: 'clearTile', x: 5, y: 3},
+    {type: 'background', colorIndex: 2},
+    {type: 'score', value: 100},
+    {type: 'sound', soundId: 'beep'}
+  ];
 }
 ```
 
+#### Command Types
+- **sprite**: `{type: 'sprite', slotId, spriteId, x, y}` - Place sprite
+- **clearSprite**: `{type: 'clearSprite', slotId}` - Remove sprite
+- **tile**: `{type: 'tile', x, y, tileId}` - Set background tile
+- **clearTile**: `{type: 'clearTile', x, y}` - Clear tile
+- **background**: `{type: 'background', colorIndex}` - Set background color
+- **score**: `{type: 'score', value}` - Update score display
+- **sound**: `{type: 'sound', soundId}` - Play sound (TODO)
+
 #### Execution Model
-1. **LLM Generation**: Complete game object with sprites and logic
-2. **Client Validation**: Schema compliance check
-3. **QuickJS Loading**: Game code loaded into sandbox
-4. **NES Integration**: Game update called each frame (60 FPS)
-5. **Console Rendering**: NES console renders sprites/tiles set by game
+1. **LLM Generation**: Self-contained game code with sprites
+2. **QuickJS Loading**: Raw game code loaded into sandbox
+3. **Frame Execution**: `gameUpdate(deltaTime, input)` called at 60 FPS
+4. **Command Processing**: Returned commands executed by NES console
+5. **Console Rendering**: Sprites/tiles rendered based on commands

@@ -9,7 +9,8 @@ export class QuickJSGameRunner {
     this.gameDefinition = null;
     this.gameState = {};
     this.isInitialized = false;
-    this.updateHandle = null;
+    this.frameCount = 0;
+    this.lastFrameTime = 0;
   }
 
   async initialize() {
@@ -19,7 +20,6 @@ export class QuickJSGameRunner {
       console.log("Initializing QuickJS game runner...");
       this.QuickJS = await getQuickJS();
       this.vm = this.QuickJS.newContext();
-      this.setupSandbox();
       this.isInitialized = true;
       console.log("QuickJS game runner initialized successfully");
     } catch (error) {
@@ -28,90 +28,19 @@ export class QuickJSGameRunner {
     }
   }
 
-  setupSandbox() {
-    // Create sys interface that bridges to NES console
-    const sysInterfaceCode = `
-      const sys = {
-        // Sprite management
-        setSprite: function(slotId, spriteId, x, y) {
-          globalThis._nesConsole.setSprite(slotId, spriteId, x, y);
-        },
-
-        clearSprite: function(slotId) {
-          globalThis._nesConsole.clearSprite(slotId);
-        },
-
-        // Tile management
-        setTile: function(x, y, tileId) {
-          globalThis._nesConsole.setTile(x, y, tileId);
-        },
-
-        clearTile: function(x, y) {
-          globalThis._nesConsole.clearTile(x, y);
-        },
-
-        // Background
-        setBackgroundColor: function(colorIndex) {
-          globalThis._nesConsole.setBackgroundColor(colorIndex);
-        },
-
-        // Input
-        isPressed: function(button) {
-          return globalThis._nesConsole.isPressed(button);
-        },
-
-        justPressed: function(button) {
-          return globalThis._nesConsole.justPressed(button);
-        },
-
-        // Score
-        getScore: function() {
-          return globalThis._nesConsole.getScore();
-        },
-
-        setScore: function(score) {
-          globalThis._nesConsole.setScore(score);
-        },
-
-        addScore: function(points) {
-          globalThis._nesConsole.addScore(points);
-        }
-      };
-
-      // Global game state
-      let gameState = {};
-
-      // Helper functions available to games
-      function log(message) {
-        console.log("[Game]", message);
-      }
-
-      function clamp(value, min, max) {
-        return Math.min(Math.max(value, min), max);
-      }
-
-      function random(min = 0, max = 1) {
-        return Math.random() * (max - min) + min;
-      }
-
-      function randomInt(min, max) {
-        return Math.floor(random(min, max + 1));
-      }
-    `;
-
-    const result = this.vm.evalCode(sysInterfaceCode);
-    if (result.error) {
-      const errorMsg = this.vm.dump(result.error);
-      console.error("Failed to setup sandbox:", errorMsg);
-      throw new Error(`Sandbox setup failed: ${errorMsg}`);
-    }
-    result.dispose();
-  }
-
   async loadGame(gameDefinition) {
     if (!this.isInitialized) {
       await this.initialize();
     }
+
+    // Dispose old VM context if it exists
+    if (this.vm) {
+      this.vm.dispose();
+      this.vm = null;
+    }
+
+    // Create fresh VM context for new game
+    this.vm = this.QuickJS.newContext();
 
     // Validate and sanitize game definition
     const validation = validateGameSchema(gameDefinition);
@@ -122,24 +51,25 @@ export class QuickJSGameRunner {
     const sanitizedGame = sanitizeGameDefinition(gameDefinition);
     this.gameDefinition = sanitizedGame;
 
-    // Load game into NES console (sprites/tiles/palette only)
+    // Load assets into NES console
     const nesGameDef = {
       ...sanitizedGame,
-      gameLogic: null // No game logic in NES console anymore
+      gameLogic: null // Game logic handled by QuickJS
     };
 
     this.nesConsole.loadGame(nesGameDef);
 
-    // Override the NES console game loop to call our QuickJS execution
+    // Override NES console game loop
     const originalGameLoop = this.nesConsole.gameLoop;
     this.nesConsole.gameLoop = () => {
       if (!this.nesConsole.state.gameRunning) return;
 
       this.nesConsole.updateInput();
 
-      // Execute QuickJS game logic
+      // Execute QuickJS game logic and get commands
       try {
-        this.executeGameUpdate();
+        const commands = this.executeGameUpdate();
+        this.processCommands(commands);
       } catch (error) {
         console.error("Game update error:", error);
       }
@@ -148,28 +78,13 @@ export class QuickJSGameRunner {
       this.nesConsole.animationId = requestAnimationFrame(this.nesConsole.gameLoop);
     };
 
-    // Initialize game state in QuickJS
-    const gameStateCode = `
-      gameState = ${JSON.stringify(sanitizedGame.initialState || {})};
-    `;
 
-    const stateResult = this.vm.evalCode(gameStateCode);
-    if (stateResult.error) {
-      const errorMsg = this.vm.dump(stateResult.error);
-      throw new Error(`Failed to initialize game state: ${errorMsg}`);
-    }
-    stateResult.dispose();
-
-    // Load game update function
-    const updateFunctionCode = `
-      const update = ${sanitizedGame.updateCode};
-      globalThis._gameUpdate = update;
-    `;
-
-    const updateResult = this.vm.evalCode(updateFunctionCode);
+    // Load game code directly
+    console.log("Loading game code:", sanitizedGame.updateCode?.substring(0, 100) + "...");
+    const updateResult = this.vm.evalCode(sanitizedGame.updateCode);
     if (updateResult.error) {
       const errorMsg = this.vm.dump(updateResult.error);
-      throw new Error(`Failed to load game update function: ${errorMsg}`);
+      throw new Error(`Failed to load game code: ${errorMsg}`);
     }
     updateResult.dispose();
 
@@ -177,43 +92,99 @@ export class QuickJSGameRunner {
   }
 
   executeGameUpdate() {
-    if (!this.vm || !this.gameDefinition) return;
+    if (!this.vm || !this.gameDefinition) return [];
 
     try {
-      // Inject NES console reference into QuickJS global
-      const globalThis = this.vm.global;
-      const consoleProxy = {
-        setSprite: (slotId, spriteId, x, y) => this.nesConsole.setSprite(slotId, spriteId, x, y),
-        clearSprite: (slotId) => this.nesConsole.clearSprite(slotId),
-        setTile: (x, y, tileId) => this.nesConsole.setTile(x, y, tileId),
-        clearTile: (x, y) => this.nesConsole.clearTile(x, y),
-        setBackgroundColor: (colorIndex) => this.nesConsole.setBackgroundColor(colorIndex),
-        isPressed: (button) => this.nesConsole.isPressed(button),
-        justPressed: (button) => this.nesConsole.justPressed(button),
-        getScore: () => this.nesConsole.getScore(),
-        setScore: (score) => this.nesConsole.setScore(score),
-        addScore: (points) => this.nesConsole.addScore(points)
-      };
+      // Calculate delta time
+      const currentTime = performance.now();
+      const deltaTime = this.lastFrameTime ? (currentTime - this.lastFrameTime) / 1000 : 0;
+      this.lastFrameTime = currentTime;
 
-      // Set console proxy in global scope
-      globalThis._nesConsole = consoleProxy;
+      // Get current input state
+      const inputState = this.getInputState();
 
-      // Execute game update function
-      const updateCode = `
-        if (typeof _gameUpdate === 'function') {
-          _gameUpdate(sys);
-        }
-      `;
-
-      const result = this.vm.evalCode(updateCode);
+      // Execute game update function and get returned commands
+      const result = this.vm.evalCode(`gameUpdate(${deltaTime}, ${JSON.stringify(inputState)})`);
       if (result.error) {
         const errorMsg = this.vm.dump(result.error);
         console.error("Game update execution error:", errorMsg);
+        return [];
       }
+
+      const commands = this.vm.dump(result.value);
       result.dispose();
+
+      return Array.isArray(commands) ? commands : [];
 
     } catch (error) {
       console.error("Failed to execute game update:", error);
+      return [];
+    }
+  }
+
+  getInputState() {
+    return {
+      up: this.nesConsole.isPressed('up'),
+      down: this.nesConsole.isPressed('down'),
+      left: this.nesConsole.isPressed('left'),
+      right: this.nesConsole.isPressed('right'),
+      a: this.nesConsole.isPressed('a'),
+      b: this.nesConsole.isPressed('b'),
+      start: this.nesConsole.isPressed('start'),
+      select: this.nesConsole.isPressed('select'),
+      upPressed: this.nesConsole.justPressed('up'),
+      downPressed: this.nesConsole.justPressed('down'),
+      leftPressed: this.nesConsole.justPressed('left'),
+      rightPressed: this.nesConsole.justPressed('right'),
+      aPressed: this.nesConsole.justPressed('a'),
+      bPressed: this.nesConsole.justPressed('b'),
+      startPressed: this.nesConsole.justPressed('start'),
+      selectPressed: this.nesConsole.justPressed('select')
+    };
+  }
+
+
+  processCommands(commands) {
+    if (!Array.isArray(commands)) return;
+
+    for (const cmd of commands) {
+      try {
+        switch (cmd.type) {
+          case 'sprite':
+            this.nesConsole.setSprite(cmd.slotId, cmd.spriteId, cmd.x, cmd.y);
+            break;
+
+          case 'clearSprite':
+            this.nesConsole.clearSprite(cmd.slotId);
+            break;
+
+          case 'tile':
+            this.nesConsole.setTile(cmd.x, cmd.y, cmd.tileId);
+            break;
+
+          case 'clearTile':
+            this.nesConsole.clearTile(cmd.x, cmd.y);
+            break;
+
+          case 'background':
+            this.nesConsole.setBackgroundColor(cmd.colorIndex);
+            break;
+
+          case 'score':
+            this.nesConsole.setScore(cmd.value);
+            break;
+
+          case 'sound':
+            // TODO: Implement sound system
+            console.log('Sound:', cmd.soundId);
+            break;
+
+          default:
+            console.warn('Unknown command type:', cmd.type);
+        }
+      } catch (error) {
+        console.error('Error processing command:', cmd, error);
+      }
     }
   }
 
@@ -234,18 +205,9 @@ export class QuickJSGameRunner {
       this.nesConsole.resetGame();
     }
 
-    // Reset game state in QuickJS
-    if (this.vm && this.gameDefinition) {
-      const resetCode = `
-        gameState = ${JSON.stringify(this.gameDefinition.initialState || {})};
-      `;
-
-      const result = this.vm.evalCode(resetCode);
-      if (result.error) {
-        console.error("Failed to reset game state:", this.vm.dump(result.error));
-      }
-      result.dispose();
-    }
+    // Reset timing
+    this.lastFrameTime = 0;
+    this.frameCount = 0;
   }
 
   dispose() {
