@@ -62,16 +62,36 @@ export class NESConsole {
     document.addEventListener('keydown', (e) => {
       const button = keyMap[e.code];
       if (button) {
-        this.inputState[button] = true;
-        e.preventDefault();
+        // Only prevent default if we're not in an input field
+        const activeElement = document.activeElement;
+        const isInputElement = activeElement && (
+          activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA' ||
+          activeElement.contentEditable === 'true'
+        );
+
+        if (!isInputElement) {
+          this.inputState[button] = true;
+          e.preventDefault();
+        }
       }
     });
 
     document.addEventListener('keyup', (e) => {
       const button = keyMap[e.code];
       if (button) {
-        this.inputState[button] = false;
-        e.preventDefault();
+        // Only prevent default if we're not in an input field
+        const activeElement = document.activeElement;
+        const isInputElement = activeElement && (
+          activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA' ||
+          activeElement.contentEditable === 'true'
+        );
+
+        if (!isInputElement) {
+          this.inputState[button] = false;
+          e.preventDefault();
+        }
       }
     });
 
