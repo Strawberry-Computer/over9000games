@@ -50,6 +50,7 @@
         </div>
         <div class="game-actions">
           <button class="game-btn" id="btn-new-game">Generate New Game</button>
+          <button class="game-btn" id="btn-create-post">🎮 Create Your Own Game</button>
           <button class="game-btn" id="btn-leaderboard">Leaderboard</button>
         </div>
         <div class="test-games">
@@ -83,6 +84,33 @@
             <div class="prompt-actions">
               <button class="game-btn" id="btn-close-leaderboard">Close</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="post-creation" id="post-creation" style="display: none;">
+      <div class="prompt-overlay">
+        <div class="prompt-modal">
+          <p>Inspired by the games here? Create your own AI-generated game!</p>
+
+          <div class="form-container">
+            <label for="post-game-description">What kind of game do you want to make?</label>
+            <textarea id="post-game-description" placeholder="Describe your game... (e.g., 'platformer game like mario with coins')"></textarea>
+
+            <label for="post-game-title">Give it a catchy title:</label>
+            <input type="text" id="post-game-title" placeholder="Super Coin Collector" />
+
+            <label for="post-message">Message for your Reddit post:</label>
+            <textarea id="post-message" placeholder="Just created this awesome game! Try to beat my high score..."></textarea>
+
+            <div class="prompt-actions">
+              <button class="game-btn" id="btn-create-and-post">🚀 Generate & Post Game</button>
+              <button class="game-btn" id="btn-cancel-post">Cancel</button>
+            </div>
+
+            <div id="post-status" class="post-status" style="display: none;"></div>
           </div>
         </div>
       </div>

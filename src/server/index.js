@@ -262,6 +262,62 @@ router.get("/api/leaderboard", async (_req, res) => {
   }
 });
 
+router.post("/api/post/create", async (req, res) => {
+  try {
+    const { title, message, gameDefinition, gameDescription } = req.body;
+
+    if (!title || !gameDefinition) {
+      return res.status(400).json({
+        success: false,
+        error: "Title and game definition are required"
+      });
+    }
+
+    // Create the post with custom title and our app
+    const post = await reddit.submitCustomPost({
+      splash: {
+        appDisplayName: "over9000games",
+      },
+      subredditName: context.subredditName,
+      title: `🕹️ ${title} - AI Generated Game`,
+    });
+
+    if (!post?.id) {
+      throw new Error("Failed to create post - no post ID returned");
+    }
+
+    // Store the game definition for the new post
+    await redis.set(`game:${post.id}:definition`, JSON.stringify(gameDefinition));
+
+    // Store additional metadata
+    await redis.set(`game:${post.id}:metadata`, JSON.stringify({
+      title,
+      message,
+      gameDescription,
+      createdAt: new Date().toISOString(),
+      creator: await reddit.getCurrentUsername()
+    }));
+
+    // Initialize empty leaderboard
+    await redis.set(`game:${post.id}:highscores`, JSON.stringify([]));
+
+    console.log(`Created new game post: ${post.id} with title: ${title}`);
+
+    res.json({
+      success: true,
+      postId: post.id,
+      postUrl: `https://reddit.com/r/${context.subredditName}/comments/${post.id}`
+    });
+
+  } catch (error) {
+    console.error("Error creating game post:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to create post"
+    });
+  }
+});
+
 router.post("/internal/on-app-install", async (_req, res) => {
   try {
     const post = await createPost();

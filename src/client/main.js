@@ -10,6 +10,13 @@ const leaderboardElement = document.getElementById("leaderboard");
 const scoresListElement = document.getElementById("scores-list");
 const gameDescriptionElement = document.getElementById("game-description");
 
+// Post creation elements
+const postCreationElement = document.getElementById("post-creation");
+const postGameDescriptionElement = document.getElementById("post-game-description");
+const postGameTitleElement = document.getElementById("post-game-title");
+const postMessageElement = document.getElementById("post-message");
+const postStatusElement = document.getElementById("post-status");
+
 const docsLink = document.getElementById("docs-link");
 const playtestLink = document.getElementById("playtest-link");
 const discordLink = document.getElementById("discord-link");
@@ -233,6 +240,104 @@ function hideLeaderboard() {
   leaderboardElement.style.display = "none";
 }
 
+function showPostCreation() {
+  postCreationElement.style.display = "block";
+  document.body.classList.add("post-creation-active");
+  postGameDescriptionElement.focus();
+}
+
+function hidePostCreation() {
+  postCreationElement.style.display = "none";
+  document.body.classList.remove("post-creation-active");
+  postGameDescriptionElement.value = "";
+  postGameTitleElement.value = "";
+  postMessageElement.value = "";
+  postStatusElement.style.display = "none";
+  postStatusElement.className = "post-status";
+}
+
+function showPostStatus(message, type = "loading") {
+  postStatusElement.textContent = message;
+  postStatusElement.className = `post-status ${type}`;
+  postStatusElement.style.display = "block";
+}
+
+async function createAndPostGame() {
+  const gameDescription = postGameDescriptionElement.value.trim();
+  const gameTitle = postGameTitleElement.value.trim();
+  const postMessage = postMessageElement.value.trim();
+
+  if (!gameDescription) {
+    showPostStatus("Please describe your game!", "error");
+    return;
+  }
+
+  if (!gameTitle) {
+    showPostStatus("Please give your game a title!", "error");
+    return;
+  }
+
+  try {
+    // Step 1: Generate the game
+    showPostStatus("🤖 Generating your game...", "loading");
+
+    const generateResponse = await fetch("/api/game/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description: gameDescription }),
+    });
+
+    if (!generateResponse.ok) {
+      throw new Error(`Game generation failed: ${generateResponse.status}`);
+    }
+
+    const gameData = await generateResponse.json();
+
+    if (gameData.type !== "generate" || !gameData.gameDefinition?.gameCode) {
+      throw new Error("Invalid game generation response");
+    }
+
+    // Step 2: Test the game locally (optional preview)
+    showPostStatus("✓ Game generated! Testing...", "loading");
+    await gameRunner.loadCode(gameData.gameDefinition.gameCode);
+
+    // Step 3: Create the post
+    showPostStatus("📝 Creating Reddit post...", "loading");
+
+    const postResponse = await fetch("/api/post/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: gameTitle,
+        message: postMessage || `Just created "${gameTitle}"! Try to beat my high score! 🎮`,
+        gameDefinition: gameData.gameDefinition,
+        gameDescription: gameDescription
+      }),
+    });
+
+    if (!postResponse.ok) {
+      throw new Error(`Post creation failed: ${postResponse.status}`);
+    }
+
+    const postData = await postResponse.json();
+
+    if (postData.success) {
+      showPostStatus(`🎉 Game posted successfully! Post ID: ${postData.postId}`, "success");
+
+      // Auto-close after 3 seconds
+      setTimeout(() => {
+        hidePostCreation();
+      }, 3000);
+    } else {
+      throw new Error(postData.error || "Failed to create post");
+    }
+
+  } catch (error) {
+    console.error("Error creating and posting game:", error);
+    showPostStatus(`❌ Error: ${error.message}`, "error");
+  }
+}
+
 // QuickJS test function
 async function testQuickJS() {
   try {
@@ -323,9 +428,12 @@ async function testQuickJS() {
 
 // Event Listeners
 document.getElementById("btn-new-game")?.addEventListener("click", showGamePrompt);
+document.getElementById("btn-create-post")?.addEventListener("click", showPostCreation);
 document.getElementById("btn-leaderboard")?.addEventListener("click", loadLeaderboard);
 document.getElementById("btn-cancel")?.addEventListener("click", hideGamePrompt);
+document.getElementById("btn-cancel-post")?.addEventListener("click", hidePostCreation);
 document.getElementById("btn-close-leaderboard")?.addEventListener("click", hideLeaderboard);
+document.getElementById("btn-create-and-post")?.addEventListener("click", createAndPostGame);
 
 // Tech test buttons
 document.getElementById("btn-test-quickjs")?.addEventListener("click", testQuickJS);
