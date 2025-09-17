@@ -48,7 +48,10 @@ router.get("/api/init", async (_req, res) => {
 
     // Get top 10 high scores using sorted set
     const leaderboardKey = `leaderboard:${postId}`;
-    const topPlayersWithScores = await redis.zrevrange(leaderboardKey, 0, 9, 'WITHSCORES');
+    const topPlayersWithScores = await redis.zRange(leaderboardKey, 0, 9, {
+      reverse: true,
+      withScores: true
+    });
 
     const highScores = [];
     for (let i = 0; i < topPlayersWithScores.length; i += 2) {
@@ -190,7 +193,7 @@ router.post("/api/score/submit", async (req, res) => {
     const multi = redis.multi();
 
     // Add/update score in sorted set (automatically handles duplicates)
-    multi.zadd(leaderboardKey, score, username);
+    multi.zAdd(leaderboardKey, { member: username, score });
 
     // Store player metadata
     multi.hset(playerDataKey, {
@@ -201,10 +204,13 @@ router.post("/api/score/submit", async (req, res) => {
     });
 
     // Get player's new rank (1-based)
-    multi.zrevrank(leaderboardKey, username);
+    multi.zRank(leaderboardKey, username);
 
     // Get top 10 players
-    multi.zrevrange(leaderboardKey, 0, 9, 'WITHSCORES');
+    multi.zRange(leaderboardKey, 0, 9, {
+      reverse: true,
+      withScores: true
+    });
 
     // Execute transaction
     const results = await multi.exec();
@@ -213,7 +219,10 @@ router.post("/api/score/submit", async (req, res) => {
       throw new Error("Redis transaction failed");
     }
 
-    const playerRank = results[2][1] + 1; // Redis ranks are 0-based
+    // For leaderboard, we need descending rank, so calculate from total count
+    const totalPlayersResult = await redis.zCard(leaderboardKey);
+    const ascendingRank = results[2][1]; // 0-based ascending rank
+    const playerRank = totalPlayersResult - ascendingRank; // Convert to descending rank (1-based)
     const topPlayersWithScores = results[3][1];
 
     // Format top players
