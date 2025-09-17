@@ -338,6 +338,8 @@ body {
   width: 100%;
   padding: 20px;
   text-align: center;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .prompt-modal h3 {
@@ -585,32 +587,82 @@ body {
   }
 }
 
-/* Hide hardware controls on desktop and maximize screen space */
+/* Desktop layout optimization - ensure everything fits without scrolling */
 @media (hover: hover) and (pointer: fine) {
   .controls {
     display: none !important;
   }
 
-  #console-canvas {
-    max-width: calc(100vh - 60px);
-    max-height: calc(100vh - 60px);
-  }
-
-  .console-screen {
-    margin-bottom: 0;
+  .console-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
   }
 
   .console-header {
-    margin-bottom: 0;
+    flex-shrink: 0;
+    padding: 6px 8px;
+    margin: 0;
+  }
+
+  .title {
+    font-size: 11px;
+    margin-bottom: 2px;
+  }
+
+  .game-info {
+    font-size: 7px;
+  }
+
+  .console-screen {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 4px;
+    margin: 0;
+    min-height: 0;
+  }
+
+  #console-canvas {
+    max-width: min(calc(100vw - 8px), calc(100vh - 140px));
+    max-height: calc(100vh - 140px);
+    object-fit: contain;
   }
 
   .game-management {
-    margin-top: 0;
+    flex-shrink: 0;
+    padding: 8px 12px;
+    margin: 0;
+    background: var(--nes-dark-gray);
+    border-top: 4px solid var(--nes-white);
   }
 
-  .console-container {
-    padding: 0;
-    margin-bottom: 0;
+  .main-actions {
+    margin-bottom: 8px;
+  }
+
+  .game-btn {
+    font-size: 7px;
+    padding: 8px 6px;
+    min-height: 36px;
+  }
+
+  /* Make sure all modals are properly sized for desktop */
+  .prompt-modal {
+    max-width: 420px;
+    padding: 16px;
+  }
+
+  .form-container textarea {
+    height: 60px;
+  }
+
+  .game-btn.publish-btn {
+    margin-top: 4px;
   }
 }
 
