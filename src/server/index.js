@@ -7,6 +7,7 @@ import {
   redis,
   settings,
 } from "@devvit/web/server";
+import { media } from "@devvit/media";
 import { createPost } from "./core/post.js";
 import { generateGameWithAI } from "./game-generator.js";
 import { getTestGameCode, getAvailableTestGames } from "../shared/test-games/server-loader.js";
@@ -286,7 +287,7 @@ router.get("/api/leaderboard", async (_req, res) => {
 
 router.post("/api/post/create", async (req, res) => {
   try {
-    const { title, message, gameCode, gameDescription } = req.body;
+    const { title, message, gameCode, gameDescription, screenshot } = req.body;
 
     if (!title || !gameCode) {
       return res.status(400).json({
@@ -304,10 +305,24 @@ router.post("/api/post/create", async (req, res) => {
       height: 'tall'
     };
 
-    // Note: Screenshot feature disabled due to 2KB post data limit
-    // if (screenshot) {
-    //   splashConfig.backgroundUri = screenshot; // Data URI
-    // }
+    // Upload screenshot to Reddit if provided
+    if (screenshot) {
+      try {
+        console.log("Uploading screenshot to Reddit...");
+        const uploadResult = await media.upload({
+          url: screenshot, // Data URI from canvas
+          type: 'png'
+        });
+
+        if (uploadResult?.mediaUrl) {
+          splashConfig.backgroundUri = uploadResult.mediaUrl;
+          console.log("Screenshot uploaded successfully:", uploadResult.mediaUrl);
+        }
+      } catch (uploadError) {
+        console.error("Failed to upload screenshot:", uploadError);
+        // Continue without screenshot rather than failing the entire post
+      }
+    }
 
     // Create the post with enhanced splash screen
     const post = await reddit.submitCustomPost({

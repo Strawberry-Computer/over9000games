@@ -27,6 +27,9 @@
   "triggers": {
     "onAppInstall": "/internal/on-app-install"
   },
+  "permissions": {
+    "media": true
+  },
   "dev": {
     "subreddit": "over9000games_dev"
   },

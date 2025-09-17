@@ -462,6 +462,11 @@ async function publishGameToReddit() {
   }
 
   try {
+    showPublishingStatus("Capturing screenshot...", "loading");
+
+    // Capture screenshot of the game
+    const screenshot = await captureGameScreenshot();
+
     showPublishingStatus("Creating Reddit post...", "loading");
 
     const response = await fetch("/api/post/create", {
@@ -471,7 +476,8 @@ async function publishGameToReddit() {
         title,
         message: message || `Just created "${title}"! Try to beat my high score!`,
         gameDescription: currentGameData.originalDescription,
-        gameCode: currentGameData.gameCode
+        gameCode: currentGameData.gameCode,
+        screenshot: screenshot // Include screenshot data URI
       }),
     });
 
@@ -482,21 +488,12 @@ async function publishGameToReddit() {
     const postData = await response.json();
 
     if (postData.success) {
-      showPublishingStatus(`Game posted successfully! Post ID: ${postData.postId}`, "success");
+      showPublishingStatus(`Game posted successfully! Redirecting to post...`, "success");
 
-      // Auto-close after 3 seconds and return to main interface
+      // Redirect to the new post after 2 seconds
       setTimeout(() => {
-        hideAllModals();
-
-        // Hide the publish button since game is now published
-        publishCurrentButton.style.display = "none";
-        isGeneratedGame = false;
-
-        // Show success message in main interface
-        gameInfoElement.textContent = `Your game "${title}" is now live on Reddit!`;
-        gameInfoElement.style.color = "#4caf50";
-        currentGameNameElement.textContent = `Published: ${title}`;
-      }, 3000);
+        navigateTo(postData.postUrl);
+      }, 2000);
     } else {
       throw new Error(postData.error || "Failed to create post");
     }
