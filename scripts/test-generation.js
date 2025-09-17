@@ -20,7 +20,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createGameGenerationPrompt, parseMarkdownResponse } from '../src/shared/game-prompt.js';
+import { createGameGenerationPromptWithSamples, parseMarkdownResponse } from '../src/shared/game-prompt-common.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -108,7 +108,7 @@ function ensureOutputDir(outputDir) {
 
 
 // Generate game using OpenRouter
-async function generateWithOpenRouter(model, prompt, apiKey, verbose, outputDir) {
+async function generateWithOpenRouter(model, prompt, apiKey, verbose, outputDir, fullPrompt) {
   log(`Generating game with ${model}...`, 'info', verbose);
 
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -128,7 +128,7 @@ async function generateWithOpenRouter(model, prompt, apiKey, verbose, outputDir)
         },
         {
           role: 'user',
-          content: await createGameGenerationPrompt(prompt)
+          content: fullPrompt
         }
       ],
       max_tokens: 8000,
@@ -161,28 +161,52 @@ async function generateWithOpenRouter(model, prompt, apiKey, verbose, outputDir)
   }
 }
 
-// ES6 game validation using dynamic import
+// Validate game definition using eval (for QuickJS-style global functions)
 async function validateGameDefinition(gameDefinition) {
   const errors = [];
 
   try {
-    // Use dynamic import with data URI for ES6 modules
-    const dataUri = `data:text/javascript,${encodeURIComponent(gameDefinition.gameCode)}`;
-    const gameModule = await import(dataUri);
+    // Create a sandbox to execute the game code
+    const sandbox = {};
+
+    // Execute the game code in a controlled context
+    const func = new Function('sandbox', `
+      ${gameDefinition.gameCode}
+
+      // Return the functions for validation
+      return {
+        metadata: typeof metadata !== 'undefined' ? metadata : undefined,
+        resources: typeof resources !== 'undefined' ? resources : undefined,
+        update: typeof update !== 'undefined' ? update : undefined
+      };
+    `);
+
+    const gameModule = func(sandbox);
 
     // Test metadata
-    const meta = gameModule.metadata();
-    if (!meta.title) errors.push('metadata() missing title');
-    if (!meta.description) errors.push('metadata() missing description');
+    if (!gameModule.metadata) {
+      errors.push('metadata() function not found');
+    } else {
+      const meta = gameModule.metadata();
+      if (!meta.title) errors.push('metadata() missing title');
+      if (!meta.description) errors.push('metadata() missing description');
+    }
 
     // Test resources
-    const res = gameModule.resources();
-    if (!Array.isArray(res.sprites)) errors.push('resources() sprites must be an array');
-    if (!Array.isArray(res.palette)) errors.push('resources() palette must be an array');
+    if (!gameModule.resources) {
+      errors.push('resources() function not found');
+    } else {
+      const res = gameModule.resources();
+      if (!Array.isArray(res.sprites)) errors.push('resources() sprites must be an array');
+    }
 
     // Test update function
-    const commands = gameModule.update(0, {});
-    if (!Array.isArray(commands)) errors.push('update() must return an array');
+    if (!gameModule.update) {
+      errors.push('update() function not found');
+    } else {
+      const commands = gameModule.update(0, {});
+      if (typeof commands !== 'object') errors.push('update() must return an object');
+    }
 
   } catch (execError) {
     errors.push('Failed to execute gameCode: ' + execError.message);
@@ -198,21 +222,14 @@ function saveGame(gameDefinition, model, outputDir, prompt, fullPrompt, verbose)
   const sanitizedModel = model.replace(/[^a-zA-Z0-9\-]/g, '-');
 
   const gameFilename = `${sanitizedModel}-${sanitizedPrompt}-${timestamp}.js`;
-  const promptFilename = `${sanitizedModel}-${sanitizedPrompt}-${timestamp}-prompt.txt`;
-
   const gameFilepath = path.join(outputDir, gameFilename);
-  const promptFilepath = path.join(outputDir, promptFilename);
 
   // Save ES6 game code directly
   fs.writeFileSync(gameFilepath, gameDefinition.gameCode);
 
-  // Save full prompt sent to LLM
-  fs.writeFileSync(promptFilepath, fullPrompt);
-
   log(`Saved game to: ${gameFilepath}`, 'success', verbose);
-  log(`Saved prompt to: ${promptFilepath}`, 'success', verbose);
 
-  return { gameFile: gameFilepath, promptFile: promptFilepath };
+  return { gameFile: gameFilepath };
 }
 
 // Save raw response for debugging
@@ -249,7 +266,11 @@ async function main() {
 
   ensureOutputDir(options.output);
 
-  const fullPrompt = await createGameGenerationPrompt(options.prompt);
+  // Read sample game files
+  const pongCode = fs.readFileSync(path.join(__dirname, '../src/shared/test-games/pong.js'), 'utf8');
+  const platformerCode = fs.readFileSync(path.join(__dirname, '../src/shared/test-games/platformer.js'), 'utf8');
+
+  const fullPrompt = createGameGenerationPromptWithSamples(options.prompt, pongCode, platformerCode);
 
   // Test all models in parallel
   const testPromises = options.models.map(async (model) => {
@@ -261,7 +282,7 @@ async function main() {
     const promptFile = saveRawResponse(fullPrompt, model, options.output, options.prompt, options.verbose, 'prompt');
 
     try {
-      const result = await generateWithOpenRouter(model, options.prompt, openrouterKey, options.verbose, options.output);
+      const result = await generateWithOpenRouter(model, options.prompt, openrouterKey, options.verbose, options.output, fullPrompt);
       const duration = Date.now() - startTime;
 
       rawResponse = result.rawResponse;
