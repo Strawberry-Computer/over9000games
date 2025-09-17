@@ -2,17 +2,24 @@
 <html lang="en">
   <head>
     <link rel="stylesheet" type="text/css" href="style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <meta charset="UTF-8" />
     <meta
       name="viewport"
       content="initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, width=device-width, height=device-height, user-scalable=0"
     />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
     <title>Over9000Games - NES Console</title>
   </head>
   <body class="app">
     <div class="console-container">
       <div class="console-header">
-        <div class="game-info" id="game-info"></div>
+        <div class="title">RES-9000</div>
+        <div class="game-info" id="game-info">HEY PLAYER ONE!</div>
+        <div class="current-game" id="current-game-name" style="font-size: 6px; color: var(--nes-cyan); margin-top: 4px;">None</div>
       </div>
 
       <div class="console-screen">
@@ -37,40 +44,45 @@
         </div>
 
         <div class="menu-buttons">
-          <button class="control-btn menu-btn" id="btn-select">SELECT</button>
           <button class="control-btn menu-btn" id="btn-start">START</button>
         </div>
       </div>
 
       <div class="game-management">
-        <div class="current-game">
-          <span>Current Game: </span>
-          <span id="current-game-name">None</span>
+        <div class="main-actions">
+          <button class="game-btn primary" id="btn-new-game">NEW GAME</button>
+          <button class="game-btn secondary" id="btn-leaderboard">SCORES</button>
+          <button class="game-btn tertiary" id="btn-menu">MENU</button>
         </div>
-        <div class="game-actions">
-          <button class="game-btn" id="btn-new-game">Generate New Game</button>
-          <button class="game-btn" id="btn-create-post">Create Your Own Game</button>
-          <button class="game-btn" id="btn-publish-current" style="display: none;">Publish This Game</button>
-          <button class="game-btn" id="btn-leaderboard">Leaderboard</button>
-        </div>
-        <div class="test-games">
-          <span>Tech Tests: </span>
-          <button class="game-btn test-btn" id="btn-test-quickjs">Test QuickJS</button>
-          <span>Game Tests: </span>
-          <button class="game-btn test-btn" id="btn-test-movement">Simple Movement</button>
-          <button class="game-btn test-btn" id="btn-test-pong">Pong</button>
-          <button class="game-btn test-btn" id="btn-test-platformer">Platformer</button>
-        </div>
+        <button class="game-btn publish-btn" id="btn-publish-current" style="display: none;">SHARE GAME</button>
       </div>
 
 
       <div class="leaderboard" id="leaderboard" style="display: none;">
         <div class="prompt-overlay">
           <div class="prompt-modal">
-            <h3>High Scores</h3>
+            <h3>HIGH SCORES</h3>
             <div id="scores-list"></div>
             <div class="prompt-actions">
-              <button class="game-btn" id="btn-close-leaderboard">Close</button>
+              <button class="game-btn" id="btn-close-leaderboard">CLOSE</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Developer Menu (Hidden by default) -->
+      <div class="dev-menu" id="dev-menu" style="display: none;">
+        <div class="prompt-overlay">
+          <div class="prompt-modal">
+            <h3>DEVELOPER MENU</h3>
+            <div class="dev-actions">
+              <button class="game-btn test-btn" id="btn-test-quickjs">Test QuickJS</button>
+              <button class="game-btn test-btn" id="btn-test-movement">Movement Test</button>
+              <button class="game-btn test-btn" id="btn-test-pong">Pong Test</button>
+              <button class="game-btn test-btn" id="btn-test-platformer">Platform Test</button>
+            </div>
+            <div class="prompt-actions">
+              <button class="game-btn" id="btn-close-dev-menu">CLOSE</button>
             </div>
           </div>
         </div>
@@ -78,118 +90,60 @@
 
     </div>
 
-    <!-- Step 1: Game Creation -->
+    <!-- Game Creation Modal -->
     <div class="game-creation" id="game-creation" style="display: none;">
       <div class="prompt-overlay">
         <div class="prompt-modal">
-          <p>Inspired by the games here? Create your own AI-generated game!</p>
+          <h3>CREATE NEW GAME</h3>
+          <p>Describe your game and AI will build it!</p>
 
           <div class="form-container">
-            <label for="game-description">What kind of game do you want to make?</label>
-            <textarea id="game-description" placeholder="Describe your game... (e.g., 'snake game with power-ups and rainbow colors')"></textarea>
+            <label for="game-description">GAME DESCRIPTION:</label>
+            <textarea id="game-description" placeholder="snake game with power-ups
+pong with lasers
+platformer with coins
+space shooter with aliens"></textarea>
+
+            <div class="examples">
+              EXAMPLES: "pong", "platformer", "space shooter", "maze game"
+            </div>
 
             <div class="prompt-actions">
-              <button class="game-btn" id="btn-generate-game">Generate Game</button>
-              <button class="game-btn" id="btn-cancel-creation">Cancel</button>
+              <button class="game-btn primary" id="btn-generate-game">GENERATE & PLAY</button>
+              <button class="game-btn secondary" id="btn-cancel-creation">CANCEL</button>
             </div>
 
-            <div id="generation-status" class="post-status" style="display: none;"></div>
+            <div id="generation-status" class="status-message" style="display: none;"></div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Step 1.5: Game Preview & Iteration -->
-    <div class="game-preview" id="game-preview" style="display: none;">
-      <div class="prompt-overlay">
-        <div class="prompt-modal">
-          <div class="game-preview-container">
-            <div class="preview-game-area">
-              <canvas id="preview-canvas" width="256" height="256"></canvas>
-              <div class="game-controls">
-                <span id="preview-score">SCORE: 0</span>
-                <span id="preview-lives">LIVES: ♥♥♥</span>
-                <button class="game-btn small" id="btn-play-preview">PLAY</button>
-              </div>
-            </div>
-
-            <div class="preview-actions">
-              <h3>How's this game?</h3>
-              <div class="iteration-buttons">
-                <button class="game-btn" id="btn-regenerate">Regenerate</button>
-                <button class="game-btn" id="btn-modify">Modify</button>
-                <button class="game-btn" id="btn-start-over">Start Over</button>
-              </div>
-
-              <button class="game-btn primary" id="btn-love-it">I Love It! Let's Publish</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Step 1.75: Game Modification -->
-    <div class="game-modification" id="game-modification" style="display: none;">
-      <div class="prompt-overlay">
-        <div class="prompt-modal">
-          <h3>Modify Your Game</h3>
-
-          <div class="form-container">
-            <label for="modification-prompt">What would you like to change?</label>
-            <textarea id="modification-prompt" placeholder="make it faster and add more power-ups"></textarea>
-
-            <div class="prompt-actions">
-              <button class="game-btn" id="btn-update-game">Update Game</button>
-              <button class="game-btn" id="btn-back-to-preview">Back to Game</button>
-            </div>
-
-            <div id="modification-status" class="post-status" style="display: none;"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Step 2: Publishing -->
+    <!-- Game Publishing Modal -->
     <div class="game-publishing" id="game-publishing" style="display: none;">
       <div class="prompt-overlay">
         <div class="prompt-modal">
-          <h3>Publish Your Game</h3>
-          <p>Your game is ready to share with Reddit!</p>
+          <h3>SHARE YOUR GAME</h3>
+          <p>Ready to post to Reddit?</p>
 
           <div class="form-container">
-            <label for="publish-title">Give it a catchy title:</label>
-            <input type="text" id="publish-title" placeholder="Rainbow Snake Adventure" />
+            <label for="publish-title">GAME TITLE:</label>
+            <input type="text" id="publish-title" placeholder="Epic Snake Adventure" />
 
-            <label for="publish-message">Write a message for your post:</label>
-            <textarea id="publish-message" placeholder="Just created this epic snake game with AI! The rainbow power-ups make it super fun. Current high score is 420 - think you can beat it?"></textarea>
-
-            <div class="preview-info">
-              <h4>Preview will include:</h4>
-              <ul>
-                <li>Game screenshot as background</li>
-                <li>Custom "Play [Game Title]" button</li>
-                <li>Your description text</li>
-              </ul>
-            </div>
+            <label for="publish-message">POST MESSAGE:</label>
+            <textarea id="publish-message" placeholder="Just created this awesome game with AI! Think you can beat my high score?"></textarea>
 
             <div class="prompt-actions">
-              <button class="game-btn primary" id="btn-post-to-reddit">Post to r/over9000games</button>
-              <button class="game-btn" id="btn-back-to-game">Back</button>
+              <button class="game-btn primary" id="btn-post-to-reddit">POST TO REDDIT</button>
+              <button class="game-btn secondary" id="btn-back-to-game">BACK</button>
             </div>
 
-            <div id="publishing-status" class="post-status" style="display: none;"></div>
+            <div id="publishing-status" class="status-message" style="display: none;"></div>
           </div>
         </div>
       </div>
     </div>
 
-    <footer class="footer">
-      <div class="docs-link" tabindex="0" id="docs-link">Docs</div>
-      <span class="divider">|</span>
-      <div class="docs-link" tabindex="0" id="playtest-link">r/Devvit</div>
-      <span class="divider">|</span>
-      <div class="docs-link" tabindex="0" id="discord-link">Discord</div>
-    </footer>
     <script type="module" src="main.js" defer></script>
   </body>
 </html>

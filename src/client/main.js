@@ -1,6 +1,7 @@
 import { navigateTo } from "@devvit/web/client";
 import { getGameRunner } from "./game-runner.js";
 import { getQuickJS, RELEASE_SYNC } from "quickjs-emscripten";
+import { DraftManager } from "./draft-manager.js";
 
 const titleElement = document.getElementById("title");
 const gameInfoElement = document.getElementById("game-info");
@@ -10,44 +11,23 @@ const scoresListElement = document.getElementById("scores-list");
 
 // Game creation elements
 const gameCreationElement = document.getElementById("game-creation");
-const gamePreviewElement = document.getElementById("game-preview");
-const gameModificationElement = document.getElementById("game-modification");
 const gamePublishingElement = document.getElementById("game-publishing");
+const devMenuElement = document.getElementById("dev-menu");
 
 const gameDescriptionElement = document.getElementById("game-description");
-const modificationPromptElement = document.getElementById("modification-prompt");
 const publishTitleElement = document.getElementById("publish-title");
 const publishMessageElement = document.getElementById("publish-message");
 
 const generationStatusElement = document.getElementById("generation-status");
-const modificationStatusElement = document.getElementById("modification-status");
 const publishingStatusElement = document.getElementById("publishing-status");
 
-const previewCanvasElement = document.getElementById("preview-canvas");
-const previewScoreElement = document.getElementById("preview-score");
-const previewLivesElement = document.getElementById("preview-lives");
 const publishCurrentButton = document.getElementById("btn-publish-current");
 
 // Current game state
 let currentGameData = null;
-let previewGameRunner = null;
 let isGeneratedGame = false;
+let draftManager = null;
 
-const docsLink = document.getElementById("docs-link");
-const playtestLink = document.getElementById("playtest-link");
-const discordLink = document.getElementById("discord-link");
-
-docsLink.addEventListener("click", () => {
-  navigateTo("https://developers.reddit.com/docs");
-});
-
-playtestLink.addEventListener("click", () => {
-  navigateTo("https://www.reddit.com/r/Devvit");
-});
-
-discordLink.addEventListener("click", () => {
-  navigateTo("https://discord.com/invite/R7yu2wh9Qz");
-});
 
 let currentPostId = null;
 let currentUsername = null;
@@ -59,6 +39,11 @@ async function initializeConsole() {
     gameRunner = getGameRunner("console-canvas", "sprite-canvas");
     await gameRunner.initialize();
     console.log("Game runner initialized");
+
+    // Initialize draft manager
+    draftManager = new DraftManager();
+
+    console.log("Draft manager initialized");
   } catch (error) {
     console.error("Failed to initialize game runner:", error);
   }
@@ -210,35 +195,53 @@ function hideLeaderboard() {
   leaderboardElement.style.display = "none";
 }
 
-// Step 1: Game Creation
 function showGameCreation() {
   gameCreationElement.style.display = "block";
   document.body.classList.add("game-creation-active");
   gameDescriptionElement.focus();
 }
 
+function showDevMenu() {
+  devMenuElement.style.display = "block";
+  document.body.classList.add("dev-menu-active");
+}
+
 function hideAllModals() {
   gameCreationElement.style.display = "none";
-  gamePreviewElement.style.display = "none";
-  gameModificationElement.style.display = "none";
   gamePublishingElement.style.display = "none";
+  devMenuElement.style.display = "none";
 
   document.body.classList.remove(
     "game-creation-active",
-    "game-preview-active",
-    "game-modification-active",
-    "game-publishing-active"
+    "game-publishing-active",
+    "dev-menu-active"
   );
 
   // Clear forms
   gameDescriptionElement.value = "";
-  modificationPromptElement.value = "";
   publishTitleElement.value = "";
   publishMessageElement.value = "";
 
+  // Re-enable form elements
+  gameDescriptionElement.disabled = false;
+  publishTitleElement.disabled = false;
+  publishMessageElement.disabled = false;
+
+  const generateButton = document.getElementById("btn-generate-game");
+  const publishButton = document.getElementById("btn-post-to-reddit");
+
+  if (generateButton) {
+    generateButton.disabled = false;
+    generateButton.classList.remove("disabled");
+  }
+
+  if (publishButton) {
+    publishButton.disabled = false;
+    publishButton.classList.remove("disabled");
+  }
+
   // Hide status messages
   generationStatusElement.style.display = "none";
-  modificationStatusElement.style.display = "none";
   publishingStatusElement.style.display = "none";
 }
 
@@ -251,19 +254,13 @@ function resetGameState() {
 
 function showGenerationStatus(message, type = "loading") {
   generationStatusElement.textContent = message;
-  generationStatusElement.className = `post-status ${type}`;
+  generationStatusElement.className = `status-message ${type}`;
   generationStatusElement.style.display = "block";
-}
-
-function showModificationStatus(message, type = "loading") {
-  modificationStatusElement.textContent = message;
-  modificationStatusElement.className = `post-status ${type}`;
-  modificationStatusElement.style.display = "block";
 }
 
 function showPublishingStatus(message, type = "loading") {
   publishingStatusElement.textContent = message;
-  publishingStatusElement.className = `post-status ${type}`;
+  publishingStatusElement.className = `status-message ${type}`;
   publishingStatusElement.style.display = "block";
 }
 
@@ -274,6 +271,14 @@ async function generateGame() {
     showGenerationStatus("Please describe your game!", "error");
     return;
   }
+
+  // Disable form during generation
+  const generateButton = document.getElementById("btn-generate-game");
+  const cancelButton = document.getElementById("btn-cancel-creation");
+
+  gameDescriptionElement.disabled = true;
+  generateButton.disabled = true;
+  generateButton.classList.add("disabled");
 
   try {
     showGenerationStatus("Generating your game...", "loading");
@@ -300,16 +305,21 @@ async function generateGame() {
       originalDescription: description
     };
 
-    // Show the preview
-    await showGamePreview();
+    // Load and show the game immediately
+    await showGeneratedGame();
 
   } catch (error) {
     console.error("Error generating game:", error);
     showGenerationStatus(`Error: ${error.message}`, "error");
+
+    // Re-enable form on error
+    gameDescriptionElement.disabled = false;
+    generateButton.disabled = false;
+    generateButton.classList.remove("disabled");
   }
 }
 
-async function showGamePreview() {
+async function showGeneratedGame() {
   try {
     showGenerationStatus("Loading your game...", "loading");
 
@@ -320,19 +330,34 @@ async function showGamePreview() {
     isGeneratedGame = true;
 
     // Update the main UI
-    currentGameNameElement.textContent = "Generated Game";
-    gameInfoElement.textContent = "Game generated! Use arrow keys to play. Press START to begin!";
-    gameInfoElement.style.color = "#4caf50";
+    gameInfoElement.textContent = "Game ready! Press START to play!";
+    gameInfoElement.style.color = "#00ff00";
+
+    // Set up screenshot capture after first frame renders
+    gameRunner.setFirstFrameCallback(async () => {
+      try {
+        const screenshot = await captureGameScreenshot();
+        if (screenshot) {
+          currentGameData.autoScreenshot = screenshot;
+          console.log("Auto-screenshot generated after first frame");
+        }
+      } catch (error) {
+        console.error("Error generating auto-screenshot:", error);
+      }
+    });
+
+    // Start the game to trigger first frame callback
+    gameRunner.startGame();
 
     // Show the publish button
-    publishCurrentButton.style.display = "inline-block";
+    publishCurrentButton.style.display = "block";
 
     // Hide the creation modal and return to main view
     hideAllModals();
 
-    // Show success message briefly
+    // Show success message
     setTimeout(() => {
-      gameInfoElement.textContent = "Game ready! Press START to play. Like it? Click 'Publish This Game'!";
+      gameInfoElement.textContent = "Ready to play! Share your creation!";
     }, 2000);
 
   } catch (error) {
@@ -341,67 +366,8 @@ async function showGamePreview() {
   }
 }
 
-// Game iteration functions
-function showGameModification() {
-  gamePreviewElement.style.display = "none";
-  document.body.classList.remove("game-preview-active");
-
-  gameModificationElement.style.display = "block";
-  document.body.classList.add("game-modification-active");
-  modificationPromptElement.focus();
-}
-
-async function updateGame() {
-  const modification = modificationPromptElement.value.trim();
-
-  if (!modification) {
-    showModificationStatus("Please describe what you'd like to change!", "error");
-    return;
-  }
-
-  try {
-    showModificationStatus("Updating your game...", "loading");
-
-    const description = `${currentGameData.originalDescription}. Modification: ${modification}`;
-
-    const response = await fetch("/api/game/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Game update failed: ${response.status}`);
-    }
-
-    const gameData = await response.json();
-
-    if (gameData.type !== "generate" || !gameData.gameDefinition?.gameCode) {
-      throw new Error("Invalid game update response");
-    }
-
-    // Update current game data
-    currentGameData = {
-      ...gameData.gameDefinition,
-      originalDescription: currentGameData.originalDescription
-    };
-
-    // Show updated preview
-    await showGamePreview();
-
-  } catch (error) {
-    console.error("Error updating game:", error);
-    showModificationStatus(`Error: ${error.message}`, "error");
-  }
-}
 
 function showGamePublishing() {
-  // Can be called from preview modal or main console
-  if (gamePreviewElement.style.display !== "none") {
-    gamePreviewElement.style.display = "none";
-    document.body.classList.remove("game-preview-active");
-  }
-
   gamePublishingElement.style.display = "block";
   document.body.classList.add("game-publishing-active");
   publishTitleElement.focus();
@@ -460,11 +426,24 @@ async function publishGameToReddit() {
     return;
   }
 
-  try {
-    showPublishingStatus("Capturing screenshot...", "loading");
+  // Disable form during publishing
+  const publishButton = document.getElementById("btn-post-to-reddit");
 
-    // Capture screenshot of the game
-    const screenshot = await captureGameScreenshot();
+  publishTitleElement.disabled = true;
+  publishMessageElement.disabled = true;
+  publishButton.disabled = true;
+  publishButton.classList.add("disabled");
+
+  try {
+    // Use auto-generated screenshot if available, otherwise capture new one
+    let screenshot = currentGameData.autoScreenshot;
+
+    if (!screenshot) {
+      showPublishingStatus("Capturing screenshot...", "loading");
+      screenshot = await captureGameScreenshot();
+    } else {
+      showPublishingStatus("Using auto-generated screenshot...", "loading");
+    }
 
     showPublishingStatus("Creating Reddit post...", "loading");
 
@@ -489,6 +468,15 @@ async function publishGameToReddit() {
     if (postData.success) {
       showPublishingStatus(`Game posted successfully! Redirecting to post...`, "success");
 
+      // Clear the draft after successful publishing
+      if (draftManager) {
+        draftManager.updateDraft({
+          published: true,
+          publishedAt: Date.now(),
+          postUrl: postData.postUrl
+        }, 'published');
+      }
+
       // Redirect to the new post after 2 seconds
       setTimeout(() => {
         navigateTo(postData.postUrl);
@@ -500,6 +488,12 @@ async function publishGameToReddit() {
   } catch (error) {
     console.error("Error publishing game:", error);
     showPublishingStatus(`Error: ${error.message}`, "error");
+
+    // Re-enable form on error
+    publishTitleElement.disabled = false;
+    publishMessageElement.disabled = false;
+    publishButton.disabled = false;
+    publishButton.classList.remove("disabled");
   }
 }
 
@@ -596,17 +590,41 @@ document.getElementById("btn-new-game")?.addEventListener("click", () => {
   resetGameState();
   showGameCreation();
 });
-document.getElementById("btn-create-post")?.addEventListener("click", () => {
-  resetGameState();
-  showGameCreation();
-});
 document.getElementById("btn-publish-current")?.addEventListener("click", showGamePublishingFromMain);
 document.getElementById("btn-leaderboard")?.addEventListener("click", loadLeaderboard);
 document.getElementById("btn-close-leaderboard")?.addEventListener("click", hideLeaderboard);
+document.getElementById("btn-menu")?.addEventListener("click", showDevMenu);
+document.getElementById("btn-close-dev-menu")?.addEventListener("click", hideAllModals);
 
 // Game creation flow event listeners
 document.getElementById("btn-generate-game")?.addEventListener("click", generateGame);
 document.getElementById("btn-cancel-creation")?.addEventListener("click", hideAllModals);
+
+// Game publishing event listeners
+document.getElementById("btn-post-to-reddit")?.addEventListener("click", publishGameToReddit);
+document.getElementById("btn-back-to-game")?.addEventListener("click", hideAllModals);
+
+// Tech test buttons
+document.getElementById("btn-test-quickjs")?.addEventListener("click", testQuickJS);
+
+// Test game buttons
+document.getElementById("btn-test-movement")?.addEventListener("click", () => {
+  loadTestGame("simple-movement");
+});
+
+document.getElementById("btn-test-pong")?.addEventListener("click", () => {
+  loadTestGame("pong");
+});
+
+document.getElementById("btn-test-platformer")?.addEventListener("click", () => {
+  loadTestGame("platformer");
+});
+
+document.getElementById("btn-start")?.addEventListener("click", () => {
+  if (gameRunner) {
+    gameRunner.startGame();
+  }
+});
 
 // Game preview event listeners
 document.getElementById("btn-play-preview")?.addEventListener("click", () => {
@@ -643,28 +661,6 @@ document.getElementById("btn-back-to-game")?.addEventListener("click", () => {
   document.body.classList.add("game-preview-active");
 });
 
-// Tech test buttons
-document.getElementById("btn-test-quickjs")?.addEventListener("click", testQuickJS);
-
-// Test game buttons
-document.getElementById("btn-test-movement")?.addEventListener("click", () => {
-  loadTestGame("simple-movement");
-});
-
-document.getElementById("btn-test-pong")?.addEventListener("click", () => {
-  loadTestGame("pong");
-});
-
-document.getElementById("btn-test-platformer")?.addEventListener("click", () => {
-  loadTestGame("platformer");
-});
-
-
-document.getElementById("btn-start")?.addEventListener("click", () => {
-  if (gameRunner) {
-    gameRunner.startGame();
-  }
-});
 
 // Custom game event for score submission
 document.addEventListener("gameOver", (event) => {
@@ -672,6 +668,92 @@ document.addEventListener("gameOver", (event) => {
   submitScore(finalScore);
 });
 
+// Draft UI management
+function updateDraftUI() {
+  const draftStatusEl = document.getElementById('draft-status');
+  const restoreButtonEl = document.getElementById('btn-restore-draft');
+
+  if (!draftManager || !draftStatusEl) return;
+
+  if (draftManager.currentDraftId) {
+    const draft = draftManager.loadDraft(draftManager.currentDraftId);
+    if (draft) {
+      const timeSince = Math.floor((Date.now() - draft.updated) / 1000 / 60); // minutes
+      draftStatusEl.textContent = `Draft saved ${timeSince}m ago`;
+      draftStatusEl.style.color = '#4caf50';
+    }
+  } else if (draftManager.hasDrafts()) {
+    draftStatusEl.textContent = 'Previous drafts available';
+    draftStatusEl.style.color = '#ffc107';
+    if (restoreButtonEl) {
+      restoreButtonEl.style.display = 'inline-block';
+    }
+  }
+}
+
+// Draft event listeners
+document.getElementById("btn-restore-draft")?.addEventListener("click", () => {
+  if (draftManager) {
+    const restored = draftManager.restoreDraftToUI();
+    if (restored) {
+      updateDraftUI();
+    }
+  }
+});
+
+document.getElementById("btn-undo-description")?.addEventListener("click", () => {
+  if (draftManager) {
+    const undoSuccess = draftManager.undo();
+    if (undoSuccess) {
+      updateDraftUI();
+    }
+  }
+});
+
+// Mobile keyboard handling
+function setupMobileKeyboardHandling() {
+  // Re-query on each call since elements might be added dynamically
+  const textInputs = document.querySelectorAll('textarea, input[type="text"]');
+
+  textInputs.forEach(input => {
+    input.addEventListener('focus', () => {
+      // Add class to detect keyboard visibility
+      setTimeout(() => {
+        const modal = input.closest('.game-creation, .game-modification, .game-publishing');
+        if (modal) {
+          modal.classList.add('keyboard-visible');
+        }
+      }, 300); // Wait for keyboard animation
+    });
+
+    input.addEventListener('blur', () => {
+      // Remove keyboard visibility class
+      const modal = input.closest('.game-creation, .game-modification, .game-publishing');
+      if (modal) {
+        modal.classList.remove('keyboard-visible');
+      }
+    });
+  });
+
+  // Handle visual viewport changes (modern approach)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      const focusedElement = document.activeElement;
+      if (focusedElement && (focusedElement.tagName === 'TEXTAREA' || focusedElement.tagName === 'INPUT')) {
+        const modal = focusedElement.closest('.game-creation, .game-modification, .game-publishing');
+        if (modal) {
+          if (window.visualViewport.height < window.innerHeight * 0.8) {
+            modal.classList.add('keyboard-visible');
+          } else {
+            modal.classList.remove('keyboard-visible');
+          }
+        }
+      }
+    });
+  }
+}
+
 // Initialize everything
 initializeConsole();
 fetchInitialData();
+setupMobileKeyboardHandling();
