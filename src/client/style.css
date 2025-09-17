@@ -63,12 +63,13 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding: 0;
 }
 
 /* Header */
 .console-header {
   background: var(--nes-dark-gray);
-  padding: 12px;
+  padding: 8px;
   text-align: center;
   border-bottom: 4px solid var(--nes-shadow);
 }
@@ -94,7 +95,7 @@ body {
   justify-content: center;
   align-items: center;
   background: var(--nes-black);
-  padding: 16px;
+  padding: 4px;
   position: relative;
 }
 
@@ -571,7 +572,7 @@ body {
   }
 
   .console-screen {
-    padding: 8px;
+    padding: 4px;
   }
 
   .controls {
@@ -596,20 +597,20 @@ body {
   }
 
   .console-screen {
-    margin-bottom: 10px;
+    margin-bottom: 0;
   }
 
   .console-header {
-    margin-bottom: 10px;
+    margin-bottom: 0;
   }
 
   .game-management {
-    margin-top: 10px;
+    margin-top: 0;
   }
 
   .console-container {
-    padding: 15px;
-    margin-bottom: 15px;
+    padding: 0;
+    margin-bottom: 0;
   }
 }
 

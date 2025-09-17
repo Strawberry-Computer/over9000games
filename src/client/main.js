@@ -65,9 +65,10 @@ async function fetchInitialData() {
       if (data.gameDefinition && data.gameDefinition.gameCode) {
         // Load all games via QuickJS runner
         await gameRunner.loadCode(data.gameDefinition.gameCode);
-        gameInfoElement.textContent = "🎮 Game loaded! Use arrow keys to play.";
-        gameInfoElement.style.color = "#4caf50";
-        showGameReadyState();
+        gameInfoElement.textContent = "Game loaded! Playing...";
+        gameInfoElement.style.color = "#00ff00";
+        // Auto-start the game
+        gameRunner.startGame();
       } else {
         showNoGameState();
       }
@@ -117,8 +118,10 @@ async function loadTestGame(gameName) {
       // Both AI-generated and test games now return { gameCode }
       // Load the raw game code directly into QuickJS
       await gameRunner.loadCode(data.gameDefinition.gameCode);
-      gameInfoElement.textContent = `🎮 Test game "${gameName}" loaded! Use arrow keys to play.`;
-      gameInfoElement.style.color = "#4caf50";
+      gameInfoElement.textContent = `Test game "${gameName}" loaded! Playing...`;
+      gameInfoElement.style.color = "#00ff00";
+      // Auto-start the game
+      gameRunner.startGame();
     }
   } catch (error) {
     console.error(`Error loading test game "${gameName}":`, error);
@@ -330,7 +333,7 @@ async function showGeneratedGame() {
     isGeneratedGame = true;
 
     // Update the main UI
-    gameInfoElement.textContent = "Game ready! Press START to play!";
+    gameInfoElement.textContent = "Game generated! Playing...";
     gameInfoElement.style.color = "#00ff00";
 
     // Set up screenshot capture after first frame renders
@@ -590,6 +593,11 @@ document.getElementById("btn-new-game")?.addEventListener("click", () => {
   resetGameState();
   showGameCreation();
 });
+document.getElementById("btn-restart-game")?.addEventListener("click", () => {
+  if (gameRunner) {
+    gameRunner.restartGame();
+  }
+});
 document.getElementById("btn-publish-current")?.addEventListener("click", showGamePublishingFromMain);
 document.getElementById("btn-leaderboard")?.addEventListener("click", loadLeaderboard);
 document.getElementById("btn-close-leaderboard")?.addEventListener("click", hideLeaderboard);
@@ -604,8 +612,6 @@ document.getElementById("btn-cancel-creation")?.addEventListener("click", hideAl
 document.getElementById("btn-post-to-reddit")?.addEventListener("click", publishGameToReddit);
 document.getElementById("btn-back-to-game")?.addEventListener("click", hideAllModals);
 
-// Tech test buttons
-document.getElementById("btn-test-quickjs")?.addEventListener("click", testQuickJS);
 
 // Test game buttons
 document.getElementById("btn-test-movement")?.addEventListener("click", () => {
@@ -620,11 +626,6 @@ document.getElementById("btn-test-platformer")?.addEventListener("click", () => 
   loadTestGame("platformer");
 });
 
-document.getElementById("btn-start")?.addEventListener("click", () => {
-  if (gameRunner) {
-    gameRunner.startGame();
-  }
-});
 
 // Game preview event listeners
 document.getElementById("btn-play-preview")?.addEventListener("click", () => {
