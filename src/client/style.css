@@ -327,6 +327,39 @@
   color: rgba(255, 255, 255, 0.3);
 }
 
+/* Hide hardware controls on non-touch devices for more screen space */
+@media (hover: hover) and (pointer: fine) {
+  .controls {
+    display: none !important;
+  }
+
+  #console-canvas {
+    max-width: calc(100vh - 40px);
+    max-height: calc(100vh - 40px);
+  }
+
+  .console-screen {
+    margin-bottom: 5px;
+  }
+
+  .console-header {
+    margin-bottom: 5px;
+  }
+
+  .game-management {
+    margin-top: 5px;
+  }
+
+  .console-container {
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+
+  .app {
+    padding: 5px;
+  }
+}
+
 @media (max-width: 480px) {
   .console-container {
     padding: 15px;

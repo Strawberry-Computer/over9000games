@@ -76,7 +76,6 @@ async function fetchInitialData() {
       currentPostId = data.postId;
       currentUsername = data.username;
       currentHighScores = data.highScores;
-      titleElement.textContent = `Hey ${data.username} 👋`;
 
       if (data.gameDefinition && data.gameDefinition.gameCode) {
         // Load all games via QuickJS runner
