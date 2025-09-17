@@ -100,15 +100,15 @@ body {
 }
 
 #console-canvas {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
+  width: 100%;
+  max-height: 100vh;
   height: auto;
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
   border: 4px solid var(--nes-dark-gray);
   background: var(--nes-black);
+  object-fit: contain;
 }
 
 /* Controls */
