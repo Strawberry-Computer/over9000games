@@ -38,6 +38,8 @@ export class GameRunner {
     this.isInitialized = false;
     this.frameCount = 0;
     this.lastFrameTime = 0;
+    this.firstFrameCallback = null;
+    this.firstFrameExecuted = false;
 
     this.setupInputHandlers();
   }
@@ -344,6 +346,12 @@ export class GameRunner {
 
     this.lastFrameTime = 0;
     this.frameCount = 0;
+    this.firstFrameExecuted = false;
+  }
+
+  setFirstFrameCallback(callback) {
+    this.firstFrameCallback = callback;
+    this.firstFrameExecuted = false;
   }
 
   gameLoop = () => {
@@ -359,6 +367,19 @@ export class GameRunner {
     }
 
     this.render();
+    this.frameCount++;
+
+    // Execute first frame callback after first frame is rendered
+    if (this.frameCount === 1 && !this.firstFrameExecuted && this.firstFrameCallback) {
+      this.firstFrameExecuted = true;
+      // Use setTimeout to ensure render is complete
+      setTimeout(() => {
+        if (this.firstFrameCallback) {
+          this.firstFrameCallback();
+        }
+      }, 50);
+    }
+
     this.animationId = requestAnimationFrame(this.gameLoop);
   };
 
