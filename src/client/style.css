@@ -337,8 +337,11 @@
   }
 }
 
-/* Post creation modal styles */
-.post-creation {
+/* Game creation modal styles */
+.game-creation,
+.game-preview,
+.game-modification,
+.game-publishing {
   position: fixed;
   top: 0;
   left: 0;
@@ -348,35 +351,64 @@
   background: #1a1a1a;
 }
 
-.post-creation .prompt-overlay {
-  background: transparent;
+.game-creation .prompt-overlay,
+.game-preview .prompt-overlay,
+.game-modification .prompt-overlay,
+.game-publishing .prompt-overlay {
+  background: rgba(0, 0, 0, 0.8);
   padding: 0;
   width: 100%;
   height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.post-creation .prompt-modal {
+.game-creation .prompt-modal,
+.game-modification .prompt-modal,
+.game-publishing .prompt-modal {
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  background: #2a2a2a;
+  border: 2px solid #555;
+  border-radius: 12px;
+  padding: 30px;
+  margin: 20px auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow-y: auto;
+  box-sizing: border-box;
+  color: #ffffff;
+}
+
+.game-preview .prompt-modal {
   max-width: none;
   width: 100%;
   height: 100%;
-  max-height: none;
   background: #1a1a1a;
   border: none;
   border-radius: 0;
   padding: 20px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  overflow-y: auto;
+  justify-content: center;
   box-sizing: border-box;
 }
 
-/* Hide console container when post creation is active */
-.post-creation-active .console-container {
+/* Hide console container when game creation is active */
+.game-creation-active .console-container,
+.game-preview-active .console-container,
+.game-modification-active .console-container,
+.game-publishing-active .console-container {
   display: none;
 }
 
-.post-creation-active .footer {
+.game-creation-active .footer,
+.game-preview-active .footer,
+.game-modification-active .footer,
+.game-publishing-active .footer {
   display: none;
 }
 
@@ -533,5 +565,214 @@
   background: rgba(255, 193, 7, 0.2);
   color: #ffc107;
   border: 1px solid #ffc107;
+}
+
+/* Game preview specific styles */
+.game-preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.preview-game-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  background: #2c2c2c;
+  padding: 20px;
+  border-radius: 12px;
+  border: 2px solid #444;
+}
+
+#preview-canvas {
+  border: 2px solid #666;
+  border-radius: 4px;
+  background: #000;
+}
+
+.game-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  color: #fff;
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.preview-actions {
+  text-align: center;
+  width: 100%;
+}
+
+.preview-actions h3 {
+  color: #fff;
+  margin-bottom: 20px;
+  font-size: 1.5em;
+}
+
+.iteration-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+
+.game-btn.primary {
+  background: #4caf50;
+  color: white;
+  font-weight: bold;
+}
+
+.game-btn.primary:hover {
+  background: #45a049;
+}
+
+.game-btn.small {
+  padding: 8px 16px;
+  font-size: 12px;
+}
+
+/* Preview info styles */
+.preview-info {
+  background: rgba(76, 175, 80, 0.2);
+  border: 2px solid #4caf50;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.preview-info h4 {
+  color: #66ff66;
+  margin-bottom: 15px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.preview-info ul {
+  color: #ffffff;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 16px;
+}
+
+.preview-info li {
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+/* Modal text and form styles */
+.game-creation h3,
+.game-modification h3,
+.game-publishing h3 {
+  color: #ffffff;
+  margin-bottom: 20px;
+  font-size: 1.8em;
+  text-align: center;
+}
+
+.game-creation p,
+.game-modification p,
+.game-publishing p {
+  color: #cccccc;
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 1.1em;
+}
+
+.game-creation label,
+.game-modification label,
+.game-publishing label {
+  color: #ffffff;
+  font-weight: bold;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.game-creation textarea,
+.game-creation input,
+.game-modification textarea,
+.game-modification input,
+.game-publishing textarea,
+.game-publishing input {
+  background: #1a1a1a;
+  border: 2px solid #555;
+  border-radius: 8px;
+  color: #ffffff;
+  padding: 12px;
+  font-size: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 15px;
+}
+
+.game-creation textarea:focus,
+.game-creation input:focus,
+.game-modification textarea:focus,
+.game-modification input:focus,
+.game-publishing textarea:focus,
+.game-publishing input:focus {
+  border-color: #4caf50;
+  outline: none;
+}
+
+.game-creation textarea::placeholder,
+.game-creation input::placeholder,
+.game-modification textarea::placeholder,
+.game-modification input::placeholder,
+.game-publishing textarea::placeholder,
+.game-publishing input::placeholder {
+  color: #888;
+}
+
+/* Modal button improvements */
+.game-creation .prompt-actions,
+.game-modification .prompt-actions,
+.game-publishing .prompt-actions {
+  margin-top: 30px;
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.game-creation .game-btn,
+.game-modification .game-btn,
+.game-publishing .game-btn {
+  min-width: 140px;
+  padding: 12px 20px;
+  font-size: 16px;
+}
+
+/* Status messages */
+.post-status {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.post-status.loading {
+  background: rgba(33, 150, 243, 0.1);
+  border: 1px solid #2196f3;
+  color: #2196f3;
+}
+
+.post-status.error {
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid #f44336;
+  color: #f44336;
+}
+
+.post-status.success {
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid #4caf50;
+  color: #4caf50;
 }
 

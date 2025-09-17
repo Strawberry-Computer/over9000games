@@ -50,7 +50,8 @@
         </div>
         <div class="game-actions">
           <button class="game-btn" id="btn-new-game">Generate New Game</button>
-          <button class="game-btn" id="btn-create-post">🎮 Create Your Own Game</button>
+          <button class="game-btn" id="btn-create-post">Create Your Own Game</button>
+          <button class="game-btn" id="btn-publish-current" style="display: none;">Publish This Game</button>
           <button class="game-btn" id="btn-leaderboard">Leaderboard</button>
         </div>
         <div class="test-games">
@@ -63,18 +64,6 @@
         </div>
       </div>
 
-      <div class="game-prompt" id="game-prompt" style="display: none;">
-        <div class="prompt-overlay">
-          <div class="prompt-modal">
-            <h3>Generate New Game</h3>
-            <textarea id="game-description" placeholder="Describe the game you want to create... (e.g., 'A platformer where you play as a cat collecting fish while avoiding dogs')"></textarea>
-            <div class="prompt-actions">
-              <button class="game-btn" id="btn-generate">Generate</button>
-              <button class="game-btn" id="btn-cancel">Cancel</button>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div class="leaderboard" id="leaderboard" style="display: none;">
         <div class="prompt-overlay">
@@ -90,27 +79,106 @@
 
     </div>
 
-    <div class="post-creation" id="post-creation" style="display: none;">
+    <!-- Step 1: Game Creation -->
+    <div class="game-creation" id="game-creation" style="display: none;">
       <div class="prompt-overlay">
         <div class="prompt-modal">
           <p>Inspired by the games here? Create your own AI-generated game!</p>
 
           <div class="form-container">
-            <label for="post-game-description">What kind of game do you want to make?</label>
-            <textarea id="post-game-description" placeholder="Describe your game... (e.g., 'platformer game like mario with coins')"></textarea>
-
-            <label for="post-game-title">Give it a catchy title:</label>
-            <input type="text" id="post-game-title" placeholder="Super Coin Collector" />
-
-            <label for="post-message">Message for your Reddit post:</label>
-            <textarea id="post-message" placeholder="Just created this awesome game! Try to beat my high score..."></textarea>
+            <label for="game-description">What kind of game do you want to make?</label>
+            <textarea id="game-description" placeholder="Describe your game... (e.g., 'snake game with power-ups and rainbow colors')"></textarea>
 
             <div class="prompt-actions">
-              <button class="game-btn" id="btn-create-and-post">🚀 Generate & Post Game</button>
-              <button class="game-btn" id="btn-cancel-post">Cancel</button>
+              <button class="game-btn" id="btn-generate-game">Generate Game</button>
+              <button class="game-btn" id="btn-cancel-creation">Cancel</button>
             </div>
 
-            <div id="post-status" class="post-status" style="display: none;"></div>
+            <div id="generation-status" class="post-status" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 1.5: Game Preview & Iteration -->
+    <div class="game-preview" id="game-preview" style="display: none;">
+      <div class="prompt-overlay">
+        <div class="prompt-modal">
+          <div class="game-preview-container">
+            <div class="preview-game-area">
+              <canvas id="preview-canvas" width="256" height="256"></canvas>
+              <div class="game-controls">
+                <span id="preview-score">SCORE: 0</span>
+                <span id="preview-lives">LIVES: ♥♥♥</span>
+                <button class="game-btn small" id="btn-play-preview">PLAY</button>
+              </div>
+            </div>
+
+            <div class="preview-actions">
+              <h3>How's this game?</h3>
+              <div class="iteration-buttons">
+                <button class="game-btn" id="btn-regenerate">Regenerate</button>
+                <button class="game-btn" id="btn-modify">Modify</button>
+                <button class="game-btn" id="btn-start-over">Start Over</button>
+              </div>
+
+              <button class="game-btn primary" id="btn-love-it">I Love It! Let's Publish</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 1.75: Game Modification -->
+    <div class="game-modification" id="game-modification" style="display: none;">
+      <div class="prompt-overlay">
+        <div class="prompt-modal">
+          <h3>Modify Your Game</h3>
+
+          <div class="form-container">
+            <label for="modification-prompt">What would you like to change?</label>
+            <textarea id="modification-prompt" placeholder="make it faster and add more power-ups"></textarea>
+
+            <div class="prompt-actions">
+              <button class="game-btn" id="btn-update-game">Update Game</button>
+              <button class="game-btn" id="btn-back-to-preview">Back to Game</button>
+            </div>
+
+            <div id="modification-status" class="post-status" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Publishing -->
+    <div class="game-publishing" id="game-publishing" style="display: none;">
+      <div class="prompt-overlay">
+        <div class="prompt-modal">
+          <h3>Publish Your Game</h3>
+          <p>Your game is ready to share with Reddit!</p>
+
+          <div class="form-container">
+            <label for="publish-title">Give it a catchy title:</label>
+            <input type="text" id="publish-title" placeholder="Rainbow Snake Adventure" />
+
+            <label for="publish-message">Write a message for your post:</label>
+            <textarea id="publish-message" placeholder="Just created this epic snake game with AI! The rainbow power-ups make it super fun. Current high score is 420 - think you can beat it?"></textarea>
+
+            <div class="preview-info">
+              <h4>Preview will include:</h4>
+              <ul>
+                <li>Game screenshot as background</li>
+                <li>Custom "Play [Game Title]" button</li>
+                <li>Your description text</li>
+              </ul>
+            </div>
+
+            <div class="prompt-actions">
+              <button class="game-btn primary" id="btn-post-to-reddit">Post to r/over9000games</button>
+              <button class="game-btn" id="btn-back-to-game">Back</button>
+            </div>
+
+            <div id="publishing-status" class="post-status" style="display: none;"></div>
           </div>
         </div>
       </div>

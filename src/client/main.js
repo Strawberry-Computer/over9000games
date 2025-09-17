@@ -5,17 +5,33 @@ import { getQuickJS, RELEASE_SYNC } from "quickjs-emscripten";
 const titleElement = document.getElementById("title");
 const gameInfoElement = document.getElementById("game-info");
 const currentGameNameElement = document.getElementById("current-game-name");
-const gamePromptElement = document.getElementById("game-prompt");
 const leaderboardElement = document.getElementById("leaderboard");
 const scoresListElement = document.getElementById("scores-list");
-const gameDescriptionElement = document.getElementById("game-description");
 
-// Post creation elements
-const postCreationElement = document.getElementById("post-creation");
-const postGameDescriptionElement = document.getElementById("post-game-description");
-const postGameTitleElement = document.getElementById("post-game-title");
-const postMessageElement = document.getElementById("post-message");
-const postStatusElement = document.getElementById("post-status");
+// Game creation elements
+const gameCreationElement = document.getElementById("game-creation");
+const gamePreviewElement = document.getElementById("game-preview");
+const gameModificationElement = document.getElementById("game-modification");
+const gamePublishingElement = document.getElementById("game-publishing");
+
+const gameDescriptionElement = document.getElementById("game-description");
+const modificationPromptElement = document.getElementById("modification-prompt");
+const publishTitleElement = document.getElementById("publish-title");
+const publishMessageElement = document.getElementById("publish-message");
+
+const generationStatusElement = document.getElementById("generation-status");
+const modificationStatusElement = document.getElementById("modification-status");
+const publishingStatusElement = document.getElementById("publishing-status");
+
+const previewCanvasElement = document.getElementById("preview-canvas");
+const previewScoreElement = document.getElementById("preview-score");
+const previewLivesElement = document.getElementById("preview-lives");
+const publishCurrentButton = document.getElementById("btn-publish-current");
+
+// Current game state
+let currentGameData = null;
+let previewGameRunner = null;
+let isGeneratedGame = false;
 
 const docsLink = document.getElementById("docs-link");
 const playtestLink = document.getElementById("playtest-link");
@@ -96,42 +112,6 @@ function showGameReadyState() {
 }
 
 
-async function generateGame(description) {
-  try {
-    const request = { description };
-    const response = await fetch("/api/game/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log("Received game definition from server:", data.gameDefinition);
-
-    if (data.type === "generate") {
-      // AI-generated games return { gameCode }
-      // Load the raw game code directly into QuickJS
-      await gameRunner.loadCode(data.gameDefinition.gameCode);
-      gameInfoElement.textContent = "🎮 AI-generated game loaded! Use arrow keys to play.";
-      gameInfoElement.style.color = "#4caf50";
-      hideGamePrompt();
-    }
-  } catch (error) {
-    console.error("Error generating game:", error);
-
-    let errorMessage = "Failed to generate game. Please try again.";
-    if (error.message && error.message.includes('OpenAI API key')) {
-      errorMessage = "OpenAI API key not configured. Please contact an admin to set up the API key in app settings.";
-    }
-
-    gameInfoElement.textContent = errorMessage;
-    gameInfoElement.style.color = "#f44336";
-  }
-}
 
 async function loadTestGame(gameName) {
   try {
@@ -226,115 +206,304 @@ function displayLeaderboard() {
   leaderboardElement.style.display = "block";
 }
 
-function showGamePrompt() {
-  gamePromptElement.style.display = "block";
-  gameDescriptionElement.focus();
-}
-
-function hideGamePrompt() {
-  gamePromptElement.style.display = "none";
-  gameDescriptionElement.value = "";
-}
 
 function hideLeaderboard() {
   leaderboardElement.style.display = "none";
 }
 
-function showPostCreation() {
-  postCreationElement.style.display = "block";
-  document.body.classList.add("post-creation-active");
-  postGameDescriptionElement.focus();
+// Step 1: Game Creation
+function showGameCreation() {
+  gameCreationElement.style.display = "block";
+  document.body.classList.add("game-creation-active");
+  gameDescriptionElement.focus();
 }
 
-function hidePostCreation() {
-  postCreationElement.style.display = "none";
-  document.body.classList.remove("post-creation-active");
-  postGameDescriptionElement.value = "";
-  postGameTitleElement.value = "";
-  postMessageElement.value = "";
-  postStatusElement.style.display = "none";
-  postStatusElement.className = "post-status";
+function hideAllModals() {
+  gameCreationElement.style.display = "none";
+  gamePreviewElement.style.display = "none";
+  gameModificationElement.style.display = "none";
+  gamePublishingElement.style.display = "none";
+
+  document.body.classList.remove(
+    "game-creation-active",
+    "game-preview-active",
+    "game-modification-active",
+    "game-publishing-active"
+  );
+
+  // Clear forms
+  gameDescriptionElement.value = "";
+  modificationPromptElement.value = "";
+  publishTitleElement.value = "";
+  publishMessageElement.value = "";
+
+  // Hide status messages
+  generationStatusElement.style.display = "none";
+  modificationStatusElement.style.display = "none";
+  publishingStatusElement.style.display = "none";
 }
 
-function showPostStatus(message, type = "loading") {
-  postStatusElement.textContent = message;
-  postStatusElement.className = `post-status ${type}`;
-  postStatusElement.style.display = "block";
+function resetGameState() {
+  isGeneratedGame = false;
+  currentGameData = null;
+  publishCurrentButton.style.display = "none";
+  currentGameNameElement.textContent = "None";
 }
 
-async function createAndPostGame() {
-  const gameDescription = postGameDescriptionElement.value.trim();
-  const gameTitle = postGameTitleElement.value.trim();
-  const postMessage = postMessageElement.value.trim();
+function showGenerationStatus(message, type = "loading") {
+  generationStatusElement.textContent = message;
+  generationStatusElement.className = `post-status ${type}`;
+  generationStatusElement.style.display = "block";
+}
 
-  if (!gameDescription) {
-    showPostStatus("Please describe your game!", "error");
-    return;
-  }
+function showModificationStatus(message, type = "loading") {
+  modificationStatusElement.textContent = message;
+  modificationStatusElement.className = `post-status ${type}`;
+  modificationStatusElement.style.display = "block";
+}
 
-  if (!gameTitle) {
-    showPostStatus("Please give your game a title!", "error");
+function showPublishingStatus(message, type = "loading") {
+  publishingStatusElement.textContent = message;
+  publishingStatusElement.className = `post-status ${type}`;
+  publishingStatusElement.style.display = "block";
+}
+
+async function generateGame() {
+  const description = gameDescriptionElement.value.trim();
+
+  if (!description) {
+    showGenerationStatus("Please describe your game!", "error");
     return;
   }
 
   try {
-    // Step 1: Generate the game
-    showPostStatus("🤖 Generating your game...", "loading");
+    showGenerationStatus("Generating your game...", "loading");
 
-    const generateResponse = await fetch("/api/game/generate", {
+    const response = await fetch("/api/game/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description: gameDescription }),
+      body: JSON.stringify({ description }),
     });
 
-    if (!generateResponse.ok) {
-      throw new Error(`Game generation failed: ${generateResponse.status}`);
+    if (!response.ok) {
+      throw new Error(`Game generation failed: ${response.status}`);
     }
 
-    const gameData = await generateResponse.json();
+    const gameData = await response.json();
 
     if (gameData.type !== "generate" || !gameData.gameDefinition?.gameCode) {
       throw new Error("Invalid game generation response");
     }
 
-    // Step 2: Test the game locally (optional preview)
-    showPostStatus("✓ Game generated! Testing...", "loading");
-    await gameRunner.loadCode(gameData.gameDefinition.gameCode);
+    // Store the generated game
+    currentGameData = {
+      ...gameData.gameDefinition,
+      originalDescription: description
+    };
 
-    // Step 3: Create the post
-    showPostStatus("📝 Creating Reddit post...", "loading");
+    // Show the preview
+    await showGamePreview();
 
-    const postResponse = await fetch("/api/post/create", {
+  } catch (error) {
+    console.error("Error generating game:", error);
+    showGenerationStatus(`Error: ${error.message}`, "error");
+  }
+}
+
+async function showGamePreview() {
+  try {
+    showGenerationStatus("Loading your game...", "loading");
+
+    // Load the game into the main console
+    await gameRunner.loadCode(currentGameData.gameCode);
+
+    // Mark this as a generated game
+    isGeneratedGame = true;
+
+    // Update the main UI
+    currentGameNameElement.textContent = "Generated Game";
+    gameInfoElement.textContent = "Game generated! Use arrow keys to play. Press START to begin!";
+    gameInfoElement.style.color = "#4caf50";
+
+    // Show the publish button
+    publishCurrentButton.style.display = "inline-block";
+
+    // Hide the creation modal and return to main view
+    hideAllModals();
+
+    // Show success message briefly
+    setTimeout(() => {
+      gameInfoElement.textContent = "Game ready! Press START to play. Like it? Click 'Publish This Game'!";
+    }, 2000);
+
+  } catch (error) {
+    console.error("Error loading generated game:", error);
+    showGenerationStatus(`Error loading game: ${error.message}`, "error");
+  }
+}
+
+// Game iteration functions
+function showGameModification() {
+  gamePreviewElement.style.display = "none";
+  document.body.classList.remove("game-preview-active");
+
+  gameModificationElement.style.display = "block";
+  document.body.classList.add("game-modification-active");
+  modificationPromptElement.focus();
+}
+
+async function updateGame() {
+  const modification = modificationPromptElement.value.trim();
+
+  if (!modification) {
+    showModificationStatus("Please describe what you'd like to change!", "error");
+    return;
+  }
+
+  try {
+    showModificationStatus("Updating your game...", "loading");
+
+    const description = `${currentGameData.originalDescription}. Modification: ${modification}`;
+
+    const response = await fetch("/api/game/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Game update failed: ${response.status}`);
+    }
+
+    const gameData = await response.json();
+
+    if (gameData.type !== "generate" || !gameData.gameDefinition?.gameCode) {
+      throw new Error("Invalid game update response");
+    }
+
+    // Update current game data
+    currentGameData = {
+      ...gameData.gameDefinition,
+      originalDescription: currentGameData.originalDescription
+    };
+
+    // Show updated preview
+    await showGamePreview();
+
+  } catch (error) {
+    console.error("Error updating game:", error);
+    showModificationStatus(`Error: ${error.message}`, "error");
+  }
+}
+
+function showGamePublishing() {
+  // Can be called from preview modal or main console
+  if (gamePreviewElement.style.display !== "none") {
+    gamePreviewElement.style.display = "none";
+    document.body.classList.remove("game-preview-active");
+  }
+
+  gamePublishingElement.style.display = "block";
+  document.body.classList.add("game-publishing-active");
+  publishTitleElement.focus();
+
+  // Auto-suggest a title based on the original description
+  if (!publishTitleElement.value && currentGameData?.originalDescription) {
+    const words = currentGameData.originalDescription.split(' ').slice(0, 3);
+    const suggestedTitle = words.map(word =>
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+    publishTitleElement.value = suggestedTitle;
+  }
+}
+
+function showGamePublishingFromMain() {
+  if (!isGeneratedGame || !currentGameData) {
+    gameInfoElement.textContent = "No generated game to publish!";
+    gameInfoElement.style.color = "#f44336";
+    return;
+  }
+
+  showGamePublishing();
+}
+
+// Screenshot capture function
+async function captureGameScreenshot() {
+  try {
+    // Run the game for a few frames to get an interesting state
+    if (gameRunner && isGeneratedGame) {
+      // Let the game run for a bit to get some action
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Start the game if not already running
+      gameRunner.startGame();
+
+      // Wait a bit more for the game to start
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Capture the main console canvas
+      const canvas = document.getElementById("console-canvas");
+      return canvas.toDataURL('image/png');
+    }
+    return null;
+  } catch (error) {
+    console.error("Error capturing screenshot:", error);
+    return null;
+  }
+}
+
+async function publishGameToReddit() {
+  const title = publishTitleElement.value.trim();
+  const message = publishMessageElement.value.trim();
+
+  if (!title) {
+    showPublishingStatus("Please give your game a title!", "error");
+    return;
+  }
+
+  try {
+    showPublishingStatus("Creating Reddit post...", "loading");
+
+    const response = await fetch("/api/post/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        title: gameTitle,
-        message: postMessage || `Just created "${gameTitle}"! Try to beat my high score! 🎮`,
-        gameDefinition: gameData.gameDefinition,
-        gameDescription: gameDescription
+        title,
+        message: message || `Just created "${title}"! Try to beat my high score!`,
+        gameDescription: currentGameData.originalDescription,
+        gameCode: currentGameData.gameCode
       }),
     });
 
-    if (!postResponse.ok) {
-      throw new Error(`Post creation failed: ${postResponse.status}`);
+    if (!response.ok) {
+      throw new Error(`Post creation failed: ${response.status}`);
     }
 
-    const postData = await postResponse.json();
+    const postData = await response.json();
 
     if (postData.success) {
-      showPostStatus(`🎉 Game posted successfully! Post ID: ${postData.postId}`, "success");
+      showPublishingStatus(`Game posted successfully! Post ID: ${postData.postId}`, "success");
 
-      // Auto-close after 3 seconds
+      // Auto-close after 3 seconds and return to main interface
       setTimeout(() => {
-        hidePostCreation();
+        hideAllModals();
+
+        // Hide the publish button since game is now published
+        publishCurrentButton.style.display = "none";
+        isGeneratedGame = false;
+
+        // Show success message in main interface
+        gameInfoElement.textContent = `Your game "${title}" is now live on Reddit!`;
+        gameInfoElement.style.color = "#4caf50";
+        currentGameNameElement.textContent = `Published: ${title}`;
       }, 3000);
     } else {
       throw new Error(postData.error || "Failed to create post");
     }
 
   } catch (error) {
-    console.error("Error creating and posting game:", error);
-    showPostStatus(`❌ Error: ${error.message}`, "error");
+    console.error("Error publishing game:", error);
+    showPublishingStatus(`Error: ${error.message}`, "error");
   }
 }
 
@@ -427,13 +596,56 @@ async function testQuickJS() {
 
 
 // Event Listeners
-document.getElementById("btn-new-game")?.addEventListener("click", showGamePrompt);
-document.getElementById("btn-create-post")?.addEventListener("click", showPostCreation);
+document.getElementById("btn-new-game")?.addEventListener("click", () => {
+  resetGameState();
+  showGameCreation();
+});
+document.getElementById("btn-create-post")?.addEventListener("click", () => {
+  resetGameState();
+  showGameCreation();
+});
+document.getElementById("btn-publish-current")?.addEventListener("click", showGamePublishingFromMain);
 document.getElementById("btn-leaderboard")?.addEventListener("click", loadLeaderboard);
-document.getElementById("btn-cancel")?.addEventListener("click", hideGamePrompt);
-document.getElementById("btn-cancel-post")?.addEventListener("click", hidePostCreation);
 document.getElementById("btn-close-leaderboard")?.addEventListener("click", hideLeaderboard);
-document.getElementById("btn-create-and-post")?.addEventListener("click", createAndPostGame);
+
+// Game creation flow event listeners
+document.getElementById("btn-generate-game")?.addEventListener("click", generateGame);
+document.getElementById("btn-cancel-creation")?.addEventListener("click", hideAllModals);
+
+// Game preview event listeners
+document.getElementById("btn-play-preview")?.addEventListener("click", () => {
+  if (previewGameRunner) {
+    previewGameRunner.startGame();
+  }
+});
+document.getElementById("btn-regenerate")?.addEventListener("click", () => {
+  // Regenerate with same description
+  generateGame();
+});
+document.getElementById("btn-modify")?.addEventListener("click", showGameModification);
+document.getElementById("btn-start-over")?.addEventListener("click", () => {
+  hideAllModals();
+  showGameCreation();
+});
+document.getElementById("btn-love-it")?.addEventListener("click", showGamePublishing);
+
+// Game modification event listeners
+document.getElementById("btn-update-game")?.addEventListener("click", updateGame);
+document.getElementById("btn-back-to-preview")?.addEventListener("click", () => {
+  gameModificationElement.style.display = "none";
+  document.body.classList.remove("game-modification-active");
+  gamePreviewElement.style.display = "block";
+  document.body.classList.add("game-preview-active");
+});
+
+// Game publishing event listeners
+document.getElementById("btn-post-to-reddit")?.addEventListener("click", publishGameToReddit);
+document.getElementById("btn-back-to-game")?.addEventListener("click", () => {
+  gamePublishingElement.style.display = "none";
+  document.body.classList.remove("game-publishing-active");
+  gamePreviewElement.style.display = "block";
+  document.body.classList.add("game-preview-active");
+});
 
 // Tech test buttons
 document.getElementById("btn-test-quickjs")?.addEventListener("click", testQuickJS);
@@ -451,12 +663,6 @@ document.getElementById("btn-test-platformer")?.addEventListener("click", () => 
   loadTestGame("platformer");
 });
 
-document.getElementById("btn-generate")?.addEventListener("click", () => {
-  const description = gameDescriptionElement.value.trim();
-  if (description) {
-    generateGame(description);
-  }
-});
 
 document.getElementById("btn-start")?.addEventListener("click", () => {
   if (gameRunner) {

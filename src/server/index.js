@@ -35,28 +35,34 @@ router.get("/api/init", async (_req, res) => {
   }
 
   try {
-    const [gameDefinitionJson, highScoresJson, username] = await Promise.all([
-      redis.get(`game:${postId}:definition`),
-      redis.get(`game:${postId}:highscores`),
+    const [gameCode, username] = await Promise.all([
+      redis.get(`game:${postId}:code`),
       reddit.getCurrentUsername(),
     ]);
 
     let gameDefinition;
-    if (gameDefinitionJson) {
-      try {
-        gameDefinition = JSON.parse(gameDefinitionJson);
-      } catch (error) {
-        console.error("Error parsing game definition:", error);
-      }
+    if (gameCode) {
+      gameDefinition = { gameCode };
     }
 
-    let highScores = [];
-    if (highScoresJson) {
-      try {
-        highScores = JSON.parse(highScoresJson);
-      } catch (error) {
-        console.error("Error parsing high scores:", error);
-      }
+    // Get top 10 high scores using sorted set
+    const leaderboardKey = `leaderboard:${postId}`;
+    const topPlayersWithScores = await redis.zrevrange(leaderboardKey, 0, 9, 'WITHSCORES');
+
+    const highScores = [];
+    for (let i = 0; i < topPlayersWithScores.length; i += 2) {
+      const playerName = topPlayersWithScores[i];
+      const playerScore = parseInt(topPlayersWithScores[i + 1]);
+
+      // Get player metadata
+      const playerData = await redis.hgetall(`player:${postId}:${playerName}`);
+
+      highScores.push({
+        username: playerName,
+        score: playerScore,
+        timestamp: playerData.timestamp || new Date().toISOString(),
+        rank: Math.floor(i / 2) + 1
+      });
     }
 
     res.json({
@@ -100,8 +106,6 @@ router.post("/api/game/generate", async (req, res) => {
 
     console.log("Generated game definition:", JSON.stringify(gameDefinition, null, 2));
 
-    await redis.set(`game:${postId}:definition`, JSON.stringify(gameDefinition));
-
     res.json({
       type: "generate",
       gameDefinition,
@@ -143,8 +147,6 @@ router.post("/api/game/test", async (req, res) => {
 
     console.log(`Loaded test game "${gameName}":`, JSON.stringify(testGameDefinition, null, 2));
 
-    await redis.set(`game:${postId}:definition`, JSON.stringify(testGameDefinition));
-
     res.json({
       type: "generate",
       gameDefinition: testGameDefinition,
@@ -180,41 +182,61 @@ router.post("/api/score/submit", async (req, res) => {
       return;
     }
 
-    const highScoresKey = `game:${postId}:highscores`;
-    const existingScoresJson = await redis.get(highScoresKey);
-    let highScores = [];
+    const leaderboardKey = `leaderboard:${postId}`;
+    const playerDataKey = `player:${postId}:${username}`;
 
-    if (existingScoresJson) {
-      try {
-        highScores = JSON.parse(existingScoresJson);
-      } catch (error) {
-        console.error("Error parsing existing high scores:", error);
-      }
-    }
+    // Use Redis transaction for atomicity
+    const multi = redis.multi();
 
-    const newScore = {
+    // Add/update score in sorted set (automatically handles duplicates)
+    multi.zadd(leaderboardKey, score, username);
+
+    // Store player metadata
+    multi.hset(playerDataKey, {
       username,
       score,
       timestamp: new Date().toISOString(),
-      rank: 0,
-    };
-
-    highScores.push(newScore);
-    highScores.sort((a, b) => b.score - a.score);
-    highScores = highScores.slice(0, 10);
-
-    highScores.forEach((score, index) => {
-      score.rank = index + 1;
+      lastUpdated: Date.now()
     });
 
-    await redis.set(highScoresKey, JSON.stringify(highScores));
+    // Get player's new rank (1-based)
+    multi.zrevrank(leaderboardKey, username);
 
-    const userRank = highScores.findIndex(s => s.username === username && s.score === score) + 1;
-    const isHighScore = userRank > 0;
+    // Get top 10 players
+    multi.zrevrange(leaderboardKey, 0, 9, 'WITHSCORES');
+
+    // Execute transaction
+    const results = await multi.exec();
+
+    if (!results || results.some(result => result[0] !== null)) {
+      throw new Error("Redis transaction failed");
+    }
+
+    const playerRank = results[2][1] + 1; // Redis ranks are 0-based
+    const topPlayersWithScores = results[3][1];
+
+    // Format top players
+    const highScores = [];
+    for (let i = 0; i < topPlayersWithScores.length; i += 2) {
+      const playerName = topPlayersWithScores[i];
+      const playerScore = parseInt(topPlayersWithScores[i + 1]);
+
+      // Get player metadata
+      const playerData = await redis.hgetall(`player:${postId}:${playerName}`);
+
+      highScores.push({
+        username: playerName,
+        score: playerScore,
+        timestamp: playerData.timestamp || new Date().toISOString(),
+        rank: Math.floor(i / 2) + 1
+      });
+    }
+
+    const isHighScore = playerRank <= 10;
 
     res.json({
       type: "score",
-      newRank: isHighScore ? userRank : undefined,
+      newRank: playerRank,
       isHighScore,
       highScores,
     });
@@ -264,32 +286,42 @@ router.get("/api/leaderboard", async (_req, res) => {
 
 router.post("/api/post/create", async (req, res) => {
   try {
-    const { title, message, gameDefinition, gameDescription } = req.body;
+    const { title, message, gameCode, gameDescription } = req.body;
 
-    if (!title || !gameDefinition) {
+    if (!title || !gameCode) {
       return res.status(400).json({
         success: false,
-        error: "Title and game definition are required"
+        error: "Title and game code are required"
       });
     }
 
-    // Create the post with custom title and our app
+    // Prepare splash screen configuration
+    const splashConfig = {
+      appDisplayName: "over9000games",
+      heading: title,
+      description: message || `Play ${title} - AI generated retro game!`,
+      buttonLabel: `Play ${title}`,
+      height: 'tall'
+    };
+
+    // Note: Screenshot feature disabled due to 2KB post data limit
+    // if (screenshot) {
+    //   splashConfig.backgroundUri = screenshot; // Data URI
+    // }
+
+    // Create the post with enhanced splash screen
     const post = await reddit.submitCustomPost({
-      splash: {
-        appDisplayName: "over9000games",
-      },
+      splash: splashConfig,
       subredditName: context.subredditName,
-      title: `🕹️ ${title} - AI Generated Game`,
+      title: `${title} - AI Generated Game`,
     });
 
     if (!post?.id) {
       throw new Error("Failed to create post - no post ID returned");
     }
 
-    // Store the game definition for the new post
-    await redis.set(`game:${post.id}:definition`, JSON.stringify(gameDefinition));
-
-    // Store additional metadata
+    // Store game code and metadata separately in Redis
+    await redis.set(`game:${post.id}:code`, gameCode);
     await redis.set(`game:${post.id}:metadata`, JSON.stringify({
       title,
       message,
@@ -297,9 +329,8 @@ router.post("/api/post/create", async (req, res) => {
       createdAt: new Date().toISOString(),
       creator: await reddit.getCurrentUsername()
     }));
-
-    // Initialize empty leaderboard
-    await redis.set(`game:${post.id}:highscores`, JSON.stringify([]));
+    // Initialize leaderboard as sorted set (no need to create empty sorted set)
+    // Redis sorted sets are created automatically when first member is added
 
     console.log(`Created new game post: ${post.id} with title: ${title}`);
 
