@@ -212,16 +212,22 @@ router.post("/api/score/submit", async (req, res) => {
 
     // Execute Redis operations individually (Devvit Redis may not support multi)
     try {
-      // Add/update score in sorted set (automatically handles duplicates)
-      await redis.zAdd(leaderboardKey, { member: username, score });
+      // Get current player score if exists
+      const currentScore = await redis.zScore(leaderboardKey, username);
 
-      // Store player metadata
-      await redis.hSet(playerDataKey, {
-        username,
-        score: score.toString(),
-        timestamp: new Date().toISOString(),
-        lastUpdated: Date.now().toString()
-      });
+      // Only update if new score is higher than current score (or player doesn't exist)
+      if (currentScore === null || score > currentScore) {
+        // Add/update score in sorted set
+        await redis.zAdd(leaderboardKey, { member: username, score });
+
+        // Store player metadata
+        await redis.hSet(playerDataKey, {
+          username,
+          score: score.toString(),
+          timestamp: new Date().toISOString(),
+          lastUpdated: Date.now().toString()
+        });
+      }
 
       // Get player's new rank and leaderboard
       const ascendingRank = await redis.zRank(leaderboardKey, username);
