@@ -1,10 +1,8 @@
 // Server-side loader that returns raw game code (no QuickJS execution)
-import simpleMovementCode from './simple-movement.js?raw';
 import pongCode from './pong.js?raw';
 import platformerCode from './platformer.js?raw';
 
 const testGameCode = {
-  'simple-movement': simpleMovementCode,
   'pong': pongCode,
   'platformer': platformerCode
 };

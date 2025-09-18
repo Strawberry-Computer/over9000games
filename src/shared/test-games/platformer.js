@@ -502,6 +502,7 @@ function update(deltaTime, input) {
   return {
     tiles,
     sprites,
-    score: gameState.score
+    score: gameState.score,
+    gameOver: gameState.gameOver || gameState.levelComplete
   };
 }

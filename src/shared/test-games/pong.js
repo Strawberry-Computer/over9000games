@@ -52,7 +52,19 @@ function update(deltaTime, input) {
     gameState = {
       player1: { x: 10, y: 100 },
       player2: { x: 238, y: 100 },
-      ball: { x: 130, y: 100, dx: 2, dy: 2 }
+      ball: { x: 130, y: 100, dx: 2, dy: 2 },
+      score: 0,
+      gameOver: false,
+      startTime: Date.now()
+    };
+  }
+
+  // Don't update if game is over
+  if (gameState.gameOver) {
+    return {
+      sprites: [],
+      score: gameState.score,
+      gameOver: true
     };
   }
 
@@ -85,14 +97,27 @@ function update(deltaTime, input) {
        gameState.ball.y + 8 >= gameState.player2.y &&
        gameState.ball.y <= gameState.player2.y + 32)) {
     gameState.ball.dx *= -1;
+    gameState.score += 10; // Add points for hitting the ball
   }
 
-  // Reset ball if it goes off screen
-  if (gameState.ball.x < 0 || gameState.ball.x > 256) {
+  // Check for game over conditions
+  if (gameState.ball.x < -10) {
+    // Ball went off left side - AI wins, game over
+    gameState.gameOver = true;
+  } else if (gameState.ball.x > 266) {
+    // Ball went off right side - Player wins, bonus points
+    gameState.score += 100;
+    // Reset ball for continued play
     gameState.ball.x = 130;
     gameState.ball.y = 100;
-    gameState.ball.dx = gameState.ball.dx > 0 ? 2 : -2;
+    gameState.ball.dx = -2;
     gameState.ball.dy = 2;
+  }
+
+  // Game over after 2 minutes of play
+  const playTime = Date.now() - gameState.startTime;
+  if (playTime > 120000) { // 2 minutes
+    gameState.gameOver = true;
   }
 
   // Return grouped commands
@@ -146,6 +171,8 @@ function update(deltaTime, input) {
         x: gameState.ball.x,
         y: gameState.ball.y
       }
-    ]
+    ],
+    score: gameState.score,
+    gameOver: gameState.gameOver
   };
 }

@@ -49,8 +49,8 @@ router.get("/api/init", async (_req, res) => {
     // Get top 10 high scores using sorted set
     const leaderboardKey = `leaderboard:${postId}`;
     const topPlayersWithScores = await redis.zRange(leaderboardKey, 0, 9, {
-      reverse: true,
-      withScores: true
+      REV: true,
+      WITHSCORES: true
     });
 
     const highScores = [];
@@ -59,7 +59,7 @@ router.get("/api/init", async (_req, res) => {
       const playerScore = parseInt(topPlayersWithScores[i + 1]);
 
       // Get player metadata
-      const playerData = await redis.hgetall(`player:${postId}:${playerName}`);
+      const playerData = await redis.hGetAll(`player:${postId}:${playerName}`);
 
       highScores.push({
         username: playerName,
@@ -189,67 +189,59 @@ router.post("/api/score/submit", async (req, res) => {
     const leaderboardKey = `leaderboard:${postId}`;
     const playerDataKey = `player:${postId}:${username}`;
 
-    // Use Redis transaction for atomicity
-    const multi = redis.multi();
+    // Execute Redis operations individually (Devvit Redis may not support multi)
+    try {
+      // Add/update score in sorted set (automatically handles duplicates)
+      await redis.zAdd(leaderboardKey, { member: username, score });
 
-    // Add/update score in sorted set (automatically handles duplicates)
-    multi.zAdd(leaderboardKey, { member: username, score });
-
-    // Store player metadata
-    multi.hset(playerDataKey, {
-      username,
-      score,
-      timestamp: new Date().toISOString(),
-      lastUpdated: Date.now()
-    });
-
-    // Get player's new rank (1-based)
-    multi.zRank(leaderboardKey, username);
-
-    // Get top 10 players
-    multi.zRange(leaderboardKey, 0, 9, {
-      reverse: true,
-      withScores: true
-    });
-
-    // Execute transaction
-    const results = await multi.exec();
-
-    if (!results || results.some(result => result[0] !== null)) {
-      throw new Error("Redis transaction failed");
-    }
-
-    // For leaderboard, we need descending rank, so calculate from total count
-    const totalPlayersResult = await redis.zCard(leaderboardKey);
-    const ascendingRank = results[2][1]; // 0-based ascending rank
-    const playerRank = totalPlayersResult - ascendingRank; // Convert to descending rank (1-based)
-    const topPlayersWithScores = results[3][1];
-
-    // Format top players
-    const highScores = [];
-    for (let i = 0; i < topPlayersWithScores.length; i += 2) {
-      const playerName = topPlayersWithScores[i];
-      const playerScore = parseInt(topPlayersWithScores[i + 1]);
-
-      // Get player metadata
-      const playerData = await redis.hgetall(`player:${postId}:${playerName}`);
-
-      highScores.push({
-        username: playerName,
-        score: playerScore,
-        timestamp: playerData.timestamp || new Date().toISOString(),
-        rank: Math.floor(i / 2) + 1
+      // Store player metadata
+      await redis.hSet(playerDataKey, {
+        username,
+        score: score.toString(),
+        timestamp: new Date().toISOString(),
+        lastUpdated: Date.now().toString()
       });
+
+      // Get player's new rank and leaderboard
+      const ascendingRank = await redis.zRank(leaderboardKey, username);
+      const totalPlayers = await redis.zCard(leaderboardKey);
+      const topPlayers = await redis.zRange(leaderboardKey, 0, 9, {
+        REV: true,
+        WITHSCORES: true
+      });
+
+      // Calculate player's descending rank (1-based)
+      const playerRank = totalPlayers - ascendingRank;
+
+      // Format top players
+      const highScores = [];
+      for (let i = 0; i < topPlayers.length; i += 2) {
+        const playerName = topPlayers[i];
+        const playerScore = parseInt(topPlayers[i + 1]);
+
+        // Get player metadata
+        const playerData = await redis.hGetAll(`player:${postId}:${playerName}`);
+
+        highScores.push({
+          username: playerName,
+          score: playerScore,
+          timestamp: playerData.timestamp || new Date().toISOString(),
+          rank: Math.floor(i / 2) + 1
+        });
+      }
+
+      const isHighScore = playerRank <= 10;
+
+      res.json({
+        type: "score",
+        newRank: playerRank,
+        isHighScore,
+        highScores,
+      });
+    } catch (redisError) {
+      console.error(`Redis error for post ${postId}:`, redisError);
+      throw redisError; // Re-throw to be caught by outer catch
     }
-
-    const isHighScore = playerRank <= 10;
-
-    res.json({
-      type: "score",
-      newRank: playerRank,
-      isHighScore,
-      highScores,
-    });
   } catch (error) {
     console.error(`Error submitting score for post ${postId}:`, error);
     res.status(500).json({
