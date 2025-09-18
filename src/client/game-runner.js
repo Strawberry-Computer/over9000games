@@ -1,5 +1,6 @@
 import { getQuickJS, RELEASE_SYNC } from "quickjs-emscripten";
 import { validateGameSchema, sanitizeGameDefinition } from "../shared/game-schema.js";
+import { renderBitmapText, renderCenteredBitmapText } from "./bitmap-font.js";
 
 export class GameRunner {
   constructor(canvasId, spriteCanvasId) {
@@ -22,6 +23,7 @@ export class GameRunner {
       backgroundColor: 0,
       palette: this.getDefaultPalette(),
       gameRunning: false,
+      gamePaused: false,
       score: 0
     };
 
@@ -51,7 +53,7 @@ export class GameRunner {
       console.log("Initializing QuickJS game runner...");
       this.QuickJS = await getQuickJS();
 
-      this.runtime = this.QuickJS.newRuntime({ variant: RELEASE_SYNC });
+      this.runtime = this.QuickJS.newRuntime()//{ variant: RELEASE_SYNC });
       this.runtime.setModuleLoader((moduleName) => {
         console.log("Module loader called for:", moduleName);
         return "";
@@ -315,14 +317,39 @@ export class GameRunner {
 
   startGame() {
     this.state.gameRunning = true;
+    this.state.gamePaused = false;
     this.gameLoop();
   }
 
   stopGame() {
     this.state.gameRunning = false;
+    this.state.gamePaused = false;
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
+    }
+  }
+
+  pauseGame() {
+    this.state.gamePaused = true;
+  }
+
+  unpauseGame() {
+    this.state.gamePaused = false;
+  }
+
+  togglePause() {
+    if (this.state.gameOver) return; // Can't pause when game is over
+
+    if (this.state.gamePaused) {
+      this.unpauseGame();
+      this.hideLeaderboard();
+    } else {
+      this.pauseGame();
+      // Load and show leaderboard when pausing
+      if (window.loadLeaderboard) {
+        window.loadLeaderboard();
+      }
     }
   }
 
@@ -339,6 +366,7 @@ export class GameRunner {
 
     this.state.score = 0;
     this.state.backgroundColor = 0;
+    this.state.gamePaused = false;
 
     if (this.gameDefinition && this.gameDefinition.initialState) {
       Object.assign(this.state, this.gameDefinition.initialState);
@@ -347,6 +375,10 @@ export class GameRunner {
     this.lastFrameTime = 0;
     this.frameCount = 0;
     this.firstFrameExecuted = false;
+    this.state.gameOver = false;
+    this.state.finalScore = 0;
+    this.state.showLeaderboard = false;
+    this.leaderboardData = [];
   }
 
   setFirstFrameCallback(callback) {
@@ -354,32 +386,89 @@ export class GameRunner {
     this.firstFrameExecuted = false;
   }
 
+  showLeaderboard(leaderboardData) {
+    this.leaderboardData = leaderboardData || [];
+    this.state.showLeaderboard = true;
+  }
+
+  setHighScoreMessage(message) {
+    this.highScoreMessage = message;
+  }
+
+  hideLeaderboard() {
+    this.state.showLeaderboard = false;
+    this.leaderboardData = [];
+    this.highScoreMessage = null;
+  }
+
+  updateScoreDisplay() {
+    const gameInfoElement = document.getElementById('game-info');
+    if (gameInfoElement && this.state.score !== undefined) {
+      gameInfoElement.textContent = `SCORE: ${this.state.score}`;
+    }
+  }
+
+  handleGameOver() {
+    this.state.gameOver = true;
+    this.state.gameRunning = false;
+    this.state.finalScore = this.state.score;
+
+    console.log(`Game Over! Final Score: ${this.state.finalScore}`);
+
+    // Update game info to show game over
+    const gameInfoElement = document.getElementById('game-info');
+    if (gameInfoElement) {
+      gameInfoElement.textContent = `GAME OVER! SCORE: ${this.state.finalScore}`;
+      gameInfoElement.style.color = "#ff0000";
+    }
+
+    // Submit score and show leaderboard automatically
+    if (window.submitScore) {
+      window.submitScore(this.state.finalScore);
+    }
+
+    // Auto-show leaderboard on game over with empty data initially
+    this.showLeaderboard([]);
+
+    // Kick off leaderboard load in background
+    if (window.loadLeaderboard) {
+      console.log("Calling loadLeaderboard from game over");
+      window.loadLeaderboard();
+    } else {
+      console.log("loadLeaderboard not available on window");
+    }
+  }
+
+
   gameLoop = () => {
     if (!this.state.gameRunning) return;
 
     this.updateInput();
 
-    try {
-      const commands = this.executeGameUpdate();
-      this.processCommands(commands);
-    } catch (error) {
-      console.error("Game update error:", error);
+    // Only update game logic if not paused
+    if (!this.state.gamePaused) {
+      try {
+        const commands = this.executeGameUpdate();
+        this.processCommands(commands);
+      } catch (error) {
+        console.error("Game update error:", error);
+      }
+
+      this.frameCount++;
+
+      // Execute first frame callback after first frame is rendered
+      if (this.frameCount === 1 && !this.firstFrameExecuted && this.firstFrameCallback) {
+        this.firstFrameExecuted = true;
+        // Use setTimeout to ensure render is complete
+        setTimeout(() => {
+          if (this.firstFrameCallback) {
+            this.firstFrameCallback();
+          }
+        }, 50);
+      }
     }
 
     this.render();
-    this.frameCount++;
-
-    // Execute first frame callback after first frame is rendered
-    if (this.frameCount === 1 && !this.firstFrameExecuted && this.firstFrameCallback) {
-      this.firstFrameExecuted = true;
-      // Use setTimeout to ensure render is complete
-      setTimeout(() => {
-        if (this.firstFrameCallback) {
-          this.firstFrameCallback();
-        }
-      }, 50);
-    }
-
     this.animationId = requestAnimationFrame(this.gameLoop);
   };
 
@@ -480,6 +569,11 @@ export class GameRunner {
 
     if (commands.score !== undefined) {
       this.setScore(commands.score);
+      this.updateScoreDisplay();
+    }
+
+    if (commands.gameOver === true) {
+      this.handleGameOver();
     }
   }
 
@@ -490,6 +584,11 @@ export class GameRunner {
 
     this.renderTiles();
     this.renderSprites();
+
+    // Render overlays
+    if (this.state.showLeaderboard) {
+      this.renderLeaderboardOverlay();
+    }
   }
 
   renderTiles() {
@@ -520,6 +619,80 @@ export class GameRunner {
         );
       }
     }
+  }
+
+
+  renderLeaderboardOverlay() {
+    // Semi-transparent dark overlay
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    this.ctx.fillRect(0, 0, 256, 256);
+
+    // Leaderboard box background
+    this.ctx.fillStyle = '#2d2d2d';
+    this.ctx.fillRect(16, 32, 224, 192);
+
+    // Leaderboard box border (NES-style)
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.fillRect(16, 32, 224, 2); // Top
+    this.ctx.fillRect(16, 222, 224, 2); // Bottom
+    this.ctx.fillRect(16, 32, 2, 192); // Left
+    this.ctx.fillRect(238, 32, 2, 192); // Right
+
+    // Inner border
+    this.ctx.fillStyle = '#424242';
+    this.ctx.fillRect(18, 34, 220, 2); // Top
+    this.ctx.fillRect(18, 220, 220, 2); // Bottom
+    this.ctx.fillRect(18, 34, 2, 188); // Left
+    this.ctx.fillRect(236, 34, 2, 188); // Right
+
+    const centerX = 128;
+
+    // Title - show "GAME OVER" if game over, otherwise "HIGH SCORES"
+    if (this.state.gameOver) {
+      renderCenteredBitmapText(this.ctx, 'GAME OVER', centerX, 48, '#ff0000', 2);
+      renderCenteredBitmapText(this.ctx, `FINAL SCORE: ${this.state.finalScore}`, centerX, 65, '#ffff00', 1);
+    } else {
+      renderCenteredBitmapText(this.ctx, 'HIGH SCORES', centerX, 48, '#ffff00', 2);
+    }
+
+    // High score message if available
+    if (this.highScoreMessage) {
+      const yPos = this.state.gameOver ? 80 : 65;
+      renderCenteredBitmapText(this.ctx, this.highScoreMessage, centerX, yPos, '#00ff00', 1);
+    }
+
+    // Render scores
+    let startY = this.state.gameOver ? 95 : 75;
+    if (this.highScoreMessage) {
+      startY += 15;
+    }
+
+    if (this.leaderboardData.length === 0) {
+      renderCenteredBitmapText(this.ctx, 'NO SCORES YET', centerX, startY + 15, '#ffffff', 1);
+      renderCenteredBitmapText(this.ctx, 'BE THE FIRST!', centerX, startY + 25, '#ffffff', 1);
+    } else {
+      let yPos = startY;
+      for (let i = 0; i < Math.min(this.leaderboardData.length, 8); i++) {
+        const score = this.leaderboardData[i];
+        const rank = i + 1;
+        const medal = rank === 1 ? '1ST' : rank === 2 ? '2ND' : rank === 3 ? '3RD' : `${rank}TH`;
+
+        // Rank
+        renderBitmapText(this.ctx, medal, 24, yPos, '#ffff00', 1);
+
+        // Username (truncated if too long)
+        const username = score.username.length > 12 ? score.username.substring(0, 12) + '..' : score.username;
+        renderBitmapText(this.ctx, username, 64, yPos, '#ffffff', 1);
+
+        // Score (right-aligned)
+        const scoreText = score.score.toString();
+        const scoreWidth = scoreText.length * 8;
+        renderBitmapText(this.ctx, scoreText, 224 - scoreWidth, yPos, '#00ff00', 1);
+
+        yPos += 16;
+      }
+    }
+
   }
 
   clear() {

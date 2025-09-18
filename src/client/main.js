@@ -6,8 +6,7 @@ import { DraftManager } from "./draft-manager.js";
 const titleElement = document.getElementById("title");
 const gameInfoElement = document.getElementById("game-info");
 const currentGameNameElement = document.getElementById("current-game-name");
-const leaderboardElement = document.getElementById("leaderboard");
-const scoresListElement = document.getElementById("scores-list");
+const scoresListElement = document.getElementById("scores-list"); // Legacy, may be removed
 
 // Game creation elements
 const gameCreationElement = document.getElementById("game-creation");
@@ -63,6 +62,9 @@ async function fetchInitialData() {
       currentHighScores = data.highScores;
 
       if (data.gameDefinition && data.gameDefinition.gameCode) {
+        // Store the game data for restart functionality
+        currentGameData = data.gameDefinition;
+
         // Load all games via QuickJS runner
         await gameRunner.loadCode(data.gameDefinition.gameCode);
         gameInfoElement.textContent = "Game loaded! Playing...";
@@ -115,11 +117,18 @@ async function loadTestGame(gameName) {
     console.log(`Received test game "${gameName}" from server:`, data.gameDefinition);
 
     if (data.type === "generate") {
-      // Both AI-generated and test games now return { gameCode }
+      // Store the test game data just like generated games
+      currentGameData = {
+        ...data.gameDefinition,
+        originalDescription: `Test game: ${gameName}`
+      };
+
       // Load the raw game code directly into QuickJS
       await gameRunner.loadCode(data.gameDefinition.gameCode);
       gameInfoElement.textContent = `Test game "${gameName}" loaded! Playing...`;
       gameInfoElement.style.color = "#00ff00";
+      currentGameNameElement.textContent = gameName;
+
       // Auto-start the game
       gameRunner.startGame();
     }
@@ -131,7 +140,11 @@ async function loadTestGame(gameName) {
 }
 
 async function submitScore(score) {
-  if (!currentPostId || !currentUsername) return;
+  console.log("submitScore called with:", score, "postId:", currentPostId, "username:", currentUsername);
+  if (!currentPostId || !currentUsername) {
+    console.log("Score submission skipped - missing postId or username");
+    return;
+  }
 
   try {
     const request = { score };
@@ -149,7 +162,10 @@ async function submitScore(score) {
     currentHighScores = data.highScores;
 
     if (data.isHighScore) {
-      alert(`New high score! Rank #${data.newRank}`);
+      // Show high score message on leaderboard
+      if (gameRunner) {
+        gameRunner.setHighScoreMessage(`NEW HIGH SCORE! RANK #${data.newRank}`);
+      }
     }
   } catch (error) {
     console.error("Error submitting score:", error);
@@ -165,37 +181,38 @@ async function loadLeaderboard() {
 
     const data = await response.json();
     currentHighScores = data.highScores;
-    displayLeaderboard();
+
+    // Display leaderboard on canvas
+    if (gameRunner) {
+      gameRunner.showLeaderboard(currentHighScores);
+    }
+
   } catch (error) {
     console.error("Error loading leaderboard:", error);
+
+    // Show empty leaderboard on error
+    if (gameRunner) {
+      gameRunner.showLeaderboard([]);
+    }
   }
 }
 
-function displayLeaderboard() {
-  scoresListElement.innerHTML = "";
+// Expose functions globally for game runner access
+window.loadLeaderboard = loadLeaderboard;
+window.submitScore = submitScore;
 
-  if (currentHighScores.length === 0) {
-    scoresListElement.innerHTML = "<p>No scores yet!</p>";
-  } else {
-    const list = document.createElement("ol");
-    currentHighScores.forEach(score => {
-      const item = document.createElement("li");
-      item.innerHTML = `
-        <span class="username">${score.username}</span>
-        <span class="score">${score.score}</span>
-        <span class="date">${new Date(score.timestamp).toLocaleDateString()}</span>
-      `;
-      list.appendChild(item);
-    });
-    scoresListElement.appendChild(list);
+function restartCurrentGame() {
+  if (gameRunner) {
+    gameRunner.resetGame();
+    gameRunner.startGame();
+
+    // Reset game info display
+    const gameInfoElement = document.getElementById('game-info');
+    if (gameInfoElement) {
+      gameInfoElement.textContent = "Game restarted!";
+      gameInfoElement.style.color = "#00ff00";
+    }
   }
-
-  leaderboardElement.style.display = "block";
-}
-
-
-function hideLeaderboard() {
-  leaderboardElement.style.display = "none";
 }
 
 function showGameCreation() {
@@ -205,6 +222,12 @@ function showGameCreation() {
 }
 
 function showDevMenu() {
+  // If leaderboard is showing, close it instead of opening dev menu
+  if (gameRunner && gameRunner.state && gameRunner.state.showLeaderboard) {
+    gameRunner.hideLeaderboard();
+    return;
+  }
+
   devMenuElement.style.display = "block";
   document.body.classList.add("dev-menu-active");
 }
@@ -325,6 +348,13 @@ async function generateGame() {
 async function showGeneratedGame() {
   try {
     showGenerationStatus("Loading your game...", "loading");
+
+    // Log the full generated game code for debugging
+    console.log("=== GENERATED GAME CODE START ===");
+    console.log(currentGameData.gameCode);
+    console.log("=== GENERATED GAME CODE END ===");
+    console.log("Game code length:", currentGameData.gameCode?.length || "undefined");
+    console.log("Game code type:", typeof currentGameData.gameCode);
 
     // Load the game into the main console
     await gameRunner.loadCode(currentGameData.gameCode);
@@ -593,14 +623,20 @@ document.getElementById("btn-new-game")?.addEventListener("click", () => {
   resetGameState();
   showGameCreation();
 });
-document.getElementById("btn-restart-game")?.addEventListener("click", () => {
-  if (gameRunner) {
-    gameRunner.restartGame();
+document.getElementById("btn-restart-game")?.addEventListener("click", async () => {
+  if (gameRunner && currentGameData?.gameCode) {
+    gameRunner.hideLeaderboard();
+    // Reload the game code to completely reset the VM state
+    await gameRunner.loadCode(currentGameData.gameCode);
+    gameRunner.startGame();
   }
 });
 document.getElementById("btn-publish-current")?.addEventListener("click", showGamePublishingFromMain);
-document.getElementById("btn-leaderboard")?.addEventListener("click", loadLeaderboard);
-document.getElementById("btn-close-leaderboard")?.addEventListener("click", hideLeaderboard);
+document.getElementById("btn-leaderboard")?.addEventListener("click", () => {
+  if (gameRunner) {
+    gameRunner.togglePause();
+  }
+});
 document.getElementById("btn-menu")?.addEventListener("click", showDevMenu);
 document.getElementById("btn-close-dev-menu")?.addEventListener("click", hideAllModals);
 
@@ -614,15 +650,15 @@ document.getElementById("btn-back-to-game")?.addEventListener("click", hideAllMo
 
 
 // Test game buttons
-document.getElementById("btn-test-movement")?.addEventListener("click", () => {
-  loadTestGame("simple-movement");
-});
+// Simple movement test removed - not scorable
 
 document.getElementById("btn-test-pong")?.addEventListener("click", () => {
+  hideAllModals();
   loadTestGame("pong");
 });
 
 document.getElementById("btn-test-platformer")?.addEventListener("click", () => {
+  hideAllModals();
   loadTestGame("platformer");
 });
 
@@ -644,22 +680,13 @@ document.getElementById("btn-start-over")?.addEventListener("click", () => {
 });
 document.getElementById("btn-love-it")?.addEventListener("click", showGamePublishing);
 
-// Game modification event listeners
-document.getElementById("btn-update-game")?.addEventListener("click", updateGame);
-document.getElementById("btn-back-to-preview")?.addEventListener("click", () => {
-  gameModificationElement.style.display = "none";
-  document.body.classList.remove("game-modification-active");
-  gamePreviewElement.style.display = "block";
-  document.body.classList.add("game-preview-active");
-});
+// Game modification event listeners (removed - buttons don't exist in current UI)
 
 // Game publishing event listeners
 document.getElementById("btn-post-to-reddit")?.addEventListener("click", publishGameToReddit);
 document.getElementById("btn-back-to-game")?.addEventListener("click", () => {
   gamePublishingElement.style.display = "none";
   document.body.classList.remove("game-publishing-active");
-  gamePreviewElement.style.display = "block";
-  document.body.classList.add("game-preview-active");
 });
 
 
@@ -710,6 +737,8 @@ document.getElementById("btn-undo-description")?.addEventListener("click", () =>
     }
   }
 });
+
+// Game over events are now handled via canvas overlay instead of modal
 
 // Mobile keyboard handling
 function setupMobileKeyboardHandling() {

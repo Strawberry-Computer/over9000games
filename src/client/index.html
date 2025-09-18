@@ -48,24 +48,13 @@
       <div class="game-management">
         <div class="main-actions">
           <button class="game-btn primary" id="btn-restart-game">RESTART</button>
-          <button class="game-btn secondary" id="btn-leaderboard">SCORES</button>
+          <button class="game-btn secondary" id="btn-leaderboard">PAUSE</button>
           <button class="game-btn tertiary" id="btn-menu">MENU</button>
         </div>
         <button class="game-btn publish-btn" id="btn-publish-current" style="display: none;">SHARE GAME</button>
       </div>
 
 
-      <div class="leaderboard" id="leaderboard" style="display: none;">
-        <div class="prompt-overlay">
-          <div class="prompt-modal">
-            <h3>HIGH SCORES</h3>
-            <div id="scores-list"></div>
-            <div class="prompt-actions">
-              <button class="game-btn" id="btn-close-leaderboard">CLOSE</button>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- Developer Menu (Hidden by default) -->
       <div class="dev-menu" id="dev-menu" style="display: none;">
@@ -74,7 +63,6 @@
             <h3>DEVELOPER MENU</h3>
             <div class="dev-actions">
               <button class="game-btn test-btn" id="btn-new-game">CREATE GAME</button>
-              <button class="game-btn test-btn" id="btn-test-movement">Movement Test</button>
               <button class="game-btn test-btn" id="btn-test-pong">Pong Test</button>
               <button class="game-btn test-btn" id="btn-test-platformer">Platform Test</button>
             </div>
