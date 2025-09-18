@@ -220,6 +220,7 @@ router.post("/api/score/submit", async (req, res) => {
       console.log(`Current score check: currentScore=${currentScore}`);
 
       // Only update if new score is higher than current score (or player doesn't exist)
+      let scoreWasUpdated = false;
       if (!currentScore || score > currentScore) {
         console.log(`Adding/updating score: ${username} -> ${score} in ${leaderboardKey}`);
         // Add/update score in sorted set
@@ -234,6 +235,7 @@ router.post("/api/score/submit", async (req, res) => {
           lastUpdated: Date.now().toString()
         });
         console.log(`Player metadata stored`);
+        scoreWasUpdated = true;
       } else {
         console.log(`Score not updated: new=${score} <= current=${currentScore}`);
       }
@@ -249,13 +251,21 @@ router.post("/api/score/submit", async (req, res) => {
       });
       console.log(`Retrieved top players:`, topPlayers);
 
-      // Calculate player's descending rank (1-based)
-      const playerRank = totalPlayers - ascendingRank;
-
       // Format top players using shared helper
       const highScores = await formatLeaderboard(postId, topPlayers);
 
-      const isHighScore = playerRank <= 10;
+      // Check if player is actually in the high scores (top 10)
+      let playerRank = null;
+      let isHighScore = false;
+
+      for (let i = 0; i < highScores.length; i++) {
+        if (highScores[i].username === username) {
+          playerRank = i + 1;
+          // Only show "NEW HIGH SCORE" if score was actually updated
+          isHighScore = scoreWasUpdated;
+          break;
+        }
+      }
 
       res.json({
         type: "score",
