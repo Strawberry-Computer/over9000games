@@ -482,47 +482,24 @@ async function captureGameScreenshot() {
       const landscapeCanvas = document.createElement('canvas');
       const landscapeCtx = landscapeCanvas.getContext('2d');
 
-      // Landscape dimensions: 1200×675 (16:9)
-      landscapeCanvas.width = 1200;
-      landscapeCanvas.height = 675;
+      // Landscape dimensions: 1820×1024 (16:9) with 1024 height as agreed
+      landscapeCanvas.width = 1820;
+      landscapeCanvas.height = 1024;
 
-      // Fill background with dark gradient
-      const gradient = landscapeCtx.createLinearGradient(0, 0, 1200, 675);
-      gradient.addColorStop(0, '#1a1a2e');
-      gradient.addColorStop(1, '#16213e');
-      landscapeCtx.fillStyle = gradient;
-      landscapeCtx.fillRect(0, 0, 1200, 675);
+      // Fill background with solid dark color for better PNG compression
+      landscapeCtx.fillStyle = '#1a1a2e';
+      landscapeCtx.fillRect(0, 0, 1820, 1024);
 
-      // Center the game canvas (1024×1024 scaled to fit height: 675×675)
-      const gameSize = 675; // Fit to landscape height
-      const gameX = (1200 - gameSize) / 2; // Center horizontally
+      // Center the game canvas (1024×1024 fits perfectly to height)
+      const gameSize = 1024; // Perfect fit to landscape height
+      const gameX = (1820 - gameSize) / 2; // Center horizontally (398px padding each side)
       const gameY = 0; // Top aligned
 
       landscapeCtx.imageSmoothingEnabled = false;
       landscapeCtx.drawImage(captureCanvas, 0, 0, 1024, 1024, gameX, gameY, gameSize, gameSize);
 
-      // Add branding and game info to side panels
-      landscapeCtx.fillStyle = '#ffffff';
-      landscapeCtx.font = 'bold 24px monospace';
-      landscapeCtx.textAlign = 'center';
 
-      // Left panel text
-      const leftPanelX = gameX / 2;
-      landscapeCtx.fillText('OVER', leftPanelX, 300);
-      landscapeCtx.fillText('9000', leftPanelX, 330);
-      landscapeCtx.fillText('GAMES', leftPanelX, 360);
-
-      // Right panel text
-      const rightPanelX = gameX + gameSize + (gameX / 2);
-      landscapeCtx.fillText('AI-GENERATED', rightPanelX, 300);
-      landscapeCtx.fillText('RETRO', rightPanelX, 330);
-      landscapeCtx.fillText('GAMES', rightPanelX, 360);
-
-      // Add subtle scanlines effect
-      landscapeCtx.fillStyle = 'rgba(0, 255, 0, 0.05)';
-      for (let y = 0; y < 675; y += 4) {
-        landscapeCtx.fillRect(0, y, 1200, 2);
-      }
+      // Skip scanlines effect to reduce PNG file size
 
       return landscapeCanvas.toDataURL('image/png');
     }
