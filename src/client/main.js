@@ -33,11 +33,10 @@ let currentUsername = null;
 let gameRunner;
 let currentHighScores = [];
 
-async function initializeConsole() {
+function initializeConsole() {
   try {
     gameRunner = getGameRunner("console-canvas", "sprite-canvas");
-    await gameRunner.initialize();
-    console.log("Game runner initialized");
+    console.log("Game runner created");
 
     // Initialize draft manager
     draftManager = new DraftManager();
@@ -148,17 +147,20 @@ async function submitScore(score) {
 
   try {
     const request = { score };
+    console.log("submitScore: sending request", request);
     const response = await fetch("/api/score/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     });
 
+    console.log("submitScore: response status", response.status);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log("submitScore: response data", data);
     currentHighScores = data.highScores;
 
     if (data.isHighScore) {
@@ -167,6 +169,7 @@ async function submitScore(score) {
         gameRunner.setHighScoreMessage(`NEW HIGH SCORE! RANK #${data.newRank}`);
       }
     }
+
   } catch (error) {
     console.error("Error submitting score:", error);
   }
@@ -174,17 +177,26 @@ async function submitScore(score) {
 
 async function loadLeaderboard() {
   try {
+    console.log("loadLeaderboard: fetching from /api/leaderboard");
     const response = await fetch("/api/leaderboard");
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log("loadLeaderboard: received data", data);
     currentHighScores = data.highScores;
+    console.log("loadLeaderboard: currentHighScores", currentHighScores);
 
     // Display leaderboard on canvas
     if (gameRunner) {
+      console.log("loadLeaderboard: calling gameRunner.showLeaderboard");
       gameRunner.showLeaderboard(currentHighScores);
+      console.log("loadLeaderboard: gameRunner state", {
+        showLeaderboard: gameRunner.state.showLeaderboard,
+        gameOver: gameRunner.state.gameOver,
+        leaderboardDataLength: gameRunner.leaderboardData?.length
+      });
     }
 
   } catch (error) {

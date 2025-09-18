@@ -27,6 +27,8 @@ export class GameRunner {
       score: 0
     };
 
+    this.leaderboardLoading = false;
+
     this.gameDefinition = null;
     this.inputState = {};
     this.prevInputState = {};
@@ -346,7 +348,9 @@ export class GameRunner {
       this.hideLeaderboard();
     } else {
       this.pauseGame();
-      // Load and show leaderboard when pausing
+      // Show loading state while fetching leaderboard
+      this.showLeaderboardLoading();
+      // Always refresh leaderboard when pausing
       if (window.loadLeaderboard) {
         window.loadLeaderboard();
       }
@@ -387,8 +391,27 @@ export class GameRunner {
   }
 
   showLeaderboard(leaderboardData) {
+    console.log("showLeaderboard called with:", leaderboardData, "length:", leaderboardData?.length);
     this.leaderboardData = leaderboardData || [];
     this.state.showLeaderboard = true;
+    this.leaderboardLoading = false;
+    console.log("showLeaderboard: set this.leaderboardData to:", this.leaderboardData, "length:", this.leaderboardData.length);
+
+    // Force a render when game is not running (e.g., game over state)
+    if (!this.state.gameRunning) {
+      this.render();
+    }
+  }
+
+  showLeaderboardLoading() {
+    this.state.showLeaderboard = true;
+    this.leaderboardLoading = true;
+    this.leaderboardData = [];
+
+    // Force a render when game is not running (e.g., game over state)
+    if (!this.state.gameRunning) {
+      this.render();
+    }
   }
 
   setHighScoreMessage(message) {
@@ -422,20 +445,24 @@ export class GameRunner {
       gameInfoElement.style.color = "#ff0000";
     }
 
-    // Submit score and show leaderboard automatically
+    // Auto-show leaderboard loading state on game over
+    this.showLeaderboardLoading();
+
+    // Submit score first, then load leaderboard
     if (window.submitScore) {
-      window.submitScore(this.state.finalScore);
-    }
-
-    // Auto-show leaderboard on game over with empty data initially
-    this.showLeaderboard([]);
-
-    // Kick off leaderboard load in background
-    if (window.loadLeaderboard) {
-      console.log("Calling loadLeaderboard from game over");
-      window.loadLeaderboard();
+      window.submitScore(this.state.finalScore).then(() => {
+        // Load leaderboard after score submission completes
+        if (window.loadLeaderboard) {
+          console.log("Calling loadLeaderboard after score submission");
+          window.loadLeaderboard();
+        }
+      });
     } else {
-      console.log("loadLeaderboard not available on window");
+      // If no score submission, just load leaderboard
+      if (window.loadLeaderboard) {
+        console.log("Calling loadLeaderboard from game over (no score submission)");
+        window.loadLeaderboard();
+      }
     }
   }
 
@@ -667,10 +694,20 @@ export class GameRunner {
       startY += 15;
     }
 
-    if (this.leaderboardData.length === 0) {
+    console.log("renderLeaderboardOverlay: this.leaderboardData.length =", this.leaderboardData.length);
+    console.log("renderLeaderboardOverlay: this.state.gameOver =", this.state.gameOver);
+    console.log("renderLeaderboardOverlay: this.leaderboardLoading =", this.leaderboardLoading);
+    console.log("renderLeaderboardOverlay: startY =", startY);
+
+    if (this.leaderboardLoading) {
+      console.log("renderLeaderboardOverlay: showing 'LOADING...'");
+      renderCenteredBitmapText(this.ctx, 'LOADING...', centerX, startY + 15, '#ffff00', 1);
+    } else if (this.leaderboardData.length === 0) {
+      console.log("renderLeaderboardOverlay: showing 'NO SCORES YET'");
       renderCenteredBitmapText(this.ctx, 'NO SCORES YET', centerX, startY + 15, '#ffffff', 1);
       renderCenteredBitmapText(this.ctx, 'BE THE FIRST!', centerX, startY + 25, '#ffffff', 1);
     } else {
+      console.log("renderLeaderboardOverlay: rendering", this.leaderboardData.length, "scores");
       let yPos = startY;
       for (let i = 0; i < Math.min(this.leaderboardData.length, 8); i++) {
         const score = this.leaderboardData[i];

@@ -14,6 +14,27 @@ import { getTestGameCode, getAvailableTestGames } from "../shared/test-games/ser
 
 const app = express();
 
+// Helper function to format leaderboard data
+async function formatLeaderboard(postId, topPlayers) {
+  const highScores = [];
+  for (let i = 0; i < topPlayers.length; i++) {
+    const player = topPlayers[i];
+    const playerName = player.member;
+    const playerScore = player.score;
+
+    // Get player metadata
+    const playerData = await redis.hGetAll(`player:${postId}:${playerName}`);
+
+    highScores.push({
+      username: playerName,
+      score: playerScore,
+      timestamp: playerData.timestamp,
+      rank: i + 1
+    });
+  }
+  return highScores;
+}
+
 // Middleware for JSON body parsing
 app.use(express.json());
 // Middleware for URL-encoded body parsing
@@ -64,7 +85,7 @@ router.get("/api/init", async (_req, res) => {
       highScores.push({
         username: playerName,
         score: playerScore,
-        timestamp: playerData.timestamp || new Date().toISOString(),
+        timestamp: playerData.timestamp,
         rank: Math.floor(i / 2) + 1
       });
     }
@@ -213,22 +234,8 @@ router.post("/api/score/submit", async (req, res) => {
       // Calculate player's descending rank (1-based)
       const playerRank = totalPlayers - ascendingRank;
 
-      // Format top players
-      const highScores = [];
-      for (let i = 0; i < topPlayers.length; i += 2) {
-        const playerName = topPlayers[i];
-        const playerScore = parseInt(topPlayers[i + 1]);
-
-        // Get player metadata
-        const playerData = await redis.hGetAll(`player:${postId}:${playerName}`);
-
-        highScores.push({
-          username: playerName,
-          score: playerScore,
-          timestamp: playerData.timestamp || new Date().toISOString(),
-          rank: Math.floor(i / 2) + 1
-        });
-      }
+      // Format top players using shared helper
+      const highScores = await formatLeaderboard(postId, topPlayers);
 
       const isHighScore = playerRank <= 10;
 
@@ -262,16 +269,18 @@ router.get("/api/leaderboard", async (_req, res) => {
   }
 
   try {
-    const highScoresJson = await redis.get(`game:${postId}:highscores`);
-    let highScores = [];
+    const leaderboardKey = `leaderboard:${postId}`;
 
-    if (highScoresJson) {
-      try {
-        highScores = JSON.parse(highScoresJson);
-      } catch (error) {
-        console.error("Error parsing high scores:", error);
-      }
-    }
+    // Get top 10 players from sorted set
+    const topPlayers = await redis.zRange(leaderboardKey, 0, 9, {
+      REV: true,
+      WITHSCORES: true
+    });
+
+    console.log("leaderboard: topPlayers raw data:", topPlayers);
+
+    // Format top players using shared helper
+    const highScores = await formatLeaderboard(postId, topPlayers);
 
     res.json({
       type: "leaderboard",
