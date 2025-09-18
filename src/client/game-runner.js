@@ -44,6 +44,7 @@ export class GameRunner {
     this.lastFrameTime = 0;
     this.firstFrameCallback = null;
     this.firstFrameExecuted = false;
+    this.isGeneratedGame = false;
 
     this.setupInputHandlers();
   }
@@ -390,6 +391,10 @@ export class GameRunner {
     this.firstFrameExecuted = false;
   }
 
+  setGeneratedGame(isGenerated) {
+    this.isGeneratedGame = isGenerated;
+  }
+
   showLeaderboard(leaderboardData) {
     console.log("showLeaderboard called with:", leaderboardData, "length:", leaderboardData?.length);
     this.leaderboardData = leaderboardData || [];
@@ -699,7 +704,13 @@ export class GameRunner {
     console.log("renderLeaderboardOverlay: this.leaderboardLoading =", this.leaderboardLoading);
     console.log("renderLeaderboardOverlay: startY =", startY);
 
-    if (this.leaderboardLoading) {
+    // Check if this is a generated game (leaderboard disabled)
+    if (this.isGeneratedGame) {
+      console.log("renderLeaderboardOverlay: showing generated game message");
+      renderCenteredBitmapText(this.ctx, 'GENERATED GAME', centerX, startY + 15, '#ffff00', 1);
+      renderCenteredBitmapText(this.ctx, 'LEADERBOARD DISABLED', centerX, startY + 30, '#ffffff', 1);
+      renderCenteredBitmapText(this.ctx, 'PUBLISH TO ENABLE SCORING', centerX, startY + 45, '#aaaaaa', 1);
+    } else if (this.leaderboardLoading) {
       console.log("renderLeaderboardOverlay: showing 'LOADING...'");
       renderCenteredBitmapText(this.ctx, 'LOADING...', centerX, startY + 15, '#ffff00', 1);
     } else if (this.leaderboardData.length === 0) {

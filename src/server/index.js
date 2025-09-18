@@ -210,15 +210,21 @@ router.post("/api/score/submit", async (req, res) => {
     const leaderboardKey = `leaderboard:${postId}`;
     const playerDataKey = `player:${postId}:${username}`;
 
+    console.log(`Score submission: postId=${postId}, username=${username}, score=${score}`);
+    console.log(`Using keys: leaderboardKey=${leaderboardKey}, playerDataKey=${playerDataKey}`);
+
     // Execute Redis operations individually (Devvit Redis may not support multi)
     try {
       // Get current player score if exists
       const currentScore = await redis.zScore(leaderboardKey, username);
+      console.log(`Current score check: currentScore=${currentScore}`);
 
       // Only update if new score is higher than current score (or player doesn't exist)
-      if (currentScore === null || score > currentScore) {
+      if (!currentScore || score > currentScore) {
+        console.log(`Adding/updating score: ${username} -> ${score} in ${leaderboardKey}`);
         // Add/update score in sorted set
         await redis.zAdd(leaderboardKey, { member: username, score });
+        console.log(`zAdd completed`);
 
         // Store player metadata
         await redis.hSet(playerDataKey, {
@@ -227,15 +233,21 @@ router.post("/api/score/submit", async (req, res) => {
           timestamp: new Date().toISOString(),
           lastUpdated: Date.now().toString()
         });
+        console.log(`Player metadata stored`);
+      } else {
+        console.log(`Score not updated: new=${score} <= current=${currentScore}`);
       }
 
       // Get player's new rank and leaderboard
       const ascendingRank = await redis.zRank(leaderboardKey, username);
       const totalPlayers = await redis.zCard(leaderboardKey);
+      console.log(`Post-update: ascendingRank=${ascendingRank}, totalPlayers=${totalPlayers}`);
+
       const topPlayers = await redis.zRange(leaderboardKey, 0, 9, {
         REV: true,
         WITHSCORES: true
       });
+      console.log(`Retrieved top players:`, topPlayers);
 
       // Calculate player's descending rank (1-based)
       const playerRank = totalPlayers - ascendingRank;
@@ -276,6 +288,11 @@ router.get("/api/leaderboard", async (_req, res) => {
 
   try {
     const leaderboardKey = `leaderboard:${postId}`;
+    console.log(`Leaderboard fetch: postId=${postId}, key=${leaderboardKey}`);
+
+    // Check total players first
+    const totalPlayers = await redis.zCard(leaderboardKey);
+    console.log(`Leaderboard total players: ${totalPlayers}`);
 
     // Get top 10 players from sorted set
     const topPlayers = await redis.zRange(leaderboardKey, 0, 9, {

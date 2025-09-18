@@ -139,7 +139,14 @@ async function loadTestGame(gameName) {
 }
 
 async function submitScore(score) {
-  console.log("submitScore called with:", score, "postId:", currentPostId, "username:", currentUsername);
+  console.log("submitScore called with:", score, "postId:", currentPostId, "username:", currentUsername, "isGeneratedGame:", isGeneratedGame);
+
+  // Skip score submission for generated games
+  if (isGeneratedGame) {
+    console.log("Score submission skipped - generated game (leaderboard disabled)");
+    return;
+  }
+
   if (!currentPostId || !currentUsername) {
     console.log("Score submission skipped - missing postId or username");
     return;
@@ -288,6 +295,9 @@ function resetGameState() {
   currentGameData = null;
   publishCurrentButton.style.display = "none";
   currentGameNameElement.textContent = "None";
+  if (gameRunner) {
+    gameRunner.setGeneratedGame(false);
+  }
 }
 
 function showGenerationStatus(message, type = "loading") {
@@ -373,6 +383,7 @@ async function showGeneratedGame() {
 
     // Mark this as a generated game
     isGeneratedGame = true;
+    gameRunner.setGeneratedGame(true);
 
     // Update the main UI
     gameInfoElement.textContent = "Game generated! Playing...";
@@ -437,7 +448,7 @@ function showGamePublishingFromMain() {
   showGamePublishing();
 }
 
-// Screenshot capture function
+// Enhanced screenshot capture function with 4x resolution and landscape formatting
 async function captureGameScreenshot() {
   try {
     // Run the game for a few frames to get an interesting state
@@ -451,9 +462,69 @@ async function captureGameScreenshot() {
       // Wait a bit more for the game to start
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Capture the main console canvas
-      const canvas = document.getElementById("console-canvas");
-      return canvas.toDataURL('image/png');
+      // Get the main console canvas
+      const sourceCanvas = document.getElementById("console-canvas");
+      if (!sourceCanvas) return null;
+
+      // Create high-resolution capture canvas (4x resolution)
+      const captureCanvas = document.createElement('canvas');
+      const captureCtx = captureCanvas.getContext('2d');
+
+      // Set up 4x scaled canvas (256×256 → 1024×1024)
+      captureCanvas.width = 1024;
+      captureCanvas.height = 1024;
+      captureCtx.imageSmoothingEnabled = false; // Maintain pixel art crispness
+
+      // Scale the source canvas 4x
+      captureCtx.drawImage(sourceCanvas, 0, 0, 256, 256, 0, 0, 1024, 1024);
+
+      // Create landscape format canvas for Reddit posts (16:9 aspect ratio)
+      const landscapeCanvas = document.createElement('canvas');
+      const landscapeCtx = landscapeCanvas.getContext('2d');
+
+      // Landscape dimensions: 1200×675 (16:9)
+      landscapeCanvas.width = 1200;
+      landscapeCanvas.height = 675;
+
+      // Fill background with dark gradient
+      const gradient = landscapeCtx.createLinearGradient(0, 0, 1200, 675);
+      gradient.addColorStop(0, '#1a1a2e');
+      gradient.addColorStop(1, '#16213e');
+      landscapeCtx.fillStyle = gradient;
+      landscapeCtx.fillRect(0, 0, 1200, 675);
+
+      // Center the game canvas (1024×1024 scaled to fit height: 675×675)
+      const gameSize = 675; // Fit to landscape height
+      const gameX = (1200 - gameSize) / 2; // Center horizontally
+      const gameY = 0; // Top aligned
+
+      landscapeCtx.imageSmoothingEnabled = false;
+      landscapeCtx.drawImage(captureCanvas, 0, 0, 1024, 1024, gameX, gameY, gameSize, gameSize);
+
+      // Add branding and game info to side panels
+      landscapeCtx.fillStyle = '#ffffff';
+      landscapeCtx.font = 'bold 24px monospace';
+      landscapeCtx.textAlign = 'center';
+
+      // Left panel text
+      const leftPanelX = gameX / 2;
+      landscapeCtx.fillText('OVER', leftPanelX, 300);
+      landscapeCtx.fillText('9000', leftPanelX, 330);
+      landscapeCtx.fillText('GAMES', leftPanelX, 360);
+
+      // Right panel text
+      const rightPanelX = gameX + gameSize + (gameX / 2);
+      landscapeCtx.fillText('AI-GENERATED', rightPanelX, 300);
+      landscapeCtx.fillText('RETRO', rightPanelX, 330);
+      landscapeCtx.fillText('GAMES', rightPanelX, 360);
+
+      // Add subtle scanlines effect
+      landscapeCtx.fillStyle = 'rgba(0, 255, 0, 0.05)';
+      for (let y = 0; y < 675; y += 4) {
+        landscapeCtx.fillRect(0, y, 1200, 2);
+      }
+
+      return landscapeCanvas.toDataURL('image/png');
     }
     return null;
   } catch (error) {
