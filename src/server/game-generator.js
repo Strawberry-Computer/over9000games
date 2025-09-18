@@ -43,7 +43,7 @@ async function generateGameWithGemini(description, apiKey) {
     body: JSON.stringify({
       contents: [{
         parts: [{
-          text: `You are a retro game designer that creates NES-style games. You must respond with a JSON block in markdown format (\`\`\`json) followed by a JavaScript block (\`\`\`javascript) containing the updateCode function.\n\n${prompt}`
+          text: prompt
         }]
       }],
       generationConfig: {
@@ -67,7 +67,10 @@ async function generateGameWithGemini(description, apiKey) {
     gameDefinition = parseMarkdownResponse(gameJson);
   } catch (parseError) {
     console.error("Failed to parse Gemini response:", parseError);
-    console.error("Raw response:", gameJson);
+    console.error("Response length:", gameJson.length);
+    console.error("Response start (first 500 chars):", gameJson.substring(0, 500));
+    console.error("Response end (last 500 chars):", gameJson.substring(gameJson.length - 500));
+    console.error("Contains closing backticks:", gameJson.includes('```'));
     throw new Error("Gemini returned invalid format");
   }
 
