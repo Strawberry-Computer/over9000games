@@ -33,7 +33,7 @@ export async function generateGameWithAI(description, settings) {
 async function generateGameWithGemini(description, apiKey) {
   const prompt = createGameGenerationPrompt(description);
 
-  console.log("Calling Gemini API...");
+  console.log("Calling Gemini API:", prompt);
 
   const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' + apiKey, {
     method: 'POST',
@@ -76,8 +76,7 @@ async function generateGameWithGemini(description, apiKey) {
 
 async function generateGameWithOpenAI(description, apiKey) {
   const prompt = createGameGenerationPrompt(description);
-
-  console.log("Calling OpenAI API...");
+  console.log("Calling OpenAI API:", prompt);
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',

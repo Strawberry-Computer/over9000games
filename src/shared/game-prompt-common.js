@@ -1,26 +1,25 @@
 // Common prompt creation function that accepts sample code as parameters
 export function createGameGenerationPromptWithSamples(description, pongSample, platformerSample) {
   try {
-    console.log("Creating game generation prompt for:", description);
-
-    return `Create a NES-style game based on: "${description}"
-
-## JavaScript File Format - Single JavaScript File
-
+    return `
+<format>
 You must create a single JavaScript file with three global functions: metadata(), resources(), and update().
+</format>
 
-### Pong Example (scoring game):
+<example-output>
 \`\`\`javascript
 ${pongSample}
 \`\`\`
+</example-output>
 
-### Platformer Example (complex multi-sprite game):
+<example-output>
 \`\`\`javascript
 ${platformerSample}
 \`\`\`
+</example-output>
 
-## Key Requirements:
-- **Three functions**: metadata(), resources(), update(deltaTime, input)
+<requirements>
+- IMPORTANT: have to implement metadata(), resources(), update(deltaTime, input)
 - **Sprites**: 8x8 pixels as array of 1-4 layers, each layer is 8 bytes
 - **Sprite format**: \`[layer0, layer1, ...]\` where each layer is \`[byte0, byte1, ..., byte7]\`
 - **Layer system**: Bits from layers combine to create palette index: \`palette_index = layer0_bit + (layer1_bit << 1) + (layer2_bit << 2) + (layer3_bit << 3)\`
@@ -31,9 +30,12 @@ ${platformerSample}
 - **Module-level gameState**: Use \`let gameState;\` not globalThis
 - **Input**: Use input.up, input.down, input.left, input.right, input.a, input.b
 - **Complex games**: Can have complex gameState (like Tetris boards, enemy arrays, etc.)
+</requirements>
 
-## Your Task
-Create a single JavaScript file following the exact same structure for: "${description}"`;
+<task>
+Create a single JavaScript file following the exact same structure for: "${description}"
+</task>
+`;
 
   } catch (error) {
     console.error("Error creating game generation prompt:", error);
