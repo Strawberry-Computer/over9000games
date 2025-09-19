@@ -177,7 +177,7 @@ async function submitScore(score) {
     if (data.isHighScore) {
       // Show high score message on leaderboard
       if (gameRunner) {
-        gameRunner.setHighScoreMessage(`NEW HIGH SCORE! RANK #${data.newRank}`);
+        gameRunner.setHighScoreMessage(`HIGH SCORE! #${data.newRank}`);
       }
     }
 
