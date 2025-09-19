@@ -1,6 +1,6 @@
 import { createGameGenerationPrompt, parseMarkdownResponse } from '../shared/game-prompt.js';
 
-export async function generateGameWithAI(description, settings) {
+export async function generateGameWithAI(description, settings, previousGame = null) {
   try {
     console.log("generateGameWithAI called with:", description);
 
@@ -17,11 +17,11 @@ export async function generateGameWithAI(description, settings) {
     const geminiKey = await settings.get('geminiKey');
     if (geminiKey) {
       console.log("Generating game with Gemini for:", description);
-      return await generateGameWithGemini(description, geminiKey);
+      return await generateGameWithGemini(description, geminiKey, previousGame);
     }
 
     console.log("Generating game with OpenAI for:", description);
-    return await generateGameWithOpenAI(description, apiKey);
+    return await generateGameWithOpenAI(description, apiKey, previousGame);
   } catch (error) {
     console.error("Error in generateGameWithAI:", error);
     console.error("Error message:", error.message);
@@ -30,10 +30,10 @@ export async function generateGameWithAI(description, settings) {
   }
 }
 
-async function generateGameWithGemini(description, apiKey) {
-  const prompt = createGameGenerationPrompt(description);
+async function generateGameWithGemini(description, apiKey, previousGame = null) {
+  const prompt = createGameGenerationPrompt(description, previousGame);
 
-  console.log("Calling Gemini API:", prompt);
+  console.log("Calling Gemini API:", prompt, 'previousGame:', !!previousGame);
 
   const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' + apiKey, {
     method: 'POST',
@@ -77,8 +77,8 @@ async function generateGameWithGemini(description, apiKey) {
   return gameDefinition;
 }
 
-async function generateGameWithOpenAI(description, apiKey) {
-  const prompt = createGameGenerationPrompt(description);
+async function generateGameWithOpenAI(description, apiKey, previousGame = null) {
+  const prompt = createGameGenerationPrompt(description, previousGame);
   console.log("Calling OpenAI API:", prompt);
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {

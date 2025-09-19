@@ -1,6 +1,6 @@
 import { navigateTo } from "@devvit/web/client";
 import { getGameRunner } from "./game-runner.js";
-import { getQuickJS, RELEASE_SYNC } from "quickjs-emscripten";
+import { getQuickJS } from "quickjs-emscripten";
 import { DraftManager } from "./draft-manager.js";
 
 const titleElement = document.getElementById("title");
@@ -21,12 +21,24 @@ const generationStatusElement = document.getElementById("generation-status");
 const publishingStatusElement = document.getElementById("publishing-status");
 
 const publishCurrentButton = document.getElementById("btn-publish-current");
+const editActionsElement = document.getElementById("edit-actions");
+const gameCreationTitleElement = document.getElementById("game-creation-title");
+const gameCreationSubtitleElement = document.getElementById("game-creation-subtitle");
+const undoEditButton = document.getElementById("btn-undo-edit");
+const redoEditButton = document.getElementById("btn-redo-edit");
 
 // Current game state
 let currentGameData = null;
 let isGeneratedGame = false;
 let isTestGame = false;
 let draftManager = null;
+
+// Edit state management
+let editHistory = {
+  versions: [],
+  currentIndex: -1
+};
+let isEditMode = false;
 
 
 let currentPostId = null;
@@ -240,6 +252,17 @@ function restartCurrentGame() {
 }
 
 function showGameCreation() {
+  // Set modal title based on mode
+  if (isEditMode) {
+    gameCreationTitleElement.textContent = "EDIT GAME";
+    gameCreationSubtitleElement.textContent = "Describe your changes and AI will apply them!";
+    gameDescriptionElement.placeholder = "make the snake move faster\nadd power-ups\nchange colors\nbigger sprites";
+  } else {
+    gameCreationTitleElement.textContent = "CREATE NEW GAME";
+    gameCreationSubtitleElement.textContent = "Describe your game and AI will build it!";
+    gameDescriptionElement.placeholder = "snake game with power-ups\npong with lasers\nplatformer with coins\nspace shooter with aliens";
+  }
+
   gameCreationElement.style.display = "block";
   document.body.classList.add("game-creation-active");
   gameDescriptionElement.focus();
@@ -266,6 +289,7 @@ function hideAllModals() {
     "game-publishing-active",
     "dev-menu-active"
   );
+  isEditMode = false;
 
   // Clear forms
   gameDescriptionElement.value = "";
@@ -298,8 +322,11 @@ function hideAllModals() {
 function resetGameState() {
   isGeneratedGame = false;
   currentGameData = null;
-  publishCurrentButton.style.display = "none";
+  editActionsElement.style.display = "none";
   currentGameNameElement.textContent = "None";
+  editHistory = { versions: [], currentIndex: -1 };
+  isEditMode = false;
+  updateEditButtons();
   if (gameRunner) {
     gameRunner.setGeneratedGame(false);
   }
@@ -334,29 +361,71 @@ async function generateGame() {
   generateButton.classList.add("disabled");
 
   try {
-    showGenerationStatus("Generating your game...", "loading");
+    if (isEditMode) {
+      showGenerationStatus("Applying your edits", "loading");
 
-    const response = await fetch("/api/game/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description }),
-    });
+      const response = await fetch("/api/game/edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description,
+          previousGame: currentGameData
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error(`Game generation failed: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Game edit failed: ${response.status}`);
+      }
+
+      const gameData = await response.json();
+
+      if (gameData.type !== "generate" || !gameData.gameDefinition?.gameCode) {
+        throw new Error("Invalid game edit response");
+      }
+
+      // Save current version to history before updating
+      saveToEditHistory(currentGameData);
+
+      // Store the edited game
+      currentGameData = {
+        ...gameData.gameDefinition,
+        originalDescription: currentGameData.originalDescription,
+        editDescription: description
+      };
+
+      // Save new version to history
+      saveToEditHistory(currentGameData);
+      updateEditButtons();
+
+    } else {
+      showGenerationStatus("Generating your game", "loading");
+
+      const response = await fetch("/api/game/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Game generation failed: ${response.status}`);
+      }
+
+      const gameData = await response.json();
+
+      if (gameData.type !== "generate" || !gameData.gameDefinition?.gameCode) {
+        throw new Error("Invalid game generation response");
+      }
+
+      // Store the generated game and initialize edit history
+      currentGameData = {
+        ...gameData.gameDefinition,
+        originalDescription: description
+      };
+
+      editHistory = { versions: [], currentIndex: -1 };
+      saveToEditHistory(currentGameData);
+      updateEditButtons();
     }
-
-    const gameData = await response.json();
-
-    if (gameData.type !== "generate" || !gameData.gameDefinition?.gameCode) {
-      throw new Error("Invalid game generation response");
-    }
-
-    // Store the generated game
-    currentGameData = {
-      ...gameData.gameDefinition,
-      originalDescription: description
-    };
 
     // Load and show the game immediately
     await showGeneratedGame();
@@ -374,7 +443,7 @@ async function generateGame() {
 
 async function showGeneratedGame() {
   try {
-    showGenerationStatus("Loading your game...", "loading");
+    showGenerationStatus("Loading your game", "loading");
 
     // Log the full generated game code for debugging
     console.log("=== GENERATED GAME CODE START ===");
@@ -411,8 +480,8 @@ async function showGeneratedGame() {
     // Start the game to trigger first frame callback
     gameRunner.startGame();
 
-    // Show the publish button
-    publishCurrentButton.style.display = "block";
+    // Show the edit actions
+    editActionsElement.style.display = "block";
 
     // Hide the creation modal and return to main view
     hideAllModals();
@@ -538,13 +607,13 @@ async function publishGameToReddit() {
     let screenshot = currentGameData.autoScreenshot;
 
     if (!screenshot) {
-      showPublishingStatus("Capturing screenshot...", "loading");
+      showPublishingStatus("Capturing screenshot", "loading");
       screenshot = await captureGameScreenshot();
     } else {
-      showPublishingStatus("Using auto-generated screenshot...", "loading");
+      showPublishingStatus("Using auto-generated screenshot", "loading");
     }
 
-    showPublishingStatus("Creating Reddit post...", "loading");
+    showPublishingStatus("Creating Reddit post", "loading");
 
     const response = await fetch("/api/post/create", {
       method: "POST",
@@ -565,7 +634,7 @@ async function publishGameToReddit() {
     const postData = await response.json();
 
     if (postData.success) {
-      showPublishingStatus(`Game posted successfully! Redirecting to post...`, "success");
+      showPublishingStatus(`Game posted successfully! Redirecting to post`, "success");
 
       // Clear the draft after successful publishing
       if (draftManager) {
@@ -596,91 +665,6 @@ async function publishGameToReddit() {
   }
 }
 
-// QuickJS test function
-async function testQuickJS() {
-  try {
-    console.log("Testing QuickJS execution...");
-    gameInfoElement.textContent = "Testing QuickJS execution...";
-
-    // Initialize QuickJS with synchronous variant
-    const QuickJS = await getQuickJS({ variant: RELEASE_SYNC });
-    console.log("QuickJS loaded successfully!");
-    gameInfoElement.textContent = "QuickJS loaded, creating context...";
-
-    // Create a VM context
-    const vm = QuickJS.newContext();
-    console.log("QuickJS context created!");
-    gameInfoElement.textContent = "QuickJS context created, testing code execution...";
-
-    // Test simple JavaScript execution
-    const simpleResult = vm.evalCode("2 + 3");
-    console.log("Simple math result:", vm.dump(simpleResult));
-
-    // Test more complex JavaScript
-    const complexCode = `
-      function factorial(n) {
-        if (n <= 1) return 1;
-        return n * factorial(n - 1);
-      }
-
-      function fibonacci(n) {
-        if (n <= 1) return n;
-        return fibonacci(n - 1) + fibonacci(n - 2);
-      }
-
-      const result = {
-        factorial5: factorial(5),
-        fibonacci7: fibonacci(7),
-        message: "Hello from QuickJS!"
-      };
-
-      JSON.stringify(result);
-    `;
-
-    gameInfoElement.textContent = "Executing complex JavaScript code...";
-    const complexResult = vm.evalCode(complexCode);
-
-    if (simpleResult.error) {
-      throw new Error(`Simple test failed: ${vm.dump(simpleResult.error)}`);
-    }
-
-    if (complexResult.error) {
-      throw new Error(`Complex test failed: ${vm.dump(complexResult.error)}`);
-    }
-
-    const simpleValue = vm.dump(simpleResult.value);
-    const complexValue = vm.dump(complexResult.value);
-
-    console.log("Simple result:", simpleValue);
-    console.log("Complex result:", complexValue);
-
-    // Parse the JSON result
-    const parsedResult = JSON.parse(complexValue);
-
-    // Check results
-    if (simpleValue === 5 && parsedResult.factorial5 === 120 && parsedResult.fibonacci7 === 13) {
-      const successMessage = `🎉 QuickJS Test PASSED! Simple: ${simpleValue}, Factorial(5): ${parsedResult.factorial5}, Fibonacci(7): ${parsedResult.fibonacci7}`;
-      console.log(successMessage);
-      gameInfoElement.textContent = "🚀 QuickJS execution test PASSED! Dynamic JavaScript execution works!";
-      gameInfoElement.style.color = "#4CAF50";
-    } else {
-      const failMessage = `❌ QuickJS Test FAILED! Got: simple=${simpleValue}, factorial=${parsedResult.factorial5}, fibonacci=${parsedResult.fibonacci7}`;
-      console.log(failMessage);
-      gameInfoElement.textContent = "❌ QuickJS test failed - unexpected results";
-      gameInfoElement.style.color = "#f44336";
-    }
-
-    // Clean up
-    simpleResult.dispose();
-    complexResult.dispose();
-    vm.dispose();
-
-  } catch (error) {
-    console.error("QuickJS test failed:", error);
-    gameInfoElement.textContent = `❌ QuickJS test failed: ${error.message}`;
-    gameInfoElement.style.color = "#f44336";
-  }
-}
 
 
 
@@ -754,6 +738,11 @@ document.getElementById("btn-back-to-game")?.addEventListener("click", () => {
   gamePublishingElement.style.display = "none";
   document.body.classList.remove("game-publishing-active");
 });
+
+// Edit control event listeners
+document.getElementById("btn-edit-game")?.addEventListener("click", startEditMode);
+document.getElementById("btn-undo-edit")?.addEventListener("click", undoEdit);
+document.getElementById("btn-redo-edit")?.addEventListener("click", redoEdit);
 
 
 // Custom game event for score submission
@@ -847,6 +836,68 @@ function setupMobileKeyboardHandling() {
       }
     });
   }
+}
+
+// Edit history management
+function saveToEditHistory(gameData) {
+  // Remove any versions after current index (when doing undo then new edit)
+  editHistory.versions = editHistory.versions.slice(0, editHistory.currentIndex + 1);
+
+  // Add new version
+  editHistory.versions.push(JSON.parse(JSON.stringify(gameData)));
+  editHistory.currentIndex = editHistory.versions.length - 1;
+
+  // Keep only last 10 versions to save memory
+  if (editHistory.versions.length > 10) {
+    editHistory.versions.shift();
+    editHistory.currentIndex--;
+  }
+
+  // Save to localStorage
+  localStorage.setItem('editHistory', JSON.stringify(editHistory));
+}
+
+function updateEditButtons() {
+  const canUndo = editHistory.currentIndex > 0;
+  const canRedo = editHistory.currentIndex < editHistory.versions.length - 1;
+
+  undoEditButton.style.display = canUndo ? "inline-block" : "none";
+  redoEditButton.style.display = canRedo ? "inline-block" : "none";
+}
+
+function undoEdit() {
+  if (editHistory.currentIndex > 0) {
+    editHistory.currentIndex--;
+    currentGameData = JSON.parse(JSON.stringify(editHistory.versions[editHistory.currentIndex]));
+    updateEditButtons();
+    localStorage.setItem('editHistory', JSON.stringify(editHistory));
+
+    // Reload the game with previous version
+    showGeneratedGame();
+  }
+}
+
+function redoEdit() {
+  if (editHistory.currentIndex < editHistory.versions.length - 1) {
+    editHistory.currentIndex++;
+    currentGameData = JSON.parse(JSON.stringify(editHistory.versions[editHistory.currentIndex]));
+    updateEditButtons();
+    localStorage.setItem('editHistory', JSON.stringify(editHistory));
+
+    // Reload the game with next version
+    showGeneratedGame();
+  }
+}
+
+function startEditMode() {
+  if (!isGeneratedGame || !currentGameData) {
+    gameInfoElement.textContent = "No generated game to edit!";
+    gameInfoElement.style.color = "#f44336";
+    return;
+  }
+
+  isEditMode = true;
+  showGameCreation();
 }
 
 // Initialize everything

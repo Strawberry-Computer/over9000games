@@ -1,4 +1,4 @@
-import { getQuickJS, RELEASE_SYNC } from "quickjs-emscripten";
+import { getQuickJS } from "quickjs-emscripten";
 import { validateGameSchema, sanitizeGameDefinition } from "../shared/game-schema.js";
 import { renderBitmapText, renderCenteredBitmapText } from "./bitmap-font.js";
 
@@ -28,6 +28,7 @@ export class GameRunner {
     };
 
     this.leaderboardLoading = false;
+    this.loadingAnimationFrame = 0;
 
     this.gameDefinition = null;
     this.inputState = {};
@@ -745,7 +746,13 @@ function doUpdate(deltaTime, input) {
       renderCenteredBitmapText(this.ctx, 'NOT SHARED', centerX, startY + 16, '#ffffff', 1);
     } else if (this.leaderboardLoading) {
       console.log("renderLeaderboardOverlay: showing 'LOADING...'");
-      renderCenteredBitmapText(this.ctx, 'LOADING...', centerX, startY + 15, '#ffff00', 1);
+
+      // Animate ellipsis every 20 frames (roughly 1/3 second at 60fps)
+      this.loadingAnimationFrame = (this.loadingAnimationFrame + 1) % 80;
+      const ellipsisCount = Math.floor(this.loadingAnimationFrame / 20);
+      const dots = '.'.repeat(ellipsisCount);
+
+      renderCenteredBitmapText(this.ctx, `LOADING${dots}`, centerX, startY + 15, '#ffff00', 1);
     } else if (this.leaderboardData.length === 0) {
       console.log("renderLeaderboardOverlay: showing 'NO SCORES YET'");
       renderCenteredBitmapText(this.ctx, 'NO SCORES YET', centerX, startY + 15, '#ffffff', 1);

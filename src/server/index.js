@@ -144,6 +144,51 @@ router.post("/api/game/generate", async (req, res) => {
   }
 });
 
+router.post("/api/game/edit", async (req, res) => {
+  const { postId } = context;
+  if (!postId) {
+    res.status(400).json({
+      status: "error",
+      message: "postId is required",
+    });
+    return;
+  }
+
+  try {
+    const { description, previousGame } = req.body;
+    if (!description) {
+      res.status(400).json({
+        status: "error",
+        message: "Edit description is required",
+      });
+      return;
+    }
+
+    if (!previousGame) {
+      res.status(400).json({
+        status: "error",
+        message: "Previous game data is required for editing",
+      });
+      return;
+    }
+
+    const gameDefinition = await generateGameWithAI(description, settings, previousGame);
+
+    console.log("Edited game definition:", JSON.stringify(gameDefinition, null, 2));
+
+    res.json({
+      type: "generate",
+      gameDefinition,
+    });
+  } catch (error) {
+    console.error(`Error editing game for post ${postId}:`, error);
+    res.status(500).json({
+      status: "error",
+      message: `Failed to edit game: ${error.message}`,
+    });
+  }
+});
+
 router.post("/api/game/test", async (req, res) => {
   const { postId } = context;
   if (!postId) {
