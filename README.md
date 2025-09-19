@@ -1,4 +1,4 @@
-# Over9000Games - NES-Style Game Console for Reddit
+# RES-9000 - NES-Style Game Console for Reddit
 
 A retro 8-bit game console built on Reddit's Devvit platform featuring authentic NES-style graphics and gameplay.
 
