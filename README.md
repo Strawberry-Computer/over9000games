@@ -264,9 +264,9 @@ const generatedGame = {
 // Games must define this function
 function gameUpdate(deltaTime, input) {
   // deltaTime: seconds since last frame (e.g., 0.016 for 60fps)
-  // input: { up, down, left, right, a, b, start, select,
+  // input: { up, down, left, right, a, b,
   //          upPressed, downPressed, leftPressed, rightPressed,
-  //          aPressed, bPressed, startPressed, selectPressed }
+  //          aPressed, bPressed }
 
   // Return array of commands
   return [
