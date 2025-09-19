@@ -1,6 +1,6 @@
 import { navigateTo } from "@devvit/web/client";
 import { getGameRunner } from "./game-runner.js";
-import { getQuickJS, RELEASE_SYNC } from "quickjs-emscripten";
+import { getQuickJS } from "quickjs-emscripten";
 import { DraftManager } from "./draft-manager.js";
 
 const titleElement = document.getElementById("title");
@@ -334,7 +334,7 @@ async function generateGame() {
   generateButton.classList.add("disabled");
 
   try {
-    showGenerationStatus("Generating your game...", "loading");
+    showGenerationStatus("Generating your game", "loading");
 
     const response = await fetch("/api/game/generate", {
       method: "POST",
@@ -374,7 +374,7 @@ async function generateGame() {
 
 async function showGeneratedGame() {
   try {
-    showGenerationStatus("Loading your game...", "loading");
+    showGenerationStatus("Loading your game", "loading");
 
     // Log the full generated game code for debugging
     console.log("=== GENERATED GAME CODE START ===");
@@ -538,13 +538,13 @@ async function publishGameToReddit() {
     let screenshot = currentGameData.autoScreenshot;
 
     if (!screenshot) {
-      showPublishingStatus("Capturing screenshot...", "loading");
+      showPublishingStatus("Capturing screenshot", "loading");
       screenshot = await captureGameScreenshot();
     } else {
-      showPublishingStatus("Using auto-generated screenshot...", "loading");
+      showPublishingStatus("Using auto-generated screenshot", "loading");
     }
 
-    showPublishingStatus("Creating Reddit post...", "loading");
+    showPublishingStatus("Creating Reddit post", "loading");
 
     const response = await fetch("/api/post/create", {
       method: "POST",
@@ -565,7 +565,7 @@ async function publishGameToReddit() {
     const postData = await response.json();
 
     if (postData.success) {
-      showPublishingStatus(`Game posted successfully! Redirecting to post...`, "success");
+      showPublishingStatus(`Game posted successfully! Redirecting to post`, "success");
 
       // Clear the draft after successful publishing
       if (draftManager) {
@@ -596,91 +596,6 @@ async function publishGameToReddit() {
   }
 }
 
-// QuickJS test function
-async function testQuickJS() {
-  try {
-    console.log("Testing QuickJS execution...");
-    gameInfoElement.textContent = "Testing QuickJS execution...";
-
-    // Initialize QuickJS with synchronous variant
-    const QuickJS = await getQuickJS({ variant: RELEASE_SYNC });
-    console.log("QuickJS loaded successfully!");
-    gameInfoElement.textContent = "QuickJS loaded, creating context...";
-
-    // Create a VM context
-    const vm = QuickJS.newContext();
-    console.log("QuickJS context created!");
-    gameInfoElement.textContent = "QuickJS context created, testing code execution...";
-
-    // Test simple JavaScript execution
-    const simpleResult = vm.evalCode("2 + 3");
-    console.log("Simple math result:", vm.dump(simpleResult));
-
-    // Test more complex JavaScript
-    const complexCode = `
-      function factorial(n) {
-        if (n <= 1) return 1;
-        return n * factorial(n - 1);
-      }
-
-      function fibonacci(n) {
-        if (n <= 1) return n;
-        return fibonacci(n - 1) + fibonacci(n - 2);
-      }
-
-      const result = {
-        factorial5: factorial(5),
-        fibonacci7: fibonacci(7),
-        message: "Hello from QuickJS!"
-      };
-
-      JSON.stringify(result);
-    `;
-
-    gameInfoElement.textContent = "Executing complex JavaScript code...";
-    const complexResult = vm.evalCode(complexCode);
-
-    if (simpleResult.error) {
-      throw new Error(`Simple test failed: ${vm.dump(simpleResult.error)}`);
-    }
-
-    if (complexResult.error) {
-      throw new Error(`Complex test failed: ${vm.dump(complexResult.error)}`);
-    }
-
-    const simpleValue = vm.dump(simpleResult.value);
-    const complexValue = vm.dump(complexResult.value);
-
-    console.log("Simple result:", simpleValue);
-    console.log("Complex result:", complexValue);
-
-    // Parse the JSON result
-    const parsedResult = JSON.parse(complexValue);
-
-    // Check results
-    if (simpleValue === 5 && parsedResult.factorial5 === 120 && parsedResult.fibonacci7 === 13) {
-      const successMessage = `🎉 QuickJS Test PASSED! Simple: ${simpleValue}, Factorial(5): ${parsedResult.factorial5}, Fibonacci(7): ${parsedResult.fibonacci7}`;
-      console.log(successMessage);
-      gameInfoElement.textContent = "🚀 QuickJS execution test PASSED! Dynamic JavaScript execution works!";
-      gameInfoElement.style.color = "#4CAF50";
-    } else {
-      const failMessage = `❌ QuickJS Test FAILED! Got: simple=${simpleValue}, factorial=${parsedResult.factorial5}, fibonacci=${parsedResult.fibonacci7}`;
-      console.log(failMessage);
-      gameInfoElement.textContent = "❌ QuickJS test failed - unexpected results";
-      gameInfoElement.style.color = "#f44336";
-    }
-
-    // Clean up
-    simpleResult.dispose();
-    complexResult.dispose();
-    vm.dispose();
-
-  } catch (error) {
-    console.error("QuickJS test failed:", error);
-    gameInfoElement.textContent = `❌ QuickJS test failed: ${error.message}`;
-    gameInfoElement.style.color = "#f44336";
-  }
-}
 
 
 
