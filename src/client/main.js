@@ -470,13 +470,13 @@ async function captureGameScreenshot() {
       const captureCanvas = document.createElement('canvas');
       const captureCtx = captureCanvas.getContext('2d');
 
-      // Set up 4x scaled canvas (256×256 → 1024×1024)
-      captureCanvas.width = 1024;
-      captureCanvas.height = 1024;
+      // Set up 4x scaled canvas (128×128 → 512×512)
+      captureCanvas.width = 512;
+      captureCanvas.height = 512;
       captureCtx.imageSmoothingEnabled = false; // Maintain pixel art crispness
 
       // Scale the source canvas 4x
-      captureCtx.drawImage(sourceCanvas, 0, 0, 256, 256, 0, 0, 1024, 1024);
+      captureCtx.drawImage(sourceCanvas, 0, 0, 128, 128, 0, 0, 512, 512);
 
       // Create landscape format canvas for Reddit posts (16:9 aspect ratio)
       const landscapeCanvas = document.createElement('canvas');

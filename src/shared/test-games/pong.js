@@ -50,9 +50,9 @@ function update(deltaTime, input) {
   // Initialize game state if needed
   if (!gameState) {
     gameState = {
-      player1: { x: 10, y: 100 },
-      player2: { x: 238, y: 100 },
-      ball: { x: 130, y: 100, dx: 2, dy: 2 },
+      player1: { x: 4, y: 50 },
+      player2: { x: 116, y: 50 },
+      ball: { x: 64, y: 50, dx: 1, dy: 1 },
       score: 0,
       gameOver: false,
       startTime: Date.now()
@@ -70,7 +70,7 @@ function update(deltaTime, input) {
 
   // Player 1 controls (paddle is 32 pixels tall)
   if (input.up && gameState.player1.y > 0) gameState.player1.y -= 2;
-  if (input.down && gameState.player1.y < 224) gameState.player1.y += 2; // 256 - 32 = 224
+  if (input.down && gameState.player1.y < 96) gameState.player1.y += 2; // 128 - 32 = 96
 
   // Player 2 controls (AI) - target center of paddle
   const player2Center = gameState.player2.y + 16; // Center of 32px paddle
@@ -78,14 +78,14 @@ function update(deltaTime, input) {
   if (gameState.ball.y > player2Center + 4) gameState.player2.y += 2;
   // Keep AI paddle in bounds
   if (gameState.player2.y < 0) gameState.player2.y = 0;
-  if (gameState.player2.y > 224) gameState.player2.y = 224;
+  if (gameState.player2.y > 96) gameState.player2.y = 96;
 
   // Update ball position
   gameState.ball.x += gameState.ball.dx;
   gameState.ball.y += gameState.ball.dy;
 
   // Ball collision with top and bottom
-  if (gameState.ball.y <= 0 || gameState.ball.y >= 232) {
+  if (gameState.ball.y <= 0 || gameState.ball.y >= 120) {
     gameState.ball.dy *= -1;
   }
 
@@ -104,14 +104,14 @@ function update(deltaTime, input) {
   if (gameState.ball.x < -10) {
     // Ball went off left side - AI wins, game over
     gameState.gameOver = true;
-  } else if (gameState.ball.x > 266) {
+  } else if (gameState.ball.x > 138) {
     // Ball went off right side - Player wins, bonus points
     gameState.score += 100;
     // Reset ball for continued play
-    gameState.ball.x = 130;
-    gameState.ball.y = 100;
-    gameState.ball.dx = -2;
-    gameState.ball.dy = 2;
+    gameState.ball.x = 64;
+    gameState.ball.y = 50;
+    gameState.ball.dx = -1;
+    gameState.ball.dy = 1;
   }
 
   // Game over after 2 minutes of play
