@@ -139,6 +139,64 @@ function resources() {
   };
 }
 
+// Game constants
+const SCREEN_WIDTH = 128;
+const SCREEN_HEIGHT = 128;
+const SPRITE_SIZE = 8;
+const TILE_SIZE = 8;
+const TILES_X = 16;
+const TILES_Y = 16;
+
+// Character dimensions
+const PLAYER_WIDTH = SPRITE_SIZE;
+const PLAYER_HEIGHT = 24; // 3 sprites tall
+const ENEMY_WIDTH = SPRITE_SIZE;
+const ENEMY_HEIGHT = 24; // 3 sprites tall
+const COIN_SIZE = SPRITE_SIZE;
+const PROJECTILE_SIZE = SPRITE_SIZE;
+
+// Physics constants (pixels per second)
+const PLAYER_SPEED = 80;
+const GRAVITY = 400;
+const JUMP_POWER = 200;
+const ENEMY_SPEED_1 = 30;
+const ENEMY_SPEED_2 = 25;
+const PROJECTILE_SPEED = 150;
+const PROJECTILE_LIFETIME = 1.0; // seconds
+
+// Animation timing
+const PLAYER_WALK_INTERVAL = 0.2; // seconds
+const ENEMY_WALK_INTERVAL = 0.3; // seconds
+
+// Game limits
+const MAX_PROJECTILES = 3;
+
+// Scoring
+const ENEMY_KILL_SCORE = 100;
+const COIN_SCORE = 50;
+
+// Starting positions
+const PLAYER_START_X = 16;
+const PLAYER_START_Y = 104;
+
+// Tile IDs
+const TILE_EMPTY = 0;
+const TILE_PLATFORM = 6;
+const TILE_BRICK = 9;
+const TILE_METAL = 10;
+const TILE_SPIKES = 11;
+const TILE_EXIT = 12;
+
+// Sprite IDs
+const SPRITE_WIZARD_HEAD = 0;
+const SPRITE_WIZARD_BODY = 1;
+const SPRITE_WIZARD_LEGS = 2;
+const SPRITE_ENEMY_HEAD = 3;
+const SPRITE_ENEMY_BODY = 4;
+const SPRITE_ENEMY_LEGS = 5;
+const SPRITE_COIN = 7;
+const SPRITE_PROJECTILE = 8;
+
 let gameState;
 
 function update(deltaTime, input) {
@@ -146,8 +204,8 @@ function update(deltaTime, input) {
   if (!gameState) {
     gameState = {
       player: {
-        x: 16,
-        y: 104, // On starting platform (row 13 * 8 = 104, minus sprite height)
+        x: PLAYER_START_X,
+        y: PLAYER_START_Y,
         vx: 0,
         vy: 0,
         onGround: true,
@@ -156,8 +214,8 @@ function update(deltaTime, input) {
         facing: 1 // 1 = right, -1 = left
       },
       enemies: [
-        { x: 48, y: 72, vx: -30, health: 2, walkFrame: 0, walkTimer: 0 }, // On stone platform (row 9)
-        { x: 96, y: 64, vx: 25, health: 2, walkFrame: 0, walkTimer: 0 }   // On stone platform (row 8)
+        { x: 48, y: 72, vx: -ENEMY_SPEED_1, health: 2, walkFrame: 0, walkTimer: 0 }, // On stone platform (row 9)
+        { x: 96, y: 64, vx: ENEMY_SPEED_2, health: 2, walkFrame: 0, walkTimer: 0 }   // On stone platform (row 8)
       ],
       tilemap: [
         // 16 rows x 16 columns (128x128 screen) - 0=empty, 6=platform, 9=brick, 10=metal, 11=spikes, 12=exit
@@ -186,9 +244,9 @@ function update(deltaTime, input) {
         { x: 112, y: 8, collected: false }    // Near exit
       ],
       projectiles: [],
-      gravity: 400,
-      jumpPower: 200,
-      playerSpeed: 80,
+      gravity: GRAVITY,
+      jumpPower: JUMP_POWER,
+      playerSpeed: PLAYER_SPEED,
       score: 0,
       gameOver: false,
       levelComplete: false
@@ -244,12 +302,12 @@ function update(deltaTime, input) {
   }
 
   // Attack (using A button)
-  if (input.a && gameState.projectiles.length < 3) {
+  if (input.a && gameState.projectiles.length < MAX_PROJECTILES) {
     gameState.projectiles.push({
-      x: gameState.player.x + (gameState.player.facing > 0 ? 8 : -8),
+      x: gameState.player.x + (gameState.player.facing > 0 ? SPRITE_SIZE : -SPRITE_SIZE),
       y: gameState.player.y + 4,
-      vx: gameState.player.facing * 150,
-      life: 1.0
+      vx: gameState.player.facing * PROJECTILE_SPEED,
+      life: PROJECTILE_LIFETIME
     });
   }
 
@@ -267,7 +325,7 @@ function update(deltaTime, input) {
   // Player walking animation
   if (Math.abs(gameState.player.vx) > 0) {
     gameState.player.walkTimer += dt;
-    if (gameState.player.walkTimer > 0.2) {
+    if (gameState.player.walkTimer > PLAYER_WALK_INTERVAL) {
       gameState.player.walkFrame = 1 - gameState.player.walkFrame;
       gameState.player.walkTimer = 0;
     }
@@ -275,40 +333,40 @@ function update(deltaTime, input) {
     gameState.player.walkFrame = 0;
   }
 
-  // Platform collision for player using tilemap (player is 24 pixels tall)
+  // Platform collision for player using tilemap
   gameState.player.onGround = false;
 
   // Check tiles under player's feet (bottom edge)
-  const playerBottom = gameState.player.y + 24;
+  const playerBottom = gameState.player.y + PLAYER_HEIGHT;
   const playerLeft = gameState.player.x;
-  const playerRight = gameState.player.x + 8;
+  const playerRight = gameState.player.x + PLAYER_WIDTH;
 
   // Convert to tile coordinates
-  const tileY = Math.floor(playerBottom / 8);
-  const leftTileX = Math.floor(playerLeft / 8);
-  const rightTileX = Math.floor(playerRight / 8);
+  const tileY = Math.floor(playerBottom / TILE_SIZE);
+  const leftTileX = Math.floor(playerLeft / TILE_SIZE);
+  const rightTileX = Math.floor(playerRight / TILE_SIZE);
 
   // Check if falling onto a platform
-  if (gameState.player.vy > 0 && tileY < 16) {
+  if (gameState.player.vy > 0 && tileY < TILES_Y) {
     for (let tileX = leftTileX; tileX <= rightTileX; tileX++) {
-      if (tileX >= 0 && tileX < 16 && gameState.tilemap[tileY] && gameState.tilemap[tileY][tileX] !== 0) {
+      if (tileX >= 0 && tileX < TILES_X && gameState.tilemap[tileY] && gameState.tilemap[tileY][tileX] !== TILE_EMPTY) {
         const tileId = gameState.tilemap[tileY][tileX];
 
         // Check for spikes
-        if (tileId === 11) {
+        if (tileId === TILE_SPIKES) {
           gameState.gameOver = true;
           return;
         }
 
         // Check for exit
-        if (tileId === 12) {
+        if (tileId === TILE_EXIT) {
           gameState.levelComplete = true;
           return;
         }
 
         // Land on solid platform
-        if (tileId === 6 || tileId === 9 || tileId === 10) {
-          gameState.player.y = tileY * 8 - 24;
+        if (tileId === TILE_PLATFORM || tileId === TILE_BRICK || tileId === TILE_METAL) {
+          gameState.player.y = tileY * TILE_SIZE - PLAYER_HEIGHT;
           gameState.player.vy = 0;
           gameState.player.onGround = true;
           break;
@@ -318,18 +376,18 @@ function update(deltaTime, input) {
   }
 
   // Check for spikes or exit while standing/moving
-  const playerCenterX = gameState.player.x + 4;
-  const playerCenterY = gameState.player.y + 12;
-  const centerTileX = Math.floor(playerCenterX / 8);
-  const centerTileY = Math.floor(playerCenterY / 8);
+  const playerCenterX = gameState.player.x + PLAYER_WIDTH / 2;
+  const playerCenterY = gameState.player.y + PLAYER_HEIGHT / 2;
+  const centerTileX = Math.floor(playerCenterX / TILE_SIZE);
+  const centerTileY = Math.floor(playerCenterY / TILE_SIZE);
 
-  if (centerTileX >= 0 && centerTileX < 16 && centerTileY >= 0 && centerTileY < 16) {
+  if (centerTileX >= 0 && centerTileX < TILES_X && centerTileY >= 0 && centerTileY < TILES_Y) {
     const tileId = gameState.tilemap[centerTileY][centerTileX];
-    if (tileId === 11) {
+    if (tileId === TILE_SPIKES) {
       gameState.gameOver = true;
       return;
     }
-    if (tileId === 12) {
+    if (tileId === TILE_EXIT) {
       gameState.levelComplete = true;
       return;
     }
@@ -337,10 +395,10 @@ function update(deltaTime, input) {
 
   // Keep player in bounds
   if (gameState.player.x < 0) gameState.player.x = 0;
-  if (gameState.player.x > 120) gameState.player.x = 120;
-  if (gameState.player.y > 128) {
-    gameState.player.y = 104;
-    gameState.player.x = 16;
+  if (gameState.player.x > SCREEN_WIDTH - PLAYER_WIDTH) gameState.player.x = SCREEN_WIDTH - PLAYER_WIDTH;
+  if (gameState.player.y > SCREEN_HEIGHT) {
+    gameState.player.y = PLAYER_START_Y;
+    gameState.player.x = PLAYER_START_X;
     gameState.player.vy = 0;
   }
 
@@ -352,25 +410,25 @@ function update(deltaTime, input) {
 
     // Enemy walking animation
     enemy.walkTimer += dt;
-    if (enemy.walkTimer > 0.3) {
+    if (enemy.walkTimer > ENEMY_WALK_INTERVAL) {
       enemy.walkFrame = 1 - enemy.walkFrame;
       enemy.walkTimer = 0;
     }
 
     // Enemy AI: reverse direction at edges using tilemap
     let hitWall = false;
-    const enemyBottom = enemy.y + 24;
-    const enemyTileY = Math.floor(enemyBottom / 8);
+    const enemyBottom = enemy.y + ENEMY_HEIGHT;
+    const enemyTileY = Math.floor(enemyBottom / TILE_SIZE);
 
     // Check if enemy is at edge of platform
-    const nextX = enemy.x + (enemy.vx > 0 ? 8 : -8);
-    const nextTileX = Math.floor(nextX / 8);
+    const nextX = enemy.x + (enemy.vx > 0 ? ENEMY_WIDTH : -ENEMY_WIDTH);
+    const nextTileX = Math.floor(nextX / TILE_SIZE);
 
     // Reverse if at world edge or no platform ahead
-    if (nextX <= 0 || nextX >= 120 ||
-        nextTileX < 0 || nextTileX >= 16 ||
+    if (nextX <= 0 || nextX >= SCREEN_WIDTH - ENEMY_WIDTH ||
+        nextTileX < 0 || nextTileX >= TILES_X ||
         !gameState.tilemap[enemyTileY] ||
-        gameState.tilemap[enemyTileY][nextTileX] === 0) {
+        gameState.tilemap[enemyTileY][nextTileX] === TILE_EMPTY) {
       enemy.vx *= -1;
     }
   }
@@ -381,15 +439,15 @@ function update(deltaTime, input) {
     proj.life -= dt;
 
     // Remove if out of bounds or expired
-    if (proj.x < 0 || proj.x > 128 || proj.life <= 0) return false;
+    if (proj.x < 0 || proj.x > SCREEN_WIDTH || proj.life <= 0) return false;
 
-    // Check collision with enemies (enemies are 24 pixels tall)
+    // Check collision with enemies
     for (const enemy of gameState.enemies) {
       if (enemy.health > 0 &&
-          proj.x + 4 > enemy.x && proj.x < enemy.x + 8 &&
-          proj.y + 4 > enemy.y && proj.y < enemy.y + 24) {
+          proj.x + PROJECTILE_SIZE > enemy.x && proj.x < enemy.x + ENEMY_WIDTH &&
+          proj.y + PROJECTILE_SIZE > enemy.y && proj.y < enemy.y + ENEMY_HEIGHT) {
         enemy.health--;
-        if (enemy.health <= 0) gameState.score += 100;
+        if (enemy.health <= 0) gameState.score += ENEMY_KILL_SCORE;
         return false;
       }
     }
@@ -397,13 +455,13 @@ function update(deltaTime, input) {
     return true;
   });
 
-  // Coin collection (player is 24 pixels tall)
+  // Coin collection
   for (const coin of gameState.coins) {
     if (!coin.collected &&
-        gameState.player.x + 8 > coin.x && gameState.player.x < coin.x + 8 &&
-        gameState.player.y + 24 > coin.y && gameState.player.y < coin.y + 8) {
+        gameState.player.x + PLAYER_WIDTH > coin.x && gameState.player.x < coin.x + COIN_SIZE &&
+        gameState.player.y + PLAYER_HEIGHT > coin.y && gameState.player.y < coin.y + COIN_SIZE) {
       coin.collected = true;
-      gameState.score += 50;
+      gameState.score += COIN_SCORE;
     }
   }
 
@@ -412,10 +470,10 @@ function update(deltaTime, input) {
   const sprites = [];
 
   // Render tilemap
-  for (let y = 0; y < 16; y++) {
-    for (let x = 0; x < 32; x++) {
+  for (let y = 0; y < TILES_Y; y++) {
+    for (let x = 0; x < TILES_X; x++) {
       const tileId = gameState.tilemap[y][x];
-      if (tileId !== 0) {
+      if (tileId !== TILE_EMPTY) {
         tiles.push({
           x: x,
           y: y,
@@ -429,7 +487,7 @@ function update(deltaTime, input) {
   for (const coin of gameState.coins) {
     if (!coin.collected) {
       sprites.push({
-        spriteId: 7, // Yellow coin with gray edges
+        spriteId: SPRITE_COIN,
         x: coin.x,
         y: coin.y
       });
@@ -438,38 +496,38 @@ function update(deltaTime, input) {
 
   // Render wizard (multi-sprite character)
   sprites.push({
-    spriteId: 0, // Wizard head (purple hat, white face, gray beard)
+    spriteId: SPRITE_WIZARD_HEAD,
     x: gameState.player.x,
     y: gameState.player.y
   });
   sprites.push({
-    spriteId: 1, // Wizard body (purple robes with belt)
+    spriteId: SPRITE_WIZARD_BODY,
     x: gameState.player.x,
-    y: gameState.player.y + 8
+    y: gameState.player.y + SPRITE_SIZE
   });
   sprites.push({
-    spriteId: 2, // Wizard legs with staff (purple robe bottom, brown staff)
+    spriteId: SPRITE_WIZARD_LEGS,
     x: gameState.player.x,
-    y: gameState.player.y + 16
+    y: gameState.player.y + SPRITE_SIZE * 2
   });
 
   // Render enemies (multi-sprite)
   for (const enemy of gameState.enemies) {
     if (enemy.health > 0) {
       sprites.push({
-        spriteId: 3, // Enemy head (red skin, yellow eyes, spiky hair)
+        spriteId: SPRITE_ENEMY_HEAD,
         x: enemy.x,
         y: enemy.y
       });
       sprites.push({
-        spriteId: 4, // Enemy body (purple shirt, red arms)
+        spriteId: SPRITE_ENEMY_BODY,
         x: enemy.x,
-        y: enemy.y + 8
+        y: enemy.y + SPRITE_SIZE
       });
       sprites.push({
-        spriteId: 5, // Enemy legs (black pants, red feet)
+        spriteId: SPRITE_ENEMY_LEGS,
         x: enemy.x,
-        y: enemy.y + 16
+        y: enemy.y + SPRITE_SIZE * 2
       });
     }
   }
@@ -477,7 +535,7 @@ function update(deltaTime, input) {
   // Render projectiles
   for (const proj of gameState.projectiles) {
     sprites.push({
-      spriteId: 8, // Energy blast projectile
+      spriteId: SPRITE_PROJECTILE,
       x: proj.x,
       y: proj.y
     });

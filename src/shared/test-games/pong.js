@@ -44,15 +44,36 @@ function resources() {
   };
 }
 
+// Game constants
+const SCREEN_WIDTH = 128;
+const SCREEN_HEIGHT = 128;
+const SPRITE_SIZE = 8;
+const PADDLE_HEIGHT = 32; // 4 sprites tall
+const PADDLE_WIDTH = SPRITE_SIZE;
+const PADDLE_MARGIN = 4;
+const BALL_SIZE = SPRITE_SIZE;
+
+// Movement speeds (pixels per second)
+const PLAYER_SPEED = 120;
+const AI_SPEED = 100;
+const BALL_SPEED = 60;
+
+// Game timing
+const GAME_DURATION = 120000; // 2 minutes in milliseconds
+
+// Scoring
+const HIT_SCORE = 1;
+const WIN_SCORE = 10;
+
 let gameState;
 
 function update(deltaTime, input) {
   // Initialize game state if needed
   if (!gameState) {
     gameState = {
-      player1: { x: 4, y: 50 },
-      player2: { x: 116, y: 50 },
-      ball: { x: 64, y: 50, dx: 1, dy: 1 },
+      player1: { x: PADDLE_MARGIN, y: SCREEN_HEIGHT / 2 - PADDLE_HEIGHT / 2 },
+      player2: { x: SCREEN_WIDTH - PADDLE_MARGIN - PADDLE_WIDTH, y: SCREEN_HEIGHT / 2 - PADDLE_HEIGHT / 2 },
+      ball: { x: SCREEN_WIDTH / 2, y: SCREEN_HEIGHT / 2, dx: BALL_SPEED, dy: BALL_SPEED },
       score: 0,
       gameOver: false,
       startTime: Date.now()
@@ -68,55 +89,65 @@ function update(deltaTime, input) {
     };
   }
 
-  // Player 1 controls (paddle is 32 pixels tall)
-  if (input.up && gameState.player1.y > 0) gameState.player1.y -= 2;
-  if (input.down && gameState.player1.y < 96) gameState.player1.y += 2; // 128 - 32 = 96
+  // Player 1 controls
+  const maxPlayerY = SCREEN_HEIGHT - PADDLE_HEIGHT;
+  if (input.up && gameState.player1.y > 0) gameState.player1.y -= PLAYER_SPEED * deltaTime;
+  if (input.down && gameState.player1.y < maxPlayerY) gameState.player1.y += PLAYER_SPEED * deltaTime;
 
   // Player 2 controls (AI) - target center of paddle
-  const player2Center = gameState.player2.y + 16; // Center of 32px paddle
-  if (gameState.ball.y < player2Center - 4) gameState.player2.y -= 2;
-  if (gameState.ball.y > player2Center + 4) gameState.player2.y += 2;
+  const player2Center = gameState.player2.y + PADDLE_HEIGHT / 2;
+  const deadZone = 4;
+  if (gameState.ball.y < player2Center - deadZone) gameState.player2.y -= AI_SPEED * deltaTime;
+  if (gameState.ball.y > player2Center + deadZone) gameState.player2.y += AI_SPEED * deltaTime;
   // Keep AI paddle in bounds
   if (gameState.player2.y < 0) gameState.player2.y = 0;
-  if (gameState.player2.y > 96) gameState.player2.y = 96;
+  if (gameState.player2.y > maxPlayerY) gameState.player2.y = maxPlayerY;
 
-  // Update ball position
-  gameState.ball.x += gameState.ball.dx;
-  gameState.ball.y += gameState.ball.dy;
+  // Update ball position using deltaTime
+  gameState.ball.x += gameState.ball.dx * deltaTime;
+  gameState.ball.y += gameState.ball.dy * deltaTime;
 
   // Ball collision with top and bottom
-  if (gameState.ball.y <= 0 || gameState.ball.y >= 120) {
+  const maxBallY = SCREEN_HEIGHT - BALL_SIZE;
+  if (gameState.ball.y <= 0 || gameState.ball.y >= maxBallY) {
     gameState.ball.dy *= -1;
   }
 
-  // Ball collision with paddles (32 pixels tall)
-  if ((gameState.ball.x <= gameState.player1.x + 8 &&
-       gameState.ball.y + 8 >= gameState.player1.y &&
-       gameState.ball.y <= gameState.player1.y + 32) ||
-      (gameState.ball.x + 8 >= gameState.player2.x &&
-       gameState.ball.y + 8 >= gameState.player2.y &&
-       gameState.ball.y <= gameState.player2.y + 32)) {
+  // Ball collision with paddles
+  const ballRight = gameState.ball.x + BALL_SIZE;
+  const ballBottom = gameState.ball.y + BALL_SIZE;
+  const player1Right = gameState.player1.x + PADDLE_WIDTH;
+  const player1Bottom = gameState.player1.y + PADDLE_HEIGHT;
+  const player2Bottom = gameState.player2.y + PADDLE_HEIGHT;
+
+  if ((gameState.ball.x <= player1Right &&
+       ballBottom >= gameState.player1.y &&
+       gameState.ball.y <= player1Bottom) ||
+      (ballRight >= gameState.player2.x &&
+       ballBottom >= gameState.player2.y &&
+       gameState.ball.y <= player2Bottom)) {
     gameState.ball.dx *= -1;
-    gameState.score += 10; // Add points for hitting the ball
+    gameState.score += HIT_SCORE;
   }
 
   // Check for game over conditions
-  if (gameState.ball.x < -10) {
+  const ballOffsetMargin = 10;
+  if (gameState.ball.x < -ballOffsetMargin) {
     // Ball went off left side - AI wins, game over
     gameState.gameOver = true;
-  } else if (gameState.ball.x > 138) {
+  } else if (gameState.ball.x > SCREEN_WIDTH + ballOffsetMargin) {
     // Ball went off right side - Player wins, bonus points
-    gameState.score += 100;
+    gameState.score += WIN_SCORE;
     // Reset ball for continued play
-    gameState.ball.x = 64;
-    gameState.ball.y = 50;
-    gameState.ball.dx = -1;
-    gameState.ball.dy = 1;
+    gameState.ball.x = SCREEN_WIDTH / 2;
+    gameState.ball.y = SCREEN_HEIGHT / 2;
+    gameState.ball.dx = -BALL_SPEED;
+    gameState.ball.dy = BALL_SPEED;
   }
 
-  // Game over after 2 minutes of play
+  // Game over after specified duration
   const playTime = Date.now() - gameState.startTime;
-  if (playTime > 120000) { // 2 minutes
+  if (playTime > GAME_DURATION) {
     gameState.gameOver = true;
   }
 
@@ -132,17 +163,17 @@ function update(deltaTime, input) {
       {
         spriteId: 0, // Middle square
         x: gameState.player1.x,
-        y: gameState.player1.y + 8
+        y: gameState.player1.y + SPRITE_SIZE
       },
       {
         spriteId: 0, // Middle square
         x: gameState.player1.x,
-        y: gameState.player1.y + 16
+        y: gameState.player1.y + SPRITE_SIZE * 2
       },
       {
         spriteId: 2, // Bottom rounded
         x: gameState.player1.x,
-        y: gameState.player1.y + 24
+        y: gameState.player1.y + SPRITE_SIZE * 3
       },
       // Player 2 paddle (rounded)
       {
@@ -153,17 +184,17 @@ function update(deltaTime, input) {
       {
         spriteId: 0, // Middle square
         x: gameState.player2.x,
-        y: gameState.player2.y + 8
+        y: gameState.player2.y + SPRITE_SIZE
       },
       {
         spriteId: 0, // Middle square
         x: gameState.player2.x,
-        y: gameState.player2.y + 16
+        y: gameState.player2.y + SPRITE_SIZE * 2
       },
       {
         spriteId: 2, // Bottom rounded
         x: gameState.player2.x,
-        y: gameState.player2.y + 24
+        y: gameState.player2.y + SPRITE_SIZE * 3
       },
       // Ball
       {
