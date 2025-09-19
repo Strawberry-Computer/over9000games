@@ -81,16 +81,14 @@ export class GameRunner {
   }
 
   setupInputHandlers() {
-    const buttons = ['up', 'down', 'left', 'right', 'a', 'b', 'start', 'select'];
+    const buttons = ['up', 'down', 'left', 'right', 'a', 'b'];
     const keyMap = {
       'ArrowUp': 'up',
       'ArrowDown': 'down',
       'ArrowLeft': 'left',
       'ArrowRight': 'right',
       'KeyZ': 'a',
-      'KeyX': 'b',
-      'Enter': 'start',
-      'Space': 'select'
+      'KeyX': 'b'
     };
 
     buttons.forEach(btn => {
@@ -113,6 +111,23 @@ export class GameRunner {
           e.preventDefault();
         }
       }
+
+      // Handle special keys for pause/restart
+      if (!document.activeElement || (
+        document.activeElement.tagName !== 'INPUT' &&
+        document.activeElement.tagName !== 'TEXTAREA' &&
+        document.activeElement.contentEditable !== 'true'
+      )) {
+        if (e.code === 'Space') {
+          this.togglePause();
+          e.preventDefault();
+        } else if (e.code === 'Enter') {
+          if (window.restartCurrentGame) {
+            window.restartCurrentGame();
+          }
+          e.preventDefault();
+        }
+      }
     });
 
     document.addEventListener('keyup', (e) => {
@@ -132,7 +147,7 @@ export class GameRunner {
       }
     });
 
-    ['up', 'down', 'left', 'right', 'a', 'b', 'start', 'select'].forEach(btn => {
+    ['up', 'down', 'left', 'right', 'a', 'b'].forEach(btn => {
       const element = document.getElementById(`btn-${btn}`);
       if (element) {
         element.addEventListener('mousedown', () => this.inputState[btn] = true);
@@ -588,16 +603,12 @@ function doUpdate(deltaTime, input) {
       right: this.isPressed('right'),
       a: this.isPressed('a'),
       b: this.isPressed('b'),
-      start: this.isPressed('start'),
-      select: this.isPressed('select'),
       upPressed: this.justPressed('up'),
       downPressed: this.justPressed('down'),
       leftPressed: this.justPressed('left'),
       rightPressed: this.justPressed('right'),
       aPressed: this.justPressed('a'),
-      bPressed: this.justPressed('b'),
-      startPressed: this.justPressed('start'),
-      selectPressed: this.justPressed('select')
+      bPressed: this.justPressed('b')
     };
   }
 

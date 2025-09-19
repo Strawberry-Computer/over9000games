@@ -219,6 +219,7 @@ async function loadLeaderboard() {
 // Expose functions globally for game runner access
 window.loadLeaderboard = loadLeaderboard;
 window.submitScore = submitScore;
+window.restartCurrentGame = restartCurrentGame;
 
 function restartCurrentGame() {
   if (gameRunner) {

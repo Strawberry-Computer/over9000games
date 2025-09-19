@@ -18,8 +18,11 @@ A retro 8-bit game console built on Reddit's Devvit platform featuring authentic
 - **Performance**: Hardware-accelerated canvas blitting
 
 ### Input
-- **Controls**: NES-style D-pad + A/B buttons + Start/Select
-- **Mapping**: Arrow keys, Z/X, Enter/Space
+- **Controls**: NES-style D-pad + A/B buttons
+- **Keyboard Mapping**:
+  - D-pad: Arrow keys
+  - A/B buttons: Z/X keys (A=Z, B=X)
+  - Special: Space to pause, Enter to restart
 - **Response**: 60 FPS input polling
 
 ### Audio
