@@ -5,11 +5,11 @@ A retro 8-bit game console built on Reddit's Devvit platform featuring authentic
 ## Console Specifications
 
 ### Display
-- **Resolution**: 256×256 pixels
+- **Resolution**: 128×128 pixels
 - **Color Depth**: 4-bit (16 colors)
 - **Sprites**: 8×8 pixels, unlimited positioning
 - **Max Sprites**: 64 simultaneous on screen
-- **Background**: 32×32 tile grid (8×8 pixel tiles)
+- **Background**: 16×16 tile grid (8×8 pixel tiles)
 
 ### Graphics System
 - **Sprite Definition**: 4-layer bitmask system
@@ -208,7 +208,7 @@ const generatedGame = {
       // Check apple collision
       if (head.x === apple.x && head.y === apple.y) {
         score += 10;
-        apple = {x: Math.floor(Math.random() * 32), y: Math.floor(Math.random() * 32)};
+        apple = {x: Math.floor(Math.random() * 16), y: Math.floor(Math.random() * 16)};
       } else {
         snake.pop();
       }

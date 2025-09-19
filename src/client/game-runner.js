@@ -19,7 +19,7 @@ export class GameRunner {
 
     this.state = {
       sprites: Array(64).fill(null).map(() => ({ spriteId: -1, x: 0, y: 0 })),
-      tiles: Array(32).fill(null).map(() => Array(32).fill(-1)),
+      tiles: Array(16).fill(null).map(() => Array(16).fill(-1)),
       backgroundColor: 0,
       palette: this.getDefaultPalette(),
       gameRunning: false,
@@ -163,9 +163,31 @@ export class GameRunner {
 
     console.log("Loading game code into QuickJS VM...");
 
-    const result = this.vm.evalCode(gameCode, "game.js");
+    // Wrap the user's update function with error handling
+    const wrappedGameCode = `
+${gameCode}
+
+function doUpdate(deltaTime, input) {
+  try {
+    return update(deltaTime, input);
+  } catch (error) {
+    return {
+      sprites: [],
+      score: 0,
+      gameOver: true,
+      error: {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      }
+    };
+  }
+}
+`;
+
+    const result = this.vm.evalCode(wrappedGameCode, "game.js");
     if (result.error) {
-      const errorMsg = this.vm.dump(result.error);
+      const errorMsg = this.vm.dump(this.vm.unwrapResult(result.error));
       result.dispose();
       throw new Error(`Failed to load game code: ${errorMsg}`);
     }
@@ -173,7 +195,7 @@ export class GameRunner {
 
     const metadataHandle = this.vm.getProp(this.vm.global, "metadata");
     const resourcesHandle = this.vm.getProp(this.vm.global, "resources");
-    const updateHandle = this.vm.getProp(this.vm.global, "update");
+    const updateHandle = this.vm.getProp(this.vm.global, "doUpdate");
 
     if (!metadataHandle || !resourcesHandle || !updateHandle) {
       throw new Error("Game code must define metadata, resources, and update functions");
@@ -183,7 +205,7 @@ export class GameRunner {
     const resourcesResult = this.vm.callFunction(resourcesHandle, this.vm.undefined);
 
     if (metadataResult.error || resourcesResult.error) {
-      const errorMsg = metadataResult.error ? this.vm.dump(metadataResult.error) : this.vm.dump(resourcesResult.error);
+      const errorMsg = metadataResult.error ? this.vm.dump(this.vm.unwrapResult(metadataResult)) : this.vm.dump(this.vm.unwrapResult(resourcesResult));
       metadataResult.dispose();
       resourcesResult.dispose();
       throw new Error(`Failed to call game functions: ${errorMsg}`);
@@ -217,8 +239,8 @@ export class GameRunner {
   }
 
   getSpritePosition(spriteId) {
-    const x = ((spriteId | 0) % 32) * 8;  // 32 sprites per row (256px ÷ 8px)
-    const y = Math.floor((spriteId | 0) / 32) * 8;
+    const x = ((spriteId | 0) % 16) * 8;  // 16 sprites per row (128px ÷ 8px)
+    const y = Math.floor((spriteId | 0) / 16) * 8;
     return { x, y, width: 8, height: 8 };
   }
 
@@ -226,7 +248,7 @@ export class GameRunner {
     if (!this.gameDefinition) return;
 
     this.spriteCtx.fillStyle = '#000000';
-    this.spriteCtx.fillRect(0, 0, 256, 256);
+    this.spriteCtx.fillRect(0, 0, 128, 128);
 
     if (Array.isArray(this.gameDefinition.sprites)) {
       this.gameDefinition.sprites.forEach((sprite, index) => {
@@ -279,13 +301,13 @@ export class GameRunner {
   }
 
   setTile(x, y, tileId) {
-    if (x >= 0 && x < 32 && y >= 0 && y < 32) {
+    if (x >= 0 && x < 16 && y >= 0 && y < 16) {
       this.state.tiles[y][x] = tileId;
     }
   }
 
   clearTile(x, y) {
-    if (x >= 0 && x < 32 && y >= 0 && y < 32) {
+    if (x >= 0 && x < 16 && y >= 0 && y < 16) {
       this.state.tiles[y][x] = -1;
     }
   }
@@ -363,8 +385,8 @@ export class GameRunner {
       this.state.sprites[i] = { spriteId: -1, x: 0, y: 0 };
     }
 
-    for (let y = 0; y < 32; y++) {
-      for (let x = 0; x < 32; x++) {
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
         this.state.tiles[y][x] = -1;
       }
     }
@@ -537,13 +559,18 @@ export class GameRunner {
       inputStateHandle.dispose();
 
       if (result.error) {
-        const errorMsg = this.vm.dump(result.error);
+        const errorMsg = this.vm.dump(this.vm.unwrapResult(result));
         result.dispose();
         throw new Error(`Update function error: ${errorMsg}`);
       }
 
       const commands = this.vm.dump(this.vm.unwrapResult(result));
       result.dispose();
+
+      // Check if JS-side try-catch caught an error
+      if (commands && commands.error) {
+        throw new Error(`Game runtime error: ${commands.error.message}\nStack: ${commands.error.stack}`);
+      }
 
       return commands;
 
@@ -612,7 +639,7 @@ export class GameRunner {
   render() {
     const bgColor = this.state.palette[this.state.backgroundColor] || 0x000000;
     this.ctx.fillStyle = `#${bgColor.toString(16).padStart(6, '0')}`;
-    this.ctx.fillRect(0, 0, 256, 256);
+    this.ctx.fillRect(0, 0, 128, 128);
 
     this.renderTiles();
     this.renderSprites();
@@ -624,8 +651,8 @@ export class GameRunner {
   }
 
   renderTiles() {
-    for (let y = 0; y < 32; y++) {
-      for (let x = 0; x < 32; x++) {
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
         const tileId = this.state.tiles[y][x];
         if (tileId >= 0) {
           const position = this.getSpritePosition(tileId);
@@ -657,44 +684,44 @@ export class GameRunner {
   renderLeaderboardOverlay() {
     // Semi-transparent dark overlay
     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    this.ctx.fillRect(0, 0, 256, 256);
+    this.ctx.fillRect(0, 0, 128, 128);
 
     // Leaderboard box background
     this.ctx.fillStyle = '#2d2d2d';
-    this.ctx.fillRect(16, 32, 224, 192);
+    this.ctx.fillRect(0, 0, 128, 128);
 
     // Leaderboard box border (NES-style)
     this.ctx.fillStyle = '#ffffff';
-    this.ctx.fillRect(16, 32, 224, 2); // Top
-    this.ctx.fillRect(16, 222, 224, 2); // Bottom
-    this.ctx.fillRect(16, 32, 2, 192); // Left
-    this.ctx.fillRect(238, 32, 2, 192); // Right
+    this.ctx.fillRect(0, 0, 128, 2); // Top
+    this.ctx.fillRect(0, 126, 128, 2); // Bottom
+    this.ctx.fillRect(0, 0, 2, 128); // Left
+    this.ctx.fillRect(126, 0, 2, 128); // Right
 
     // Inner border
     this.ctx.fillStyle = '#424242';
-    this.ctx.fillRect(18, 34, 220, 2); // Top
-    this.ctx.fillRect(18, 220, 220, 2); // Bottom
-    this.ctx.fillRect(18, 34, 2, 188); // Left
-    this.ctx.fillRect(236, 34, 2, 188); // Right
+    this.ctx.fillRect(2, 2, 124, 2); // Top
+    this.ctx.fillRect(2, 124, 124, 2); // Bottom
+    this.ctx.fillRect(2, 2, 2, 124); // Left
+    this.ctx.fillRect(124, 2, 2, 124); // Right
 
-    const centerX = 128;
+    const centerX = 64;
 
     // Title - show "GAME OVER" if game over, otherwise "HIGH SCORES"
     if (this.state.gameOver) {
-      renderCenteredBitmapText(this.ctx, 'GAME OVER', centerX, 48, '#ff0000', 2);
-      renderCenteredBitmapText(this.ctx, `FINAL SCORE: ${this.state.finalScore}`, centerX, 65, '#ffff00', 1);
+      renderCenteredBitmapText(this.ctx, 'GAME OVER', centerX, 24, '#ff0000', 1);
+      renderCenteredBitmapText(this.ctx, `SCORE: ${this.state.finalScore}`, centerX, 33, '#ffff00', 1);
     } else {
-      renderCenteredBitmapText(this.ctx, 'HIGH SCORES', centerX, 48, '#ffff00', 2);
+      renderCenteredBitmapText(this.ctx, 'HIGH SCORES', centerX, 24, '#ffff00', 1);
     }
 
     // High score message if available
     if (this.highScoreMessage) {
-      const yPos = this.state.gameOver ? 80 : 65;
+      const yPos = this.state.gameOver ? 42 : 33;
       renderCenteredBitmapText(this.ctx, this.highScoreMessage, centerX, yPos, '#00ff00', 1);
     }
 
     // Render scores
-    let startY = this.state.gameOver ? 95 : 75;
+    let startY = this.state.gameOver ? 50 : 38;
     if (this.highScoreMessage) {
       startY += 15;
     }
@@ -707,9 +734,8 @@ export class GameRunner {
     // Check if this is a generated game (leaderboard disabled)
     if (this.isGeneratedGame) {
       console.log("renderLeaderboardOverlay: showing generated game message");
-      renderCenteredBitmapText(this.ctx, 'GENERATED GAME', centerX, startY + 15, '#ffff00', 1);
-      renderCenteredBitmapText(this.ctx, 'LEADERBOARD DISABLED', centerX, startY + 30, '#ffffff', 1);
-      renderCenteredBitmapText(this.ctx, 'PUBLISH TO ENABLE SCORING', centerX, startY + 45, '#aaaaaa', 1);
+      renderCenteredBitmapText(this.ctx, 'GAME', centerX, startY + 8, '#ffff00', 1);
+      renderCenteredBitmapText(this.ctx, 'NOT SHARED', centerX, startY + 16, '#ffffff', 1);
     } else if (this.leaderboardLoading) {
       console.log("renderLeaderboardOverlay: showing 'LOADING...'");
       renderCenteredBitmapText(this.ctx, 'LOADING...', centerX, startY + 15, '#ffff00', 1);
@@ -720,32 +746,34 @@ export class GameRunner {
     } else {
       console.log("renderLeaderboardOverlay: rendering", this.leaderboardData.length, "scores");
       let yPos = startY;
-      for (let i = 0; i < Math.min(this.leaderboardData.length, 8); i++) {
+      for (let i = 0; i < Math.min(this.leaderboardData.length, 10); i++) {
         const score = this.leaderboardData[i];
         const rank = i + 1;
-        const medal = rank === 1 ? '1ST' : rank === 2 ? '2ND' : rank === 3 ? '3RD' : `${rank}TH`;
+        const medal = rank.toString();
 
         // Rank
-        renderBitmapText(this.ctx, medal, 24, yPos, '#ffff00', 1);
+        renderBitmapText(this.ctx, medal, 6, yPos, '#ffff00', 1);
 
         // Username (truncated if too long)
-        const username = score.username.length > 12 ? score.username.substring(0, 12) + '..' : score.username;
-        renderBitmapText(this.ctx, username, 64, yPos, '#ffffff', 1);
+        const maxUsernameLength = 10;
+        const username = score.username.length > maxUsernameLength ?
+          score.username.substring(0, maxUsernameLength - 3) + '...' : score.username;
+        renderBitmapText(this.ctx, username, 24, yPos, '#ffffff', 1);
 
         // Score (right-aligned)
         const scoreText = score.score.toString();
         const scoreWidth = scoreText.length * 8;
-        renderBitmapText(this.ctx, scoreText, 224 - scoreWidth, yPos, '#00ff00', 1);
+        renderBitmapText(this.ctx, scoreText, 122 - scoreWidth, yPos, '#00ff00', 1);
 
-        yPos += 16;
+        yPos += 12;
       }
     }
 
   }
 
   clear() {
-    this.ctx.clearRect(0, 0, 256, 256);
-    this.spriteCtx.clearRect(0, 0, 256, 256);
+    this.ctx.clearRect(0, 0, 128, 128);
+    this.spriteCtx.clearRect(0, 0, 128, 128);
   }
 
   dispose() {

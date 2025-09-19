@@ -15,7 +15,7 @@ This is a Devvit web application that implements a retro NES-style game console 
 - **Scripts** (`scripts/`): AI model testing and game generation tools
 
 ### Core Systems
-- **NES Console**: 256×256 pixel display, 4-bit color depth, 8×8 sprites and tiles
+- **NES Console**: 128×128 pixel display, 4-bit color depth, 8×8 sprites and tiles
 - **QuickJS Engine**: Sandboxed JavaScript execution for user-generated games
 - **AI Generation**: OpenAI/Gemini integration for procedural game creation
 - **Game Schema**: Validation system for sprites, palettes, and game logic
@@ -116,3 +116,24 @@ App registers subreddit menu for moderators (`/internal/menu/post-create`) and a
 
 ### TypeScript Configuration
 Project uses ES modules (`"type": "module"`) with separate tsconfig for client/server/shared. Vite handles WASM integration for QuickJS in client build.
+
+### Key File Locations
+- **Game Generation Logic**: `src/server/game-generator.js` - OpenAI/Gemini API integration
+- **Game Schema Validation**: `src/shared/game-schema.js` - Validates sprites, metadata, and game structure
+- **QuickJS Game Runner**: `src/client/game-runner.js` - Sandboxed game execution and rendering
+- **Game Parsing**: `src/shared/game-prompt.js` - Parses LLM markdown responses
+- **Test Games**: `src/shared/test-games/` - Manual test games for development
+- **Generation Testing**: `scripts/test-generation.js` - AI model testing script
+
+### Game Development Constraints
+- **Sprite Limits**: Maximum 64 sprites on screen, 8×8 pixels each
+- **Tile System**: 16×16 grid of background tiles (8×8 pixels each, same as sprites)
+- **Color Palette**: Maximum 16 colors per game
+- **QuickJS Sandbox**: No external dependencies, limited execution time
+- **Game Commands**: Use command-based rendering system, no direct canvas access
+
+### Debugging Tips
+- Use browser dev tools to debug QuickJS execution errors
+- Check console logs for game generation and parsing errors
+- Generated games saved to `./generated-games/` for inspection
+- Game validation errors show specific sprite/palette issues
