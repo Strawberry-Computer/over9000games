@@ -51,7 +51,12 @@
           <button class="game-btn secondary" id="btn-leaderboard">PAUSE</button>
           <button class="game-btn tertiary" id="btn-menu">MENU</button>
         </div>
-        <button class="game-btn publish-btn" id="btn-publish-current" style="display: none;">SHARE GAME</button>
+        <div class="edit-actions" id="edit-actions" style="display: none;">
+          <button class="game-btn edit-btn" id="btn-undo-edit" style="display: none;">UNDO</button>
+          <button class="game-btn edit-btn" id="btn-redo-edit" style="display: none;">REDO</button>
+          <button class="game-btn edit-btn" id="btn-edit-game">EDIT</button>
+          <button class="game-btn publish-btn" id="btn-publish-current">SHARE GAME</button>
+        </div>
       </div>
 
 
@@ -79,8 +84,8 @@
     <div class="game-creation" id="game-creation" style="display: none;">
       <div class="prompt-overlay">
         <div class="prompt-modal">
-          <h3>CREATE NEW GAME</h3>
-          <p>Describe your game and AI will build it!</p>
+          <h3 id="game-creation-title">CREATE NEW GAME</h3>
+          <p id="game-creation-subtitle">Describe your game and AI will build it!</p>
 
           <div class="form-container">
             <label for="game-description">GAME DESCRIPTION:</label>

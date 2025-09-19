@@ -21,12 +21,24 @@ const generationStatusElement = document.getElementById("generation-status");
 const publishingStatusElement = document.getElementById("publishing-status");
 
 const publishCurrentButton = document.getElementById("btn-publish-current");
+const editActionsElement = document.getElementById("edit-actions");
+const gameCreationTitleElement = document.getElementById("game-creation-title");
+const gameCreationSubtitleElement = document.getElementById("game-creation-subtitle");
+const undoEditButton = document.getElementById("btn-undo-edit");
+const redoEditButton = document.getElementById("btn-redo-edit");
 
 // Current game state
 let currentGameData = null;
 let isGeneratedGame = false;
 let isTestGame = false;
 let draftManager = null;
+
+// Edit state management
+let editHistory = {
+  versions: [],
+  currentIndex: -1
+};
+let isEditMode = false;
 
 
 let currentPostId = null;
@@ -240,6 +252,17 @@ function restartCurrentGame() {
 }
 
 function showGameCreation() {
+  // Set modal title based on mode
+  if (isEditMode) {
+    gameCreationTitleElement.textContent = "EDIT GAME";
+    gameCreationSubtitleElement.textContent = "Describe your changes and AI will apply them!";
+    gameDescriptionElement.placeholder = "make the snake move faster\nadd power-ups\nchange colors\nbigger sprites";
+  } else {
+    gameCreationTitleElement.textContent = "CREATE NEW GAME";
+    gameCreationSubtitleElement.textContent = "Describe your game and AI will build it!";
+    gameDescriptionElement.placeholder = "snake game with power-ups\npong with lasers\nplatformer with coins\nspace shooter with aliens";
+  }
+
   gameCreationElement.style.display = "block";
   document.body.classList.add("game-creation-active");
   gameDescriptionElement.focus();
@@ -266,6 +289,7 @@ function hideAllModals() {
     "game-publishing-active",
     "dev-menu-active"
   );
+  isEditMode = false;
 
   // Clear forms
   gameDescriptionElement.value = "";
@@ -298,8 +322,11 @@ function hideAllModals() {
 function resetGameState() {
   isGeneratedGame = false;
   currentGameData = null;
-  publishCurrentButton.style.display = "none";
+  editActionsElement.style.display = "none";
   currentGameNameElement.textContent = "None";
+  editHistory = { versions: [], currentIndex: -1 };
+  isEditMode = false;
+  updateEditButtons();
   if (gameRunner) {
     gameRunner.setGeneratedGame(false);
   }
@@ -334,29 +361,71 @@ async function generateGame() {
   generateButton.classList.add("disabled");
 
   try {
-    showGenerationStatus("Generating your game", "loading");
+    if (isEditMode) {
+      showGenerationStatus("Applying your edits", "loading");
 
-    const response = await fetch("/api/game/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description }),
-    });
+      const response = await fetch("/api/game/edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description,
+          previousGame: currentGameData
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error(`Game generation failed: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Game edit failed: ${response.status}`);
+      }
+
+      const gameData = await response.json();
+
+      if (gameData.type !== "generate" || !gameData.gameDefinition?.gameCode) {
+        throw new Error("Invalid game edit response");
+      }
+
+      // Save current version to history before updating
+      saveToEditHistory(currentGameData);
+
+      // Store the edited game
+      currentGameData = {
+        ...gameData.gameDefinition,
+        originalDescription: currentGameData.originalDescription,
+        editDescription: description
+      };
+
+      // Save new version to history
+      saveToEditHistory(currentGameData);
+      updateEditButtons();
+
+    } else {
+      showGenerationStatus("Generating your game", "loading");
+
+      const response = await fetch("/api/game/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Game generation failed: ${response.status}`);
+      }
+
+      const gameData = await response.json();
+
+      if (gameData.type !== "generate" || !gameData.gameDefinition?.gameCode) {
+        throw new Error("Invalid game generation response");
+      }
+
+      // Store the generated game and initialize edit history
+      currentGameData = {
+        ...gameData.gameDefinition,
+        originalDescription: description
+      };
+
+      editHistory = { versions: [], currentIndex: -1 };
+      saveToEditHistory(currentGameData);
+      updateEditButtons();
     }
-
-    const gameData = await response.json();
-
-    if (gameData.type !== "generate" || !gameData.gameDefinition?.gameCode) {
-      throw new Error("Invalid game generation response");
-    }
-
-    // Store the generated game
-    currentGameData = {
-      ...gameData.gameDefinition,
-      originalDescription: description
-    };
 
     // Load and show the game immediately
     await showGeneratedGame();
@@ -411,8 +480,8 @@ async function showGeneratedGame() {
     // Start the game to trigger first frame callback
     gameRunner.startGame();
 
-    // Show the publish button
-    publishCurrentButton.style.display = "block";
+    // Show the edit actions
+    editActionsElement.style.display = "block";
 
     // Hide the creation modal and return to main view
     hideAllModals();
@@ -670,6 +739,11 @@ document.getElementById("btn-back-to-game")?.addEventListener("click", () => {
   document.body.classList.remove("game-publishing-active");
 });
 
+// Edit control event listeners
+document.getElementById("btn-edit-game")?.addEventListener("click", startEditMode);
+document.getElementById("btn-undo-edit")?.addEventListener("click", undoEdit);
+document.getElementById("btn-redo-edit")?.addEventListener("click", redoEdit);
+
 
 // Custom game event for score submission
 document.addEventListener("gameOver", (event) => {
@@ -762,6 +836,68 @@ function setupMobileKeyboardHandling() {
       }
     });
   }
+}
+
+// Edit history management
+function saveToEditHistory(gameData) {
+  // Remove any versions after current index (when doing undo then new edit)
+  editHistory.versions = editHistory.versions.slice(0, editHistory.currentIndex + 1);
+
+  // Add new version
+  editHistory.versions.push(JSON.parse(JSON.stringify(gameData)));
+  editHistory.currentIndex = editHistory.versions.length - 1;
+
+  // Keep only last 10 versions to save memory
+  if (editHistory.versions.length > 10) {
+    editHistory.versions.shift();
+    editHistory.currentIndex--;
+  }
+
+  // Save to localStorage
+  localStorage.setItem('editHistory', JSON.stringify(editHistory));
+}
+
+function updateEditButtons() {
+  const canUndo = editHistory.currentIndex > 0;
+  const canRedo = editHistory.currentIndex < editHistory.versions.length - 1;
+
+  undoEditButton.style.display = canUndo ? "inline-block" : "none";
+  redoEditButton.style.display = canRedo ? "inline-block" : "none";
+}
+
+function undoEdit() {
+  if (editHistory.currentIndex > 0) {
+    editHistory.currentIndex--;
+    currentGameData = JSON.parse(JSON.stringify(editHistory.versions[editHistory.currentIndex]));
+    updateEditButtons();
+    localStorage.setItem('editHistory', JSON.stringify(editHistory));
+
+    // Reload the game with previous version
+    showGeneratedGame();
+  }
+}
+
+function redoEdit() {
+  if (editHistory.currentIndex < editHistory.versions.length - 1) {
+    editHistory.currentIndex++;
+    currentGameData = JSON.parse(JSON.stringify(editHistory.versions[editHistory.currentIndex]));
+    updateEditButtons();
+    localStorage.setItem('editHistory', JSON.stringify(editHistory));
+
+    // Reload the game with next version
+    showGeneratedGame();
+  }
+}
+
+function startEditMode() {
+  if (!isGeneratedGame || !currentGameData) {
+    gameInfoElement.textContent = "No generated game to edit!";
+    gameInfoElement.style.color = "#f44336";
+    return;
+  }
+
+  isEditMode = true;
+  showGameCreation();
 }
 
 // Initialize everything

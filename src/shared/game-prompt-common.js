@@ -1,11 +1,13 @@
-// Common prompt creation function that accepts sample code as parameters
-export function createGameGenerationPromptWithSamples(description, pongSample, platformerSample) {
-  try {
-    return `
+// Common prompt sections
+function getFormatSection() {
+  return `
 <format>
 You must create a single JavaScript file with three global functions: metadata(), resources(), and update().
-</format>
+</format>`;
+}
 
+function getExampleOutputs(pongSample, platformerSample) {
+  return `
 <example-output>
 \`\`\`javascript
 ${pongSample}
@@ -16,8 +18,11 @@ ${pongSample}
 \`\`\`javascript
 ${platformerSample}
 \`\`\`
-</example-output>
+</example-output>`;
+}
 
+function getRequirementsSection() {
+  return `
 <requirements>
 - IMPORTANT: have to implement metadata(), resources(), update(deltaTime, input)
 - IMPORTANT: implement fully functional game, make graphics/mechanics simple but fun
@@ -31,7 +36,13 @@ ${platformerSample}
 - **Module-level gameState**: Use \`let gameState;\` not globalThis
 - **Input**: Use input.up, input.down, input.left, input.right, input.a, input.b
 - **Complex games**: Can have complex gameState (like Tetris boards, enemy arrays, etc.)
-</requirements>
+</requirements>`;
+}
+
+// Common prompt creation function that accepts sample code as parameters
+export function createGameGenerationPromptWithSamples(description, pongSample, platformerSample) {
+  try {
+    return `${getFormatSection()}${getExampleOutputs(pongSample, platformerSample)}${getRequirementsSection()}
 
 <task>
 Create a single JavaScript file following the exact same structure for: "${description}"
@@ -40,6 +51,37 @@ Create a single JavaScript file following the exact same structure for: "${descr
 
   } catch (error) {
     console.error("Error creating game generation prompt:", error);
+    console.error("Error stack:", error.stack);
+    throw error;
+  }
+}
+
+// Edit prompt creation function
+export function createGameEditPromptWithSamples(editDescription, previousGame, pongSample, platformerSample) {
+  try {
+    return `${getFormatSection()}${getExampleOutputs(pongSample, platformerSample)}
+
+<current-game>
+GAME TO EDIT:
+Title: ${previousGame.metadata?.title || 'Unknown Game'}
+Description: ${previousGame.metadata?.description || 'No description'}
+Original Request: ${previousGame.originalDescription || 'No original description'}
+
+\`\`\`javascript
+${previousGame.gameCode}
+\`\`\`
+</current-game>${getRequirementsSection()}
+
+<task>
+Edit the existing game based on this request: "${editDescription}"
+
+Keep the same basic structure and game mechanics unless specifically asked to change them.
+Return the complete modified game code, not just the changes.
+</task>
+`;
+
+  } catch (error) {
+    console.error("Error creating game edit prompt:", error);
     console.error("Error stack:", error.stack);
     throw error;
   }
