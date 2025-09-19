@@ -24,6 +24,9 @@ export function validateGameSchema(gameDefinition) {
     if (gameDefinition.metadata.controls && !Array.isArray(gameDefinition.metadata.controls)) {
       errors.push('Game controls must be an array');
     }
+    if (gameDefinition.metadata.isPublished !== undefined && typeof gameDefinition.metadata.isPublished !== 'boolean') {
+      errors.push('Game isPublished must be a boolean');
+    }
   }
 
   // Validate sprites (new simplified format)

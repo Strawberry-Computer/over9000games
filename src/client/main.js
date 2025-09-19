@@ -25,6 +25,7 @@ const publishCurrentButton = document.getElementById("btn-publish-current");
 // Current game state
 let currentGameData = null;
 let isGeneratedGame = false;
+let isTestGame = false;
 let draftManager = null;
 
 
@@ -128,6 +129,9 @@ async function loadTestGame(gameName) {
       gameInfoElement.style.color = "#00ff00";
       currentGameNameElement.textContent = gameName;
 
+      // Set published status for test game
+      gameRunner.setPublishedStatus(currentGameData.isPublished);
+
       // Auto-start the game
       gameRunner.startGame();
     }
@@ -139,11 +143,11 @@ async function loadTestGame(gameName) {
 }
 
 async function submitScore(score) {
-  console.log("submitScore called with:", score, "postId:", currentPostId, "username:", currentUsername, "isGeneratedGame:", isGeneratedGame);
+  console.log("submitScore called with:", score, "postId:", currentPostId, "username:", currentUsername, "isPublished:", currentGameData?.isPublished);
 
-  // Skip score submission for generated games
-  if (isGeneratedGame) {
-    console.log("Score submission skipped - generated game (leaderboard disabled)");
+  // Skip score submission for unpublished games (generated games and test games)
+  if (currentGameData?.isPublished === false) {
+    console.log("Score submission skipped - unpublished game (leaderboard disabled)");
     return;
   }
 
@@ -382,9 +386,10 @@ async function showGeneratedGame() {
     // Load the game into the main console
     await gameRunner.loadCode(currentGameData.gameCode);
 
-    // Mark this as a generated game
+    // Mark this as a generated game and set published status
     isGeneratedGame = true;
     gameRunner.setGeneratedGame(true);
+    gameRunner.setPublishedStatus(currentGameData.isPublished);
 
     // Update the main UI
     gameInfoElement.textContent = "Game generated! Playing...";

@@ -432,6 +432,10 @@ function doUpdate(deltaTime, input) {
     this.isGeneratedGame = isGenerated;
   }
 
+  setPublishedStatus(isPublished) {
+    this.isPublished = isPublished;
+  }
+
   showLeaderboard(leaderboardData) {
     console.log("showLeaderboard called with:", leaderboardData, "length:", leaderboardData?.length);
     this.leaderboardData = leaderboardData || [];
@@ -742,9 +746,9 @@ function doUpdate(deltaTime, input) {
     console.log("renderLeaderboardOverlay: this.leaderboardLoading =", this.leaderboardLoading);
     console.log("renderLeaderboardOverlay: startY =", startY);
 
-    // Check if this is a generated game (leaderboard disabled)
-    if (this.isGeneratedGame) {
-      console.log("renderLeaderboardOverlay: showing generated game message");
+    // Check if this is an unpublished game (leaderboard disabled)
+    if (this.isPublished === false) {
+      console.log("renderLeaderboardOverlay: showing unpublished game message");
       renderCenteredBitmapText(this.ctx, 'GAME', centerX, startY + 8, '#ffff00', 1);
       renderCenteredBitmapText(this.ctx, 'NOT SHARED', centerX, startY + 16, '#ffffff', 1);
     } else if (this.leaderboardLoading) {

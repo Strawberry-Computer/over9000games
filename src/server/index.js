@@ -168,7 +168,7 @@ router.post("/api/game/test", async (req, res) => {
     }
 
     const gameCode = getTestGameCode(gameName);
-    const testGameDefinition = { gameCode };
+    const testGameDefinition = { gameCode, isPublished: false };
 
     console.log(`Loaded test game "${gameName}":`, JSON.stringify(testGameDefinition, null, 2));
 
