@@ -146,8 +146,8 @@ function update(deltaTime, input) {
   if (!gameState) {
     gameState = {
       player: {
-        x: 50,
-        y: 216, // One tile higher (240 - 24 = 216)
+        x: 16,
+        y: 104, // On starting platform (row 13 * 8 = 104, minus sprite height)
         vx: 0,
         vy: 0,
         onGround: true,
@@ -156,52 +156,34 @@ function update(deltaTime, input) {
         facing: 1 // 1 = right, -1 = left
       },
       enemies: [
-        { x: 60, y: 184, vx: -30, health: 2, walkFrame: 0, walkTimer: 0 }, // On brick platform (row 26 * 8 - 24 = 184)
-        { x: 140, y: 192, vx: 25, health: 2, walkFrame: 0, walkTimer: 0 }, // On stone platform (row 27 * 8 - 24 = 192)
-        { x: 90, y: 168, vx: 20, health: 2, walkFrame: 0, walkTimer: 0 }   // On stone platform (row 24 * 8 - 24 = 168)
+        { x: 48, y: 72, vx: -30, health: 2, walkFrame: 0, walkTimer: 0 }, // On stone platform (row 9)
+        { x: 96, y: 64, vx: 25, health: 2, walkFrame: 0, walkTimer: 0 }   // On stone platform (row 8)
       ],
       tilemap: [
-        // 32x32 tile grid (256x256 pixels ÷ 8x8 tiles) - 0=empty, 6=platform, 9=brick, 10=metal, 11=spikes, 12=exit
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 0
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 1
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 2
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 3
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 4
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 5
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 6
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 7
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 8
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 9
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 10
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 11
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 12
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 13
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 14
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 15
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 16
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 17
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 18
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 19
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,12,12,0], // Row 20: Exit platform (top right)
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,6,6,6,6], // Row 21: Platform to exit
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,9,9,0,0,0,0,0,0,0,0], // Row 22: High brick platform
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 23: Metal platform
-        [0,0,0,0,0,0,0,0,0,0,6,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 24: Stone platform
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,10,0,0,0,0,0,0,0,0,0,0], // Row 25: Metal blocks
-        [0,0,0,0,0,0,0,9,9,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 26: Brick platform
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0], // Row 27: Stone platform
-        [0,0,0,0,0,0,0,0,0,0,0,0,6,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // Row 28: Stone platform
-        [0,0,0,0,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,11,11,11,11,0,0,0,0], // Row 29: Platforms with spikes
-        [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6], // Row 30: Ground
-        [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6]  // Row 31: Ground
+        // 16 rows x 16 columns (128x128 screen) - 0=empty, 6=platform, 9=brick, 10=metal, 11=spikes, 12=exit
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,12,12], // Row 0: Exit at top right
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,6,6,6],   // Row 1: Platform to exit
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 2
+        [0,0,0,0,0,0,0,0,0,9,9,9,0,0,0,0],   // Row 3: Brick platform
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 4
+        [0,0,0,0,9,9,0,0,0,0,0,0,0,0,0,0],   // Row 5: Brick platform
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 6
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 7
+        [0,0,0,0,0,0,0,0,0,0,0,6,6,6,0,0],   // Row 8: Stone platform
+        [0,0,0,6,6,6,0,0,0,0,0,0,0,0,0,0],   // Row 9: Stone platform
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 10
+        [0,0,0,0,0,0,0,0,11,11,11,0,0,0,0,0], // Row 11: Spikes
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 12
+        [0,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 13: Starting platform
+        [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],   // Row 14: Ground
+        [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6]    // Row 15: Ground
       ],
       coins: [
-        { x: 72, y: 176, collected: false },   // On brick platform (row 26-1 * 8 = 200, coin above = 176)
-        { x: 144, y: 208, collected: false },  // On stone platform (row 28-1 * 8 = 216, coin above = 208)
-        { x: 168, y: 192, collected: false },  // On metal platform (row 25-1 * 8 = 192)
-        { x: 96, y: 160, collected: false },   // On stone platform (row 24-1 * 8 = 160)
-        { x: 176, y: 144, collected: false },  // On high brick platform (row 22-1 * 8 = 144)
-        { x: 240, y: 152, collected: false }   // Near exit platform (row 21-1 * 8 = 152)
+        { x: 48, y: 64, collected: false },   // Above stone platform (row 9)
+        { x: 32, y: 32, collected: false },   // Above brick platform (row 5)
+        { x: 96, y: 56, collected: false },   // Above stone platform (row 8)
+        { x: 80, y: 16, collected: false },   // Above brick platform (row 3)
+        { x: 112, y: 8, collected: false }    // Near exit
       ],
       projectiles: [],
       gravity: 400,
@@ -222,8 +204,8 @@ function update(deltaTime, input) {
     const sprites = [];
 
     // Render tilemap
-    for (let y = 0; y < 32; y++) {
-      for (let x = 0; x < 32; x++) {
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
         const tileId = gameState.tilemap[y][x];
         if (tileId !== 0) {
           tiles.push({
@@ -280,6 +262,8 @@ function update(deltaTime, input) {
   gameState.player.x += gameState.player.vx * dt;
   gameState.player.y += gameState.player.vy * dt;
 
+  // No camera in single screen mode
+
   // Player walking animation
   if (Math.abs(gameState.player.vx) > 0) {
     gameState.player.walkTimer += dt;
@@ -305,9 +289,9 @@ function update(deltaTime, input) {
   const rightTileX = Math.floor(playerRight / 8);
 
   // Check if falling onto a platform
-  if (gameState.player.vy > 0 && tileY < 32) {
+  if (gameState.player.vy > 0 && tileY < 16) {
     for (let tileX = leftTileX; tileX <= rightTileX; tileX++) {
-      if (tileX >= 0 && tileX < 32 && gameState.tilemap[tileY] && gameState.tilemap[tileY][tileX] !== 0) {
+      if (tileX >= 0 && tileX < 16 && gameState.tilemap[tileY] && gameState.tilemap[tileY][tileX] !== 0) {
         const tileId = gameState.tilemap[tileY][tileX];
 
         // Check for spikes
@@ -339,7 +323,7 @@ function update(deltaTime, input) {
   const centerTileX = Math.floor(playerCenterX / 8);
   const centerTileY = Math.floor(playerCenterY / 8);
 
-  if (centerTileX >= 0 && centerTileX < 32 && centerTileY >= 0 && centerTileY < 32) {
+  if (centerTileX >= 0 && centerTileX < 16 && centerTileY >= 0 && centerTileY < 16) {
     const tileId = gameState.tilemap[centerTileY][centerTileX];
     if (tileId === 11) {
       gameState.gameOver = true;
@@ -353,10 +337,10 @@ function update(deltaTime, input) {
 
   // Keep player in bounds
   if (gameState.player.x < 0) gameState.player.x = 0;
-  if (gameState.player.x > 248) gameState.player.x = 248;
-  if (gameState.player.y > 256) {
-    gameState.player.y = 200;
-    gameState.player.x = 50;
+  if (gameState.player.x > 120) gameState.player.x = 120;
+  if (gameState.player.y > 128) {
+    gameState.player.y = 104;
+    gameState.player.x = 16;
     gameState.player.vy = 0;
   }
 
@@ -383,8 +367,8 @@ function update(deltaTime, input) {
     const nextTileX = Math.floor(nextX / 8);
 
     // Reverse if at world edge or no platform ahead
-    if (nextX <= 0 || nextX >= 248 ||
-        nextTileX < 0 || nextTileX >= 32 ||
+    if (nextX <= 0 || nextX >= 120 ||
+        nextTileX < 0 || nextTileX >= 16 ||
         !gameState.tilemap[enemyTileY] ||
         gameState.tilemap[enemyTileY][nextTileX] === 0) {
       enemy.vx *= -1;
@@ -397,7 +381,7 @@ function update(deltaTime, input) {
     proj.life -= dt;
 
     // Remove if out of bounds or expired
-    if (proj.x < 0 || proj.x > 256 || proj.life <= 0) return false;
+    if (proj.x < 0 || proj.x > 128 || proj.life <= 0) return false;
 
     // Check collision with enemies (enemies are 24 pixels tall)
     for (const enemy of gameState.enemies) {
@@ -428,7 +412,7 @@ function update(deltaTime, input) {
   const sprites = [];
 
   // Render tilemap
-  for (let y = 0; y < 32; y++) {
+  for (let y = 0; y < 16; y++) {
     for (let x = 0; x < 32; x++) {
       const tileId = gameState.tilemap[y][x];
       if (tileId !== 0) {
