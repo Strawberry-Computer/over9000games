@@ -12,34 +12,45 @@ function metadata() {
 function resources() {
   return {
     sprites: [
-      // Sprite 0: Square (for paddle middle) - white
       [
-        [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]
+        "11111111",
+        "11111111",
+        "11111111",
+        "11111111",
+        "11111111",
+        "11111111",
+        "11111111",
+        "11111111"
       ],
-
-      // Sprite 1: Paddle top (rounded top) - white
       [
-        [0x3C, 0x7E, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]
+        "00111100",
+        "01111110",
+        "11111111",
+        "11111111",
+        "11111111",
+        "11111111",
+        "11111111",
+        "11111111"
       ],
-
-      // Sprite 2: Paddle bottom (rounded bottom) - white
       [
-        [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C]
+        "11111111",
+        "11111111",
+        "11111111",
+        "11111111",
+        "11111111",
+        "11111111",
+        "01111110",
+        "00111100"
       ],
-
-      // Sprite 3: Ball (round) - 2 layer sprite for red color
-      // Layer 0 (bit 0):        Layer 1 (bit 1):
-      // 00000000 ← 0x00          00111100 ← 0x3C
-      // 00000000 ← 0x00          01111110 ← 0x7E
-      // 00000000 ← 0x00          11111111 ← 0xFF
-      // 00000000 ← 0x00          11111111 ← 0xFF
-      // 00000000 ← 0x00          11111111 ← 0xFF
-      // 00000000 ← 0x00          11111111 ← 0xFF
-      // 00000000 ← 0x00          01111110 ← 0x7E
-      // 00000000 ← 0x00          00111100 ← 0x3C
       [
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 0 (bit 0) - no contribution
-        [0x3C, 0x7E, 0xFF, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C]  // Layer 1 (bit 1) - red color (index 2)
+        "00000000",
+        "00222200",
+        "02222220",
+        "22222222",
+        "22222222",
+        "02222220",
+        "00222200",
+        "00000000"
       ]
     ],
     palette: [0x000000, 0xFFFFFF, 0xFF0000, 0x00FF00, 0x0000FF, 0xFFFF00, 0xFF00FF, 0x00FFFF, 0x808080, 0x800000, 0x008000, 0x000080, 0x808000, 0x800080, 0x008080, 0xC0C0C0]

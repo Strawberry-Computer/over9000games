@@ -277,18 +277,9 @@ function doUpdate(deltaTime, input) {
     const data = imageData.data;
 
     for (let y = 0; y < 8; y++) {
+      const row = sprite[y];
       for (let x = 0; x < 8; x++) {
-        const pixelIndex = y * 8 + x;
-        const byteIndex = Math.floor(pixelIndex / 8);
-        const bitIndex = 7 - (pixelIndex % 8);
-
-        let colorIndex = 0;
-        for (let layer = 0; layer < sprite.length; layer++) {
-          if (sprite[layer] && sprite[layer][byteIndex] & (1 << bitIndex)) {
-            colorIndex |= (1 << layer);
-          }
-        }
-
+        const colorIndex = parseInt(row[x], 16);
         const color = this.state.palette[colorIndex] || 0x000000;
         const dataIndex = (y * 8 + x) * 4;
 

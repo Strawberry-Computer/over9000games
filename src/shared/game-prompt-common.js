@@ -21,10 +21,10 @@ ${platformerSample}
 <requirements>
 - IMPORTANT: have to implement metadata(), resources(), update(deltaTime, input)
 - IMPORTANT: implement fully functional game, make graphics/mechanics simple but fun
-- **Sprites**: 8x8 pixels as array of 1-4 layers, each layer is 8 bytes
-- **Sprite format**: \`[layer0, layer1, ...]\` where each layer is \`[byte0, byte1, ..., byte7]\`
-- **Layer system**: Bits from layers combine to create palette index: \`palette_index = layer0_bit + (layer1_bit << 1) + (layer2_bit << 2) + (layer3_bit << 3)\`
-- **Color options**: 1 layer = 2 colors, 2 layers = 4 colors, 3 layers = 8 colors, 4 layers = 16 colors
+- **Sprites**: 8x8 pixels as array of 8 hex strings, each string represents one row
+- **Sprite format**: \`["row0", "row1", ..., "row7"]\` where each row is an 8-character hex string
+- **Hex format**: Each character (0-F) represents the palette index for that pixel
+- **Color options**: Use palette indices 0-15, where 0 is typically transparent/background
 - **update() returns**: Command object: \`{sprites: [{spriteId: 0, x: 10, y: 20}], score: 100, gameOver: true}\`
 - **Scoring**: Always include a score system - return current score as a number in update()
 - **Game Over**: Include win/lose conditions - return gameOver: true when game ends

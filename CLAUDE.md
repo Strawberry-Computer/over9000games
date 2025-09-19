@@ -70,7 +70,7 @@ function gameUpdate(deltaTime, input) {
 ```
 
 ### NES Console Rendering
-- Sprites: 4-layer bitmask arrays defining 8×8 pixel graphics
+- Sprites: Hex string arrays defining 8×8 pixel graphics with direct palette indexing
 - Commands: Games return command arrays, console handles rendering
 - Performance: Single-pass canvas rendering with pre-compiled sprite sheets
 
@@ -110,7 +110,7 @@ App registers subreddit menu for moderators (`/internal/menu/post-create`) and a
 
 ### Architecture Considerations
 - Games must be self-contained (no external dependencies)
-- Sprite data uses 4-layer bitmask format for NES-style color composition
+- Sprite data uses hex string format for direct palette index mapping
 - All rendering deferred through command system (no direct canvas access)
 - State persistence handled by Redis with post-specific namespacing
 

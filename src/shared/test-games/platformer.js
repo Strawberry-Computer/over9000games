@@ -13,128 +13,135 @@ function metadata() {
 function resources() {
   return {
     sprites: [
-      // Sprite 0: Wizard head - purple hat with white face and gray beard
-      // Layer 0 (white face):    Layer 1 (purple hat):   Layer 2 (details):
-      // 00000000 ← 0x00          00111100 ← 0x3C          00000000 ← 0x00
-      // 00000000 ← 0x00          01111110 ← 0x7E          00000000 ← 0x00
-      // 00011000 ← 0x18          00000000 ← 0x00          00100100 ← 0x24
-      // 00111100 ← 0x3C          00000000 ← 0x00          01000010 ← 0x42
-      // 01100110 ← 0x66          00000000 ← 0x00          00011000 ← 0x18
-      // 01100110 ← 0x66          00000000 ← 0x00          00011000 ← 0x18
-      // 00111100 ← 0x3C          00000000 ← 0x00          01000010 ← 0x42
-      // 00011000 ← 0x18          00000000 ← 0x00          01100110 ← 0x66
       [
-        [0x00, 0x00, 0x18, 0x3C, 0x66, 0x66, 0x3C, 0x18], // Layer 0 (bit 0) - white face
-        [0x3C, 0x7E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1 (bit 1) - purple hat
-        [0x00, 0x00, 0x24, 0x42, 0x18, 0x18, 0x42, 0x66], // Layer 2 (bit 2) - eyes and beard highlights
+        "00600600",
+        "00600600",
+        "01564510",
+        "13444031",
+        "01111110",
+        "01111110",
+        "13444031",
+        "01511150"
       ],
-
-      // Sprite 1: Wizard body - purple robes with belt
-      // Layer 0 (arms/belt):    Layer 1 (purple robe):  Layer 2 (details):
-      // 00011000 ← 0x18          00000000 ← 0x00          00000000 ← 0x00
-      // 00100100 ← 0x24          00000000 ← 0x00          00011000 ← 0x18
-      // 00000000 ← 0x00          00111100 ← 0x3C          01000010 ← 0x42
-      // 00011000 ← 0x18          01100110 ← 0x66          00000000 ← 0x00
-      // 00011000 ← 0x18          01100110 ← 0x66          00000000 ← 0x00
-      // 00100100 ← 0x24          00000000 ← 0x00          01000010 ← 0x42
-      // 00011000 ← 0x18          00000000 ← 0x00          01100110 ← 0x66
-      // 00000000 ← 0x00          00000000 ← 0x00          00000000 ← 0x00
       [
-        [0x18, 0x24, 0x00, 0x18, 0x18, 0x24, 0x18, 0x00], // Layer 0 (bit 0) - white arms and belt
-        [0x00, 0x00, 0x3C, 0x66, 0x66, 0x00, 0x00, 0x00], // Layer 1 (bit 1) - purple robe
-        [0x00, 0x18, 0x42, 0x00, 0x00, 0x42, 0x66, 0x00], // Layer 2 (bit 2) - robe details
+        "00100100",
+        "10144014",
+        "06266620",
+        "01100110",
+        "01100110",
+        "10144014",
+        "01011010",
+        "00000000"
       ],
-
-      // Sprite 2: Wizard legs with staff - purple robe bottom with brown staff
-      // Bit combinations: 0=black, 1=white, 2=red, 3=green, 4=blue, 5=yellow, 6=magenta, 7=cyan
-      // Layer 0 (staff base):   Layer 1 (purple robe):  Layer 2 (blue comp.):   Layer 3 (staff orb):
-      // 10000001 ← 0x81          00011000 ← 0x18          00011000 ← 0x18          00000000 ← 0x00
-      // 10000001 ← 0x81          00011000 ← 0x18          00011000 ← 0x18          00000000 ← 0x00
-      // 00000000 ← 0x00          00111100 ← 0x3C          00111100 ← 0x3C          00000000 ← 0x00
-      // 00000000 ← 0x00          00100100 ← 0x24          00100100 ← 0x24          00000000 ← 0x00
-      // 00000000 ← 0x00          00100100 ← 0x24          00100100 ← 0x24          00000000 ← 0x00
-      // 00000000 ← 0x00          00111100 ← 0x3C          00111100 ← 0x3C          00000000 ← 0x00
-      // 10000001 ← 0x81          00011000 ← 0x18          00000000 ← 0x00          00000000 ← 0x00
-      // 10000001 ← 0x81          00011000 ← 0x18          00000000 ← 0x00          00011000 ← 0x18
       [
-        [0x81, 0x81, 0x00, 0x00, 0x00, 0x00, 0x81, 0x81], // Layer 0 (bit 0) - staff base (bit 0 only = white)
-        [0x18, 0x18, 0x3C, 0x24, 0x24, 0x3C, 0x18, 0x18], // Layer 1 (bit 1) - purple robe (bit 1 only = red, but we want purple = red+blue)
-        [0x18, 0x18, 0x3C, 0x24, 0x24, 0x3C, 0x00, 0x00], // Layer 2 (bit 2) - blue component for purple robe (bit 1+2 = red+blue = magenta/purple)
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18]  // Layer 3 (bit 3) - staff orb (bit 3 only = dark color)
+        "10600601",
+        "10600601",
+        "06666660",
+        "06266620",
+        "06266620",
+        "06666660",
+        "00100100",
+        "10111018"
       ],
-
-      // Sprite 3: Enemy head - red skin with yellow eyes and spikes
       [
-        [0x18, 0x24, 0x24, 0x18, 0x00, 0x00, 0x00, 0x00], // Layer 0 (bit 0) - eyes
-        [0x3C, 0x42, 0x42, 0x42, 0x7E, 0x7E, 0x7E, 0x3C], // Layer 1 (bit 1) - red head
-        [0x81, 0x99, 0x99, 0x81, 0x00, 0x00, 0x00, 0x00], // Layer 2 (bit 2) - spiky hair
+        "00511500",
+        "17677670",
+        "17677670",
+        "01255120",
+        "00222200",
+        "00222200",
+        "00222200",
+        "00333300"
       ],
-
-      // Sprite 4: Enemy body - purple shirt with red arms
       [
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 0 (bit 0)
-        [0x18, 0x24, 0x00, 0x00, 0x00, 0x24, 0x18, 0x00], // Layer 1 (bit 1) - red arms
-        [0x00, 0x00, 0x3C, 0x7E, 0x7E, 0x00, 0x00, 0x00], // Layer 2 (bit 2) - purple shirt
-        [0x00, 0x18, 0x00, 0x00, 0x00, 0x18, 0x00, 0x00]  // Layer 3 (bit 3) - shirt details
+        "00000000",
+        "00211200",
+        "00666600",
+        "00aaaaa0",
+        "00aaaaa0",
+        "00200200",
+        "00100100",
+        "00000000"
       ],
-
-      // Sprite 5: Enemy legs - black pants with red feet
       [
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3C, 0x3C], // Layer 0 (bit 0) - red feet
-        [0x18, 0x18, 0x3C, 0x24, 0x24, 0x3C, 0x00, 0x00], // Layer 1 (bit 1) - black pants
+        "00100100",
+        "00100100",
+        "00333300",
+        "00262600",
+        "00262600",
+        "00333300",
+        "01000010",
+        "01000010"
       ],
-
-      // Sprite 6: Platform block - textured stone (gray with highlights)
       [
-        [0x42, 0x24, 0x81, 0x18, 0x81, 0x24, 0x42, 0x99], // Layer 0 (bit 0) - texture details
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1 (bit 1)
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 2 (bit 2)
-        [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]  // Layer 3 (bit 3) - stone base
+        "91018109",
+        "12000021",
+        "81000018",
+        "01000010",
+        "81000018",
+        "12000021",
+        "91018109",
+        "99999999"
       ],
-
-      // Sprite 7: Collectible coin - yellow with gray edges
       [
-        [0x18, 0x3C, 0x7E, 0x7E, 0x7E, 0x7E, 0x3C, 0x18], // Layer 0 (bit 0) - yellow base (bit 0+2 = 5 = yellow)
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1 (bit 1)
-        [0x18, 0x3C, 0x7E, 0x7E, 0x7E, 0x7E, 0x3C, 0x18], // Layer 2 (bit 2) - yellow base (bit 0+2 = 5 = yellow)
-        [0x00, 0x42, 0x81, 0x99, 0x99, 0x81, 0x42, 0x00]  // Layer 3 (bit 3) - gray edge details (bit 3 = 8 = gray)
+        "00ddddd0",
+        "0fffffff",
+        "ffffffff",
+        "ffffffff",
+        "ffffffff",
+        "ffffffff",
+        "0fffffff",
+        "00ddddd0"
       ],
-
-      // Sprite 8: Energy blast projectile - cyan with white core
       [
-        [0x18, 0x3C, 0x7E, 0x7E, 0x7E, 0x7E, 0x3C, 0x18], // Layer 0 (bit 0) - white core
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1 (bit 1)
-        [0x00, 0x18, 0x00, 0x00, 0x00, 0x00, 0x18, 0x00], // Layer 2 (bit 2) - cyan glow
-        [0x3C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3C]  // Layer 3 (bit 3) - outer glow
+        "00133100",
+        "00333300",
+        "01111110",
+        "11111111",
+        "11111111",
+        "01111110",
+        "00333300",
+        "00100100"
       ],
-
-      // Sprite 9: Brick tile - orange/brown brick pattern
       [
-        [0x00, 0xFF, 0x81, 0xFF, 0xFF, 0x81, 0xFF, 0x00], // Layer 0 (bit 0) - white mortar lines
-        [0xFF, 0x00, 0x7E, 0x00, 0x00, 0x7E, 0x00, 0xFF], // Layer 1 (bit 1) - red brick base (bit 0+1 = yellow/orange)
+        "01333310",
+        "13111131",
+        "31222213",
+        "12111121",
+        "12111121",
+        "31222213",
+        "13111131",
+        "01333310"
       ],
-
-      // Sprite 10: Metal tile - silver/gray metal with bolts
       [
-        [0x42, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x42], // Layer 0 (bit 0) - white bolt highlights
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 1 (bit 1)
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 2 (bit 2)
-        [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]  // Layer 3 (bit 3) - gray metal base (bit 3 = 8 = gray)
+        "10000001",
+        "88888888",
+        "88888888",
+        "88888888",
+        "88888888",
+        "88888888",
+        "88888888",
+        "10000001"
       ],
-
-      // Sprite 11: Spikes - red spikes with gray base
       [
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 0 (bit 0)
-        [0x18, 0x3C, 0x7E, 0xFF, 0xFF, 0x7E, 0x3C, 0x18], // Layer 1 (bit 1) - red spikes (bit 1 = 2 = red)
-        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], // Layer 2 (bit 2)
-        [0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF]  // Layer 3 (bit 3) - gray base (bit 3 = 8 = gray)
+        "00000000",
+        "00122100",
+        "01222210",
+        "12222221",
+        "88888888",
+        "88888888",
+        "88888888",
+        "88888888"
       ],
-
-      // Sprite 12: Exit portal - glowing green/cyan swirl
       [
-        [0x18, 0x3C, 0x7E, 0xFF, 0xFF, 0x7E, 0x3C, 0x18], // Layer 0 (bit 0) - white core
-        [0x24, 0x42, 0x81, 0x00, 0x00, 0x81, 0x42, 0x24], // Layer 1 (bit 1) - green swirl (bit 0+1 = 3 = green)
-        [0x18, 0x3C, 0x66, 0x99, 0x99, 0x66, 0x3C, 0x18], // Layer 2 (bit 2) - cyan glow (bit 0+2 = 5 = yellow, bit 2 = 4 = blue)
+        "00133100",
+        "01377310",
+        "13999931",
+        "39111193",
+        "39111193",
+        "13999931",
+        "01377310",
+        "00133100"
       ]
     ],
     palette: [

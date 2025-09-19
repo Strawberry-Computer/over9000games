@@ -29,17 +29,19 @@ export function validateGameSchema(gameDefinition) {
     }
   }
 
-  // Validate sprites (new simplified format)
+  // Validate sprites (hex string format)
   if (gameDefinition.sprites && !Array.isArray(gameDefinition.sprites)) {
     errors.push('Sprites must be an array');
   } else if (gameDefinition.sprites) {
     gameDefinition.sprites.forEach((sprite, spriteIndex) => {
-      if (!Array.isArray(sprite)) {
-        errors.push(`Sprite ${spriteIndex} must be an array of layers`);
+      if (!Array.isArray(sprite) || sprite.length !== 8) {
+        errors.push(`Sprite ${spriteIndex} must be an array of 8 hex strings`);
       } else {
-        sprite.forEach((layer, layerIndex) => {
-          if (!Array.isArray(layer) || layer.length !== 8) {
-            errors.push(`Sprite ${spriteIndex} layer ${layerIndex} must be an array of 8 bytes`);
+        sprite.forEach((row, rowIndex) => {
+          if (typeof row !== 'string' || row.length !== 8) {
+            errors.push(`Sprite ${spriteIndex} row ${rowIndex} must be an 8-character hex string`);
+          } else if (!/^[0-9a-fA-F]{8}$/.test(row)) {
+            errors.push(`Sprite ${spriteIndex} row ${rowIndex} must contain only hex characters (0-9, a-f)`);
           }
         });
       }

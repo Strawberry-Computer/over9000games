@@ -12,8 +12,8 @@ A retro 8-bit game console built on Reddit's Devvit platform featuring authentic
 - **Background**: 16×16 tile grid (8×8 pixel tiles)
 
 ### Graphics System
-- **Sprite Definition**: 4-layer bitmask system
-- **Color Calculation**: Each pixel = Layer3|Layer2|Layer1|Layer0 (4-bit)
+- **Sprite Definition**: Hex string format for direct palette indexing
+- **Color Calculation**: Each hex character directly maps to palette index (0-F)
 - **Rendering**: Dual-canvas architecture (sprite sheet + main canvas)
 - **Performance**: Hardware-accelerated canvas blitting
 
@@ -62,8 +62,8 @@ A retro 8-bit game console built on Reddit's Devvit platform featuring authentic
 ```
 
 ### Sprite System
-- **4-Layer Bitmasks**: Each sprite defined as 4 JavaScript bitmask arrays
-- **Color Composition**: `color = Layer3<<3 | Layer2<<2 | Layer1<<1 | Layer0`
+- **Hex String Arrays**: Each sprite defined as 8 hex strings (one per row)
+- **Direct Indexing**: Each character (0-F) directly specifies palette index
 - **Pre-Rendering**: Sprites compiled to canvas sprite sheet at startup
 - **Deferred Rendering**: Games set sprite positions, console renders all at once
 
@@ -155,15 +155,16 @@ const generatedGame = {
 
   // NES-style sprite definitions
   sprites: [
-    {
-      width: 8, height: 8,
-      layers: [
-        [0xFF, 0x81, 0x81, 0xFF, 0xFF, 0x81, 0x81, 0xFF], // Layer 0
-        [0x00, 0x7E, 0x42, 0x42, 0x42, 0x42, 0x7E, 0x00], // Layer 1
-        [0x00, 0x00, 0x3C, 0x24, 0x24, 0x3C, 0x00, 0x00], // Layer 2
-        [0x00, 0x00, 0x00, 0x18, 0x18, 0x00, 0x00, 0x00]  // Layer 3
-      ]
-    }
+    [
+      "11111111",  // Row 0: white border
+      "12222221",  // Row 1: white border with green fill
+      "12333321",  // Row 2: green with red center
+      "12333321",  // Row 3: green with red center
+      "12333321",  // Row 4: green with red center
+      "12333321",  // Row 5: green with red center
+      "12222221",  // Row 6: white border with green fill
+      "11111111"   // Row 7: white border
+    ]
     // ... more sprites
   ],
 

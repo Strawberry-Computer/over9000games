@@ -1,9 +1,4 @@
-export type SpriteDefinition = {
-  id: string;
-  layers: [number[], number[], number[], number[]];
-  width: number;
-  height: number;
-};
+export type SpriteDefinition = string[];
 
 export type GameDefinition = {
   name: string;
