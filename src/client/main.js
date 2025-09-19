@@ -502,7 +502,7 @@ async function captureGameScreenshot() {
       const gameY = 0; // Top aligned
 
       landscapeCtx.imageSmoothingEnabled = false;
-      landscapeCtx.drawImage(captureCanvas, 0, 0, 1024, 1024, gameX, gameY, gameSize, gameSize);
+      landscapeCtx.drawImage(captureCanvas, 0, 0, 512, 512, gameX, gameY, gameSize, gameSize);
 
 
       // Skip scanlines effect to reduce PNG file size

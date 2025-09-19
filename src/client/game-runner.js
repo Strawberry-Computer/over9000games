@@ -516,8 +516,6 @@ function doUpdate(deltaTime, input) {
   gameLoop = () => {
     if (!this.state.gameRunning) return;
 
-    this.updateInput();
-
     // Only update game logic if not paused
     if (!this.state.gamePaused) {
       try {
@@ -540,6 +538,9 @@ function doUpdate(deltaTime, input) {
         }, 50);
       }
     }
+
+    // Update input state AFTER game update to preserve justPressed detection
+    this.updateInput();
 
     this.render();
     this.animationId = requestAnimationFrame(this.gameLoop);
