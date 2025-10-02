@@ -10,9 +10,13 @@ import {
 import { media } from "@devvit/media";
 import { createPost } from "./core/post.js";
 import { generateGameWithAI } from "./game-generator.js";
+import { JobManager } from "./job-manager.js";
 import { getTestGameCode, getAvailableTestGames } from "../shared/test-games/server-loader.js";
 
 const app = express();
+
+// Initialize job manager
+const jobManager = new JobManager(redis);
 
 // Helper function to format leaderboard data
 async function formatLeaderboard(postId, topPlayers) {
@@ -118,7 +122,7 @@ router.post("/api/game/generate", async (req, res) => {
   }
 
   try {
-    const { description } = req.body;
+    const { description, model } = req.body;
     if (!description) {
       res.status(400).json({
         status: "error",
@@ -127,19 +131,28 @@ router.post("/api/game/generate", async (req, res) => {
       return;
     }
 
-    const gameDefinition = await generateGameWithAI(description, settings);
+    // Create async job for background processing
+    const result = await jobManager.createJob(
+      postId,
+      description,
+      context.userId || 'anonymous',
+      { model }
+    );
 
-    console.log("Generated game definition:", JSON.stringify(gameDefinition, null, 2));
+    console.log(`Created job ${result.jobId} for: ${description.substring(0, 50)}...`);
 
     res.json({
-      type: "generate",
-      gameDefinition,
+      type: "generate_async",
+      jobId: result.jobId,
+      status: result.status,
+      model: result.model,
+      estimatedTime: result.estimatedTime
     });
   } catch (error) {
-    console.error(`Error generating game for post ${postId}:`, error);
+    console.error(`Error creating generation job for post ${postId}:`, error);
     res.status(500).json({
       status: "error",
-      message: `Failed to generate game: ${error.message}`,
+      message: `Failed to create generation job: ${error.message}`,
     });
   }
 });
@@ -172,19 +185,161 @@ router.post("/api/game/edit", async (req, res) => {
       return;
     }
 
-    const gameDefinition = await generateGameWithAI(description, settings, previousGame);
+    // Create async job for editing (also background now)
+    const result = await jobManager.createJob(
+      postId,
+      description,
+      context.userId || 'anonymous',
+      { previousGame: JSON.stringify(previousGame) }
+    );
 
-    console.log("Edited game definition:", JSON.stringify(gameDefinition, null, 2));
+    console.log(`Created edit job ${result.jobId} for: ${description.substring(0, 50)}...`);
 
     res.json({
-      type: "generate",
-      gameDefinition,
+      type: "generate_async",
+      jobId: result.jobId,
+      status: result.status,
+      model: result.model,
+      estimatedTime: result.estimatedTime
     });
   } catch (error) {
     console.error(`Error editing game for post ${postId}:`, error);
     res.status(500).json({
       status: "error",
       message: `Failed to edit game: ${error.message}`,
+    });
+  }
+});
+
+// New endpoint for checking job status
+router.get("/api/jobs/:jobId", async (req, res) => {
+  const { jobId } = req.params;
+  const { postId } = context;
+
+  if (!postId) {
+    res.status(400).json({
+      status: "error",
+      message: "postId is required",
+    });
+    return;
+  }
+
+  try {
+    const job = await jobManager.getJob(jobId);
+
+    if (!job) {
+      res.status(404).json({
+        status: "error",
+        message: "Job not found",
+      });
+      return;
+    }
+
+    // Verify job belongs to this post (security check)
+    if (job.postId !== postId) {
+      res.status(403).json({
+        status: "error",
+        message: "Access denied",
+      });
+      return;
+    }
+
+    // If job is queued, start the OpenAI background request
+    if (job.status === 'queued') {
+      try {
+        const apiKey = await settings.get('openAIKey');
+        if (!apiKey) {
+          await jobManager.markJobFailed(jobId, new Error('OpenAI API key not configured'));
+          job.status = 'failed';
+          job.error = 'OpenAI API key not configured';
+        } else {
+          const { ResponsesAPI } = await import('./responses-api.js');
+          const responsesAPI = new ResponsesAPI(apiKey);
+
+          // Start the background request
+          const response = await responsesAPI.createResponse(
+            job.description,
+            job.model,
+            job.previousGame ? JSON.parse(job.previousGame) : null
+          );
+
+          // Update job with OpenAI response ID
+          await jobManager.markJobPolling(jobId, response.id);
+          job.status = 'polling';
+          job.openaiResponseId = response.id;
+          console.log(`Job ${jobId} started with OpenAI response ${response.id}`);
+        }
+      } catch (startError) {
+        console.error(`Error starting job ${jobId}:`, startError);
+        await jobManager.markJobFailed(jobId, startError);
+        job.status = 'failed';
+        job.error = startError.message;
+      }
+    }
+
+    // IMPORTANT: If job is polling, also check OpenAI status right now
+    // This way we don't rely on a background worker that might be killed
+    if (job.status === 'polling' && job.openaiResponseId) {
+      try {
+        const apiKey = await settings.get('openAIKey');
+        if (apiKey) {
+          const { ResponsesAPI } = await import('./responses-api.js');
+          const responsesAPI = new ResponsesAPI(apiKey);
+
+          const openaiStatus = await responsesAPI.getResponse(job.openaiResponseId);
+
+          if (openaiStatus.status === 'completed') {
+            // Update job with completed game
+            await jobManager.markJobCompleted(jobId, openaiStatus.gameDefinition);
+            job.status = 'completed';
+            job.gameDefinition = openaiStatus.gameDefinition;
+            console.log(`Job ${jobId} completed via client-driven polling`);
+          } else if (openaiStatus.status === 'failed') {
+            // Update job as failed
+            await jobManager.markJobFailed(jobId, new Error(openaiStatus.error));
+            job.status = 'failed';
+            job.error = openaiStatus.error;
+            console.log(`Job ${jobId} failed via client-driven polling`);
+          }
+          // If still in progress, just continue
+        }
+      } catch (pollError) {
+        console.error(`Error checking OpenAI status for job ${jobId}:`, pollError);
+        // Don't fail the request, just log the error
+      }
+    }
+
+    const response = {
+      jobId,
+      status: job.status,
+      model: job.model,
+      createdAt: parseInt(job.createdAt),
+    };
+
+    // Add progress for in-progress jobs
+    if (job.status === 'in_progress' || job.status === 'polling') {
+      response.progress = job.progress;
+      response.estimatedRemaining = Math.max(0,
+        jobManager.getEstimatedTime(job.model) - Math.floor((Date.now() - parseInt(job.startedAt || job.createdAt)) / 1000)
+      );
+    }
+
+    // Add result for completed jobs
+    if (job.status === 'completed' && job.gameDefinition) {
+      response.gameDefinition = job.gameDefinition;
+    }
+
+    // Add error for failed jobs
+    if (job.status === 'failed' && job.error) {
+      response.error = job.error;
+    }
+
+    res.json(response);
+  } catch (error) {
+    console.error(`Error getting job status ${jobId}:`, error);
+    res.status(500).json({
+      status: "error",
+      message: `Failed to get job status: ${error.message}`,
     });
   }
 });

@@ -344,6 +344,9 @@ function showPublishingStatus(message, type = "loading") {
   publishingStatusElement.style.display = "block";
 }
 
+let currentJobId = null;
+let pollInterval = null;
+
 async function generateGame() {
   const description = gameDescriptionElement.value.trim();
 
@@ -361,36 +364,133 @@ async function generateGame() {
   generateButton.classList.add("disabled");
 
   try {
-    if (isEditMode) {
-      showGenerationStatus("Applying your edits", "loading");
+    const endpoint = isEditMode ? "/api/game/edit" : "/api/game/generate";
+    const requestBody = isEditMode
+      ? { description, previousGame: currentGameData }
+      : { description, model: "gpt-5" }; // Default to GPT-5 for better quality
 
-      const response = await fetch("/api/game/edit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          description,
-          previousGame: currentGameData
-        }),
-      });
+    showGenerationStatus("Starting generation...", "loading");
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.type === "generate_async") {
+      // Handle async job
+      currentJobId = data.jobId;
+
+      showGenerationStatus(
+        `Queued for generation (${data.model}) • Est. ${data.estimatedTime}s`,
+        "loading"
+      );
+
+      // Start polling for job completion
+      startJobPolling(data.jobId);
+
+    } else {
+      // Handle any legacy sync responses (fallback)
+      throw new Error("Expected async response but got sync");
+    }
+
+  } catch (error) {
+    console.error("Error starting game generation:", error);
+    showGenerationStatus(`Error: ${error.message}`, "error");
+
+    // Re-enable form on error
+    resetGenerationForm();
+  }
+}
+
+function startJobPolling(jobId) {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+  }
+
+  pollInterval = setInterval(async () => {
+    try {
+      const response = await fetch(`/api/jobs/${jobId}`);
 
       if (!response.ok) {
-        throw new Error(`Game edit failed: ${response.status}`);
+        throw new Error(`Status check failed: ${response.status}`);
       }
 
-      const gameData = await response.json();
+      const jobData = await response.json();
 
-      if (gameData.type !== "generate" || !gameData.gameDefinition?.gameCode) {
-        throw new Error("Invalid game edit response");
+      switch (jobData.status) {
+        case 'queued':
+          showGenerationStatus("Queued for processing...", "loading");
+          break;
+
+        case 'in_progress':
+        case 'polling':
+          const progress = jobData.progress || 0;
+          const remaining = jobData.estimatedRemaining || '?';
+          showGenerationStatus(
+            `Generating with ${jobData.model}... ${progress}% • ${remaining}s remaining`,
+            "loading"
+          );
+          break;
+
+        case 'completed':
+          clearInterval(pollInterval);
+          pollInterval = null;
+          currentJobId = null;
+
+          console.log('Job completed with data:', jobData);
+          console.log('Game definition exists?', !!jobData.gameDefinition);
+          console.log('Game code exists?', !!jobData.gameDefinition?.gameCode);
+          console.log('Game code type:', typeof jobData.gameDefinition?.gameCode);
+          console.log('Game code length:', jobData.gameDefinition?.gameCode?.length);
+
+          if (jobData.gameDefinition?.gameCode) {
+            await handleGenerationComplete(jobData.gameDefinition);
+          } else {
+            console.error('No game code in response. Full response:', jobData);
+            throw new Error("No game code in completed job");
+          }
+          break;
+
+        case 'failed':
+          clearInterval(pollInterval);
+          pollInterval = null;
+          currentJobId = null;
+
+          showGenerationStatus(`Generation failed: ${jobData.error}`, "error");
+          resetGenerationForm();
+          break;
+
+        default:
+          console.log(`Unknown job status: ${jobData.status}`);
       }
 
+    } catch (error) {
+      console.error("Error polling job status:", error);
+
+      // Don't clear interval immediately - might be temporary network issue
+      // Only stop after several failures
+    }
+  }, 3000); // Poll every 3 seconds
+}
+
+async function handleGenerationComplete(gameDefinition) {
+  try {
+    if (isEditMode) {
       // Save current version to history before updating
       saveToEditHistory(currentGameData);
 
       // Store the edited game
       currentGameData = {
-        ...gameData.gameDefinition,
+        ...gameDefinition,
         originalDescription: currentGameData.originalDescription,
-        editDescription: description
+        editDescription: gameDescriptionElement.value.trim()
       };
 
       // Save new version to history
@@ -398,28 +498,10 @@ async function generateGame() {
       updateEditButtons();
 
     } else {
-      showGenerationStatus("Generating your game", "loading");
-
-      const response = await fetch("/api/game/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Game generation failed: ${response.status}`);
-      }
-
-      const gameData = await response.json();
-
-      if (gameData.type !== "generate" || !gameData.gameDefinition?.gameCode) {
-        throw new Error("Invalid game generation response");
-      }
-
       // Store the generated game and initialize edit history
       currentGameData = {
-        ...gameData.gameDefinition,
-        originalDescription: description
+        ...gameDefinition,
+        originalDescription: gameDescriptionElement.value.trim()
       };
 
       editHistory = { versions: [], currentIndex: -1 };
@@ -427,18 +509,44 @@ async function generateGame() {
       updateEditButtons();
     }
 
-    // Load and show the game immediately
+    // Load and show the game
     await showGeneratedGame();
 
   } catch (error) {
-    console.error("Error generating game:", error);
-    showGenerationStatus(`Error: ${error.message}`, "error");
-
-    // Re-enable form on error
-    gameDescriptionElement.disabled = false;
-    generateButton.disabled = false;
-    generateButton.classList.remove("disabled");
+    console.error("Error handling completed generation:", error);
+    showGenerationStatus(`Error loading game: ${error.message}`, "error");
+    resetGenerationForm();
   }
+}
+
+function resetGenerationForm() {
+  gameDescriptionElement.disabled = false;
+
+  const generateButton = document.getElementById("btn-generate-game");
+  generateButton.disabled = false;
+  generateButton.classList.remove("disabled");
+
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+
+  currentJobId = null;
+}
+
+function cancelGeneration() {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+
+  if (currentJobId) {
+    console.log(`Cancelling job ${currentJobId}`);
+    currentJobId = null;
+  }
+
+  showGenerationStatus("Generation cancelled", "error");
+  resetGenerationForm();
 }
 
 async function showGeneratedGame() {
@@ -451,6 +559,7 @@ async function showGeneratedGame() {
     console.log("=== GENERATED GAME CODE END ===");
     console.log("Game code length:", currentGameData.gameCode?.length || "undefined");
     console.log("Game code type:", typeof currentGameData.gameCode);
+    console.log("First 200 chars of code:", currentGameData.gameCode?.substring(0, 200));
 
     // Load the game into the main console
     await gameRunner.loadCode(currentGameData.gameCode);
@@ -692,7 +801,14 @@ document.getElementById("btn-close-dev-menu")?.addEventListener("click", hideAll
 
 // Game creation flow event listeners
 document.getElementById("btn-generate-game")?.addEventListener("click", generateGame);
-document.getElementById("btn-cancel-creation")?.addEventListener("click", hideAllModals);
+document.getElementById("btn-cancel-creation")?.addEventListener("click", () => {
+  // Cancel generation if in progress
+  if (currentJobId && pollInterval) {
+    cancelGeneration();
+  } else {
+    hideAllModals();
+  }
+});
 
 // Game publishing event listeners
 document.getElementById("btn-post-to-reddit")?.addEventListener("click", publishGameToReddit);
