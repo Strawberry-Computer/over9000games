@@ -13,16 +13,18 @@ function metadata() {
 function resources() {
   return {
     sprites: [
+      // Sprite 0: Wizard head with light gray face and cyan details
       [
-        "00f77f00",
-        "0f7aaa7f",
-        "f7a0990af",
-        "7a900097",
-        "fa90009f",
-        "0fa999af",
-        "00faaf00",
-        "000ff000"
+        "00b66b00",
+        "0b6999b6",
+        "b698809b",
+        "69800086",
+        "b98000b6",
+        "0b9999b6",
+        "00b99b00",
+        "000bb000"
       ],
+      // Sprite 1: Wizard body in blue robes with red belt
       [
         "00244200",
         "02444420",
@@ -33,6 +35,7 @@ function resources() {
         "02444420",
         "00244200"
       ],
+      // Sprite 2: Wizard legs in green pants with blue boots
       [
         "00133100",
         "01333310",
@@ -43,26 +46,29 @@ function resources() {
         "01333310",
         "00133100"
       ],
+      // Sprite 3: Enemy head with gray face and dark red hair
       [
-        "00822800",
-        "08299280",
-        "82999928",
-        "29921992",
-        "82922928",
-        "08299280",
-        "00822800",
-        "00088000"
+        "00722700",
+        "07288270",
+        "72888827",
+        "28821882",
+        "72822727",
+        "07288270",
+        "00722700",
+        "00077000"
       ],
+      // Sprite 4: Enemy body with gray torso and red clothing
       [
-        "00988900",
-        "09888890",
-        "98833889",
-        "88322388",
-        "83222238",
-        "88322388",
-        "09888890",
-        "00988900"
+        "00877800",
+        "08777780",
+        "87722778",
+        "77211277",
+        "72111127",
+        "77211277",
+        "08777780",
+        "00877800"
       ],
+      // Sprite 5: Enemy legs with red pants and yellow accents
       [
         "00922900",
         "09222290",
@@ -73,36 +79,40 @@ function resources() {
         "02222220",
         "00922900"
       ],
+      // Sprite 6: Gray stone platform tile with border details
       [
-        "91018109",
+        "81017108",
         "12000021",
-        "81000018",
+        "71000017",
         "01000010",
-        "81000018",
+        "71000017",
         "12000021",
-        "91018109",
-        "99999999"
+        "81017108",
+        "77777777"
       ],
+      // Sprite 7: Olive/yellow coin with light gray highlights
       [
-        "00c55c00",
-        "0c5555c0",
-        "c555f55c",
-        "555fff55",
-        "55ff5f55",
-        "c55555c0",
-        "0c5555c0",
-        "00c55c00"
+        "00a55a00",
+        "0a5555a0",
+        "a555b55a",
+        "555bbb55",
+        "55bb5b55",
+        "a55555a0",
+        "0a5555a0",
+        "00a55a00"
       ],
+      // Sprite 8: Cyan energy projectile with light aura
       [
-        "0007b700",
-        "007bbb70",
-        "07b7b7b7",
-        "7bb7b7bb",
-        "7bb7b7bb",
-        "07b7b7b7",
-        "007bbb70",
-        "0007b700"
+        "0006b600",
+        "006bbb60",
+        "06b6b6b6",
+        "6bb6b6bb",
+        "6bb6b6bb",
+        "06b6b6b6",
+        "006bbb60",
+        "0006b600"
       ],
+      // Sprite 9: Green/brown brick tile with white mortar
       [
         "01333310",
         "13111131",
@@ -113,34 +123,37 @@ function resources() {
         "13111131",
         "01333310"
       ],
+      // Sprite 10: Gray metal platform with black/white border
       [
         "10000001",
-        "88888888",
-        "88888888",
-        "88888888",
-        "88888888",
-        "88888888",
-        "88888888",
+        "77777777",
+        "77777777",
+        "77777777",
+        "77777777",
+        "77777777",
+        "77777777",
         "10000001"
       ],
+      // Sprite 11: Gray upward-pointing spike hazard tile
       [
         "00000000",
         "00122100",
         "01222210",
         "12222221",
-        "88888888",
-        "88888888",
-        "88888888",
-        "88888888"
+        "77777777",
+        "77777777",
+        "77777777",
+        "77777777"
       ],
+      // Sprite 12: Green exit door with cyan interior
       [
         "00133100",
-        "01377310",
-        "13999931",
-        "39111193",
-        "39111193",
-        "13999931",
-        "01377310",
+        "01366310",
+        "13888831",
+        "38111183",
+        "38111183",
+        "13888831",
+        "01366310",
         "00133100"
       ]
     ],
@@ -151,15 +164,11 @@ function resources() {
       0x00FF00, // 3: Green
       0x0000FF, // 4: Blue
       0xFFFF00, // 5: Yellow
-      0xFF00FF, // 6: Magenta
       0x00FFFF, // 7: Cyan
       0x808080, // 8: Gray
       0x800000, // 9: Dark red
       0x008000, // 10: Dark green
-      0x000080, // 11: Dark blue
       0x808000, // 12: Olive
-      0x800080, // 13: Purple
-      0x008080, // 14: Teal
       0xC0C0C0  // 15: Light gray
     ]
   };

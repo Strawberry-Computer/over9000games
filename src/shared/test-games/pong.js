@@ -12,6 +12,7 @@ function metadata() {
 function resources() {
   return {
     sprites: [
+      // Sprite 0: Solid white paddle segment
       [
         "11111111",
         "11111111",
@@ -22,6 +23,7 @@ function resources() {
         "11111111",
         "11111111"
       ],
+      // Sprite 1: Rounded paddle top with black corners
       [
         "00111100",
         "01111110",
@@ -32,6 +34,7 @@ function resources() {
         "11111111",
         "11111111"
       ],
+      // Sprite 2: Rounded paddle bottom with black corners
       [
         "11111111",
         "11111111",
@@ -42,6 +45,7 @@ function resources() {
         "01111110",
         "00111100"
       ],
+      // Sprite 3: Red ball with circular shape
       [
         "00000000",
         "00222200",
@@ -53,7 +57,7 @@ function resources() {
         "00000000"
       ]
     ],
-    palette: [0x000000, 0xFFFFFF, 0xFF0000, 0x00FF00, 0x0000FF, 0xFFFF00, 0xFF00FF, 0x00FFFF, 0x808080, 0x800000, 0x008000, 0x000080, 0x808000, 0x800080, 0x008080, 0xC0C0C0]
+    palette: [0x000000, 0xFFFFFF, 0xFF0000]
   };
 }
 
