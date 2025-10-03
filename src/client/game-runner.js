@@ -633,8 +633,16 @@ function doUpdate(deltaTime, input) {
   processCommands(commands) {
     if (!commands) return;
 
+    // Clear sprites every frame
     for (let i = 0; i < 64; i++) {
       this.clearSprite(i);
+    }
+
+    // Clear tiles every frame
+    for (let y = 0; y < this.maxTilesY; y++) {
+      for (let x = 0; x < this.maxTilesX; x++) {
+        this.state.tiles[y][x] = -1;
+      }
     }
 
     if (commands.sprites && Array.isArray(commands.sprites)) {
