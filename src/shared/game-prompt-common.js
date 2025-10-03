@@ -30,12 +30,13 @@ function getRequirementsSection() {
 - **Sprite format**: \`["row0", "row1", ..., "row7"]\` where each row is an 8-character hex string
 - **Hex format**: Each character (0-F) represents the palette index for that pixel
 - **Color options**: Use palette indices 0-15, where 0 is typically transparent/background
-- **update() returns**: Command object: \`{sprites: [{spriteId: 0, x: 10, y: 20}], score: 100, gameOver: true}\`
+- **update() returns**: Command object: \`{sprites: [{spriteId: 0, x: 10, y: 20}], score: 100, gameOver: true, sounds: [...]}\`
 - **Scoring**: Always include a score system - return current score as a number in update()
 - **Game Over**: Include win/lose conditions - return gameOver: true when game ends
 - **Module-level gameState**: Use \`let gameState;\` not globalThis
 - **Input**: Use input.up, input.down, input.left, input.right, input.a, input.b
 - **Complex games**: Can have complex gameState (like Tetris boards, enemy arrays, etc.)
+- **Sound Effects (optional)**: Add NES-style sounds by including sounds array in return object (see examples)
 </requirements>`;
 }
 

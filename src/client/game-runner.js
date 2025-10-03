@@ -1,6 +1,7 @@
 import { getQuickJS } from "quickjs-emscripten";
 import { validateGameSchema, sanitizeGameDefinition } from "../shared/game-schema.js";
 import { renderBitmapText, renderCenteredBitmapText } from "./bitmap-font.js";
+import { AudioManager } from "./audio/audio-manager.js";
 
 export class GameRunner {
   constructor(canvasId, spriteCanvasId) {
@@ -46,6 +47,10 @@ export class GameRunner {
     this.firstFrameCallback = null;
     this.firstFrameExecuted = false;
     this.isGeneratedGame = false;
+
+    // Audio system
+    this.audioManager = new AudioManager();
+    this.audioInitialized = false;
 
     this.setupInputHandlers();
   }
@@ -347,7 +352,14 @@ function doUpdate(deltaTime, input) {
     this.state.score += points;
   }
 
-  startGame() {
+  async startGame() {
+    // Initialize and resume audio (requires user interaction)
+    if (!this.audioInitialized) {
+      await this.audioManager.initialize();
+      this.audioInitialized = true;
+    }
+    await this.audioManager.resume();
+
     this.state.gameRunning = true;
     this.state.gamePaused = false;
     this.gameLoop();
@@ -639,6 +651,31 @@ function doUpdate(deltaTime, input) {
       this.updateScoreDisplay();
     }
 
+    // Process audio commands
+    if (this.audioInitialized) {
+      const audioCommands = [];
+
+      // Sound commands
+      if (commands.sounds && Array.isArray(commands.sounds)) {
+        audioCommands.push(...commands.sounds.map(sound => ({
+          type: 'sound',
+          ...sound
+        })));
+      }
+
+      // Global audio commands
+      if (commands.audio) {
+        audioCommands.push({
+          type: 'audio',
+          ...commands.audio
+        });
+      }
+
+      if (audioCommands.length > 0) {
+        this.audioManager.processCommands(audioCommands);
+      }
+    }
+
     if (commands.gameOver === true) {
       this.handleGameOver();
     }
@@ -804,6 +841,11 @@ function doUpdate(deltaTime, input) {
     if (this.runtime) {
       this.runtime.dispose();
       this.runtime = null;
+    }
+
+    // Cleanup audio
+    if (this.audioManager) {
+      this.audioManager.cleanup();
     }
 
     this.QuickJS = null;

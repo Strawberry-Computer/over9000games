@@ -97,6 +97,8 @@ function update(deltaTime, input) {
     };
   }
 
+  const sounds = [];
+
   // Don't update if game is over
   if (gameState.gameOver) {
     return {
@@ -128,6 +130,16 @@ function update(deltaTime, input) {
   const maxBallY = SCREEN_HEIGHT - BALL_SIZE;
   if (gameState.ball.y <= 0 || gameState.ball.y >= maxBallY) {
     gameState.ball.dy *= -1;
+    // Wall bounce sound
+    sounds.push({
+      slotId: 0,
+      soundId: 'wall',
+      channel: 'pulse2',
+      frequency: 200,
+      duration: 0.05,
+      volume: 0.3,
+      envelope: 'sharp'
+    });
   }
 
   // Ball collision with paddles
@@ -145,6 +157,16 @@ function update(deltaTime, input) {
        gameState.ball.y <= player2Bottom)) {
     gameState.ball.dx *= -1;
     gameState.score += HIT_SCORE;
+    // Paddle hit sound
+    sounds.push({
+      slotId: 1,
+      soundId: 'hit',
+      channel: 'pulse1',
+      frequency: 400,
+      duration: 0.08,
+      volume: 0.5,
+      envelope: 'sharp'
+    });
   }
 
   // Check for game over conditions
@@ -160,6 +182,16 @@ function update(deltaTime, input) {
     gameState.ball.y = SCREEN_HEIGHT / 2;
     gameState.ball.dx = -BALL_SPEED;
     gameState.ball.dy = BALL_SPEED;
+    // Score sound
+    sounds.push({
+      slotId: 2,
+      soundId: 'score',
+      channel: 'pulse1',
+      note: 'E5',
+      duration: 0.15,
+      volume: 0.6,
+      envelope: 'sustain'
+    });
   }
 
   // Game over after specified duration
@@ -221,6 +253,7 @@ function update(deltaTime, input) {
       }
     ],
     score: gameState.score,
-    gameOver: gameState.gameOver
+    gameOver: gameState.gameOver,
+    sounds: sounds
   };
 }

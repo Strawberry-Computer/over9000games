@@ -232,6 +232,41 @@ const SPRITE_ENEMY_LEGS = 5;
 const SPRITE_COIN = 7;
 const SPRITE_PROJECTILE = 8;
 
+// Background music - NES style two-channel adventure theme
+const MUSIC = {
+  bass: [ // Triangle channel - walking bass line with chord progression
+    {note: 'C2', duration: 0.4}, {note: 'C2', duration: 0.4}, {note: 'E2', duration: 0.4},
+    {note: 'G2', duration: 0.4}, {note: 'G2', duration: 0.4}, {note: 'B2', duration: 0.4},
+    {note: 'A2', duration: 0.4}, {note: 'A2', duration: 0.4}, {note: 'C3', duration: 0.4},
+    {note: 'F2', duration: 0.4}, {note: 'F2', duration: 0.4}, {note: 'A2', duration: 0.4},
+    {note: 'E2', duration: 0.4}, {note: 'E2', duration: 0.4}, {note: 'G2', duration: 0.4},
+    {note: 'D2', duration: 0.4}, {note: 'D2', duration: 0.4}, {note: 'F2', duration: 0.4},
+    {note: 'C2', duration: 0.4}, {note: 'C2', duration: 0.4}, {note: 'E2', duration: 0.4},
+    {note: 'G2', duration: 0.6}, {note: 'F2', duration: 0.6}, {note: 'E2', duration: 0.6}
+  ],
+  melody: [ // Pulse channel - epic adventure melody with variation
+    // Phrase 1: Opening motif
+    {note: 'E4', duration: 0.2}, {note: 'E4', duration: 0.2}, {note: 'E4', duration: 0.4},
+    {note: 'G4', duration: 0.2}, {note: 'E4', duration: 0.2}, {note: 'C4', duration: 0.4},
+    {note: 'E4', duration: 0.2}, {note: 'G4', duration: 0.2}, {note: 'C5', duration: 0.6},
+
+    // Phrase 2: Development
+    {note: 'B4', duration: 0.2}, {note: 'B4', duration: 0.2}, {note: 'B4', duration: 0.4},
+    {note: 'A4', duration: 0.2}, {note: 'G4', duration: 0.2}, {note: 'E4', duration: 0.4},
+    {note: 'G4', duration: 0.2}, {note: 'A4', duration: 0.2}, {note: 'B4', duration: 0.6},
+
+    // Phrase 3: Climax
+    {note: 'C5', duration: 0.2}, {note: 'D5', duration: 0.2}, {note: 'E5', duration: 0.4},
+    {note: 'D5', duration: 0.2}, {note: 'C5', duration: 0.2}, {note: 'B4', duration: 0.4},
+    {note: 'A4', duration: 0.2}, {note: 'B4', duration: 0.2}, {note: 'C5', duration: 0.6},
+
+    // Phrase 4: Resolution
+    {note: 'G4', duration: 0.2}, {note: 'E4', duration: 0.2}, {note: 'D4', duration: 0.4},
+    {note: 'E4', duration: 0.2}, {note: 'F4', duration: 0.2}, {note: 'G4', duration: 0.4},
+    {note: 'E4', duration: 0.4}, {note: 'C4', duration: 0.8}
+  ]
+};
+
 let gameState;
 
 function update(deltaTime, input) {
@@ -284,11 +319,16 @@ function update(deltaTime, input) {
       playerSpeed: PLAYER_SPEED,
       score: 0,
       gameOver: false,
-      levelComplete: false
+      levelComplete: false,
+      music: {
+        bass: {index: 0, timer: 0},
+        melody: {index: 0, timer: 0}
+      }
     };
   }
 
   const dt = deltaTime; // Use deltaTime directly
+  const sounds = [];
 
   // Check for game over or level complete
   if (gameState.gameOver || gameState.levelComplete) {
@@ -362,6 +402,17 @@ function update(deltaTime, input) {
   if ((input.up || input.b) && gameState.player.onGround) {
     gameState.player.vy = -gameState.jumpPower;
     gameState.player.onGround = false;
+    // Jump sound
+    sounds.push({
+      slotId: 0,
+      soundId: 'jump',
+      channel: 'pulse1',
+      frequency: 800,
+      duration: 0.12,
+      volume: 0.5,
+      envelope: 'soft',
+      sweep: {target: 200, time: 0.12}
+    });
   }
 
   // Attack (using A button)
@@ -371,6 +422,16 @@ function update(deltaTime, input) {
       y: gameState.player.y + 4,
       vx: gameState.player.facing * PROJECTILE_SPEED,
       life: PROJECTILE_LIFETIME
+    });
+    // Shoot sound
+    sounds.push({
+      slotId: 1,
+      soundId: 'shoot',
+      channel: 'pulse2',
+      frequency: 1200,
+      duration: 0.08,
+      volume: 0.6,
+      envelope: 'sharp'
     });
   }
 
@@ -612,7 +673,29 @@ function update(deltaTime, input) {
           proj.x + PROJECTILE_SIZE > enemy.x && proj.x < enemy.x + ENEMY_WIDTH &&
           proj.y + PROJECTILE_SIZE > enemy.y && proj.y < enemy.y + ENEMY_HEIGHT) {
         enemy.health--;
-        if (enemy.health <= 0) gameState.score += ENEMY_KILL_SCORE;
+        if (enemy.health <= 0) {
+          gameState.score += ENEMY_KILL_SCORE;
+          // Enemy death sound
+          sounds.push({
+            slotId: 2,
+            channel: 'noise',
+            mode: 'random',
+            duration: 0.3,
+            volume: 0.5,
+            envelope: 'fade'
+          });
+        } else {
+          // Enemy hit sound
+          sounds.push({
+            slotId: 2,
+            channel: 'noise',
+            mode: 'periodic',
+            frequency: 150,
+            duration: 0.1,
+            volume: 0.4,
+            envelope: 'sharp'
+          });
+        }
         return false;
       }
     }
@@ -627,8 +710,55 @@ function update(deltaTime, input) {
         gameState.player.y + PLAYER_HEIGHT > coin.y && gameState.player.y < coin.y + COIN_SIZE) {
       coin.collected = true;
       gameState.score += COIN_SCORE;
+      // Coin sound
+      sounds.push({
+        slotId: 3,
+        channel: 'pulse1',
+        note: 'E5',
+        duration: 0.08,
+        volume: 0.6,
+        envelope: 'sustain'
+      });
     }
   }
+
+  // Update background music
+  // Bass track
+  gameState.music.bass.timer += dt;
+  const bassNote = MUSIC.bass[gameState.music.bass.index];
+  if (gameState.music.bass.timer >= bassNote.duration) {
+    gameState.music.bass.index = (gameState.music.bass.index + 1) % MUSIC.bass.length;
+    gameState.music.bass.timer = 0;
+  }
+
+  // Melody track
+  gameState.music.melody.timer += dt;
+  const melodyNote = MUSIC.melody[gameState.music.melody.index];
+  if (gameState.music.melody.timer >= melodyNote.duration) {
+    gameState.music.melody.index = (gameState.music.melody.index + 1) % MUSIC.melody.length;
+    gameState.music.melody.timer = 0;
+  }
+
+  // Add music to sounds (slots 4-5 reserved for music)
+  sounds.push({
+    slotId: 4,
+    soundId: `bass_${gameState.music.bass.index}`,
+    channel: 'triangle',
+    note: bassNote.note,
+    duration: bassNote.duration,
+    volume: 0.2,
+    envelope: 'sustain'
+  });
+
+  sounds.push({
+    slotId: 5,
+    soundId: `melody_${gameState.music.melody.index}`,
+    channel: 'pulse1',
+    note: melodyNote.note,
+    duration: melodyNote.duration,
+    volume: 0.25,
+    envelope: 'soft'
+  });
 
   // Build render commands (new grouped format)
   const tiles = [];
@@ -700,6 +830,7 @@ function update(deltaTime, input) {
     tiles,
     sprites,
     score: gameState.gameOver ? 0 : gameState.score,
-    gameOver: gameState.gameOver || gameState.levelComplete
+    gameOver: gameState.gameOver || gameState.levelComplete,
+    sounds: sounds
   };
 }
