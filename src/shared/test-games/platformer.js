@@ -177,9 +177,10 @@ function resources() {
 // Game constants
 const SCREEN_WIDTH = 128;
 const SCREEN_HEIGHT = 128;
+const WORLD_WIDTH = 512;  // 64 tiles wide for scrolling
 const SPRITE_SIZE = 8;
 const TILE_SIZE = 8;
-const TILES_X = 16;
+const TILES_X = 64;  // Expanded for scrolling
 const TILES_Y = 16;
 
 // Character dimensions
@@ -284,34 +285,42 @@ function update(deltaTime, input) {
         facing: 1 // 1 = right, -1 = left
       },
       enemies: [
-        { x: 48, y: 56, vx: -ENEMY_SPEED_1, health: 2, walkFrame: 0, walkTimer: 0 }, // Standing on stone platform (row 9: 72-16=56)
-        { x: 96, y: 48, vx: ENEMY_SPEED_2, health: 2, walkFrame: 0, walkTimer: 0 }   // Standing on stone platform (row 8: 64-16=48)
+        { x: 48, y: 56, vx: -ENEMY_SPEED_1, health: 2, walkFrame: 0, walkTimer: 0 },
+        { x: 160, y: 104, vx: ENEMY_SPEED_2, health: 2, walkFrame: 0, walkTimer: 0 },
+        { x: 280, y: 72, vx: -ENEMY_SPEED_1, health: 2, walkFrame: 0, walkTimer: 0 },
+        { x: 400, y: 88, vx: ENEMY_SPEED_2, health: 2, walkFrame: 0, walkTimer: 0 }
       ],
       tilemap: [
-        // 16 rows x 16 columns (128x128 screen) - 0=empty, 6=platform, 9=brick, 10=metal, 11=spikes, 12=exit
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,12], // Row 0: Exit at top right
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,6,6,6],   // Row 1: Platform to exit
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 2
-        [0,0,0,0,0,0,0,0,0,9,9,9,0,0,0,0],   // Row 3: Brick platform
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 4
-        [0,0,0,0,9,9,0,0,0,0,0,0,0,0,0,0],   // Row 5: Brick platform
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 6
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 7
-        [0,0,0,0,0,0,0,0,0,0,0,6,6,6,0,0],   // Row 8: Stone platform
-        [0,0,0,6,6,6,0,0,0,0,0,0,0,0,0,0],   // Row 9: Stone platform
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 10
-        [0,0,0,0,0,0,0,0,11,11,11,0,0,0,0,0], // Row 11: Spikes
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 12
-        [0,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 13: Starting platform
-        [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],   // Row 14: Ground
-        [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6]    // Row 15: Ground
+        // 16 rows x 64 columns (512px wide world with scrolling) - 0=empty, 6=platform, 9=brick, 10=metal, 11=spikes, 12=exit
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,12], // Row 0: Exit at far right
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,6,6,6,6],   // Row 1: Platform to exit
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 2
+        [0,0,0,0,0,0,0,0,0,9,9,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,9,9,0,0,0,0,0,0,0,0,0,0,0,0,9,9,9,0,0,0,0,0,0,0,0,0,0,0,9,9,9,0,0,0,0,0],   // Row 3: Brick platforms
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 4
+        [0,0,0,0,9,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,9,0,0,0,0,0,0,0,0,0,0,0,0,9,9,0,0,0,0,0,0,0,0,0,0,0,0,0,9,9,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 5: Brick platforms
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 6
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 7
+        [0,0,0,0,0,0,0,0,0,0,0,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,6,6,0,0,0,0,0,0,0],   // Row 8: Stone platforms
+        [0,0,0,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 9: Stone platforms
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 10
+        [0,0,0,0,0,0,0,0,11,11,11,0,0,0,0,0,0,0,0,11,11,11,11,0,0,0,0,0,0,0,0,0,11,11,11,0,0,0,0,0,0,11,11,11,0,0,0,0,0,0,0,0,11,11,11,0,0,0,0,0,0,0,0,0], // Row 11: Spikes
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 12
+        [0,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],   // Row 13: Starting platform
+        [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],   // Row 14: Ground
+        [6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6]    // Row 15: Ground
       ],
       coins: [
-        { x: 48, y: 56, collected: false },   // Above stone platform (row 9: platform at 72, coin at 56)
-        { x: 32, y: 32, collected: false },   // Above brick platform (row 5: platform at 40, coin at 32)
-        { x: 96, y: 56, collected: false },   // Above stone platform (row 8: platform at 64, coin at 56)
-        { x: 80, y: 16, collected: false },   // Above brick platform (row 3: platform at 24, coin at 16)
-        { x: 112, y: 0, collected: false }    // Near exit (floating above platform)
+        { x: 48, y: 56, collected: false },
+        { x: 32, y: 32, collected: false },
+        { x: 96, y: 56, collected: false },
+        { x: 80, y: 16, collected: false },
+        { x: 160, y: 32, collected: false },
+        { x: 224, y: 16, collected: false },
+        { x: 280, y: 56, collected: false },
+        { x: 336, y: 32, collected: false },
+        { x: 400, y: 64, collected: false },
+        { x: 456, y: 16, collected: false },
+        { x: 488, y: 0, collected: false }
       ],
       projectiles: [],
       gravity: GRAVITY,
@@ -619,9 +628,9 @@ function update(deltaTime, input) {
     }
   }
 
-  // Keep player in bounds
+  // Keep player in world bounds
   if (gameState.player.x < 0) gameState.player.x = 0;
-  if (gameState.player.x > SCREEN_WIDTH - PLAYER_WIDTH) gameState.player.x = SCREEN_WIDTH - PLAYER_WIDTH;
+  if (gameState.player.x > WORLD_WIDTH - PLAYER_WIDTH) gameState.player.x = WORLD_WIDTH - PLAYER_WIDTH;
   if (gameState.player.y > SCREEN_HEIGHT) {
     gameState.player.y = PLAYER_START_Y;
     gameState.player.x = PLAYER_START_X;
@@ -651,7 +660,7 @@ function update(deltaTime, input) {
     const nextTileX = Math.floor(nextX / TILE_SIZE);
 
     // Reverse if at world edge or no platform ahead
-    if (nextX <= 0 || nextX >= SCREEN_WIDTH - ENEMY_WIDTH ||
+    if (nextX <= 0 || nextX >= WORLD_WIDTH - ENEMY_WIDTH ||
         nextTileX < 0 || nextTileX >= TILES_X ||
         !gameState.tilemap[enemyTileY] ||
         gameState.tilemap[enemyTileY][nextTileX] === TILE_EMPTY) {
@@ -665,7 +674,7 @@ function update(deltaTime, input) {
     proj.life -= dt;
 
     // Remove if out of bounds or expired
-    if (proj.x < 0 || proj.x > SCREEN_WIDTH || proj.life <= 0) return false;
+    if (proj.x < 0 || proj.x > WORLD_WIDTH || proj.life <= 0) return false;
 
     // Check collision with enemies
     for (const enemy of gameState.enemies) {
@@ -826,9 +835,13 @@ function update(deltaTime, input) {
     });
   }
 
+  // Calculate scroll position (camera follows player, clamped to world bounds)
+  const scrollX = Math.max(0, Math.min(gameState.player.x - 64, WORLD_WIDTH - SCREEN_WIDTH));
+
   return {
     tiles,
     sprites,
+    scroll: { x: scrollX, y: 0 },
     score: gameState.gameOver ? 0 : gameState.score,
     gameOver: gameState.gameOver || gameState.levelComplete,
     sounds: sounds

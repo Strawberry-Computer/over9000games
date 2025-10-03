@@ -18,15 +18,23 @@ export class GameRunner {
     this.ctx.imageSmoothingEnabled = false;
     this.spriteCtx.imageSmoothingEnabled = false;
 
+    // Support larger worlds for scrolling: 128 tiles wide × 16 tall (1024px × 128px)
+    const MAX_TILES_X = 128;
+    const MAX_TILES_Y = 16;
+
     this.state = {
       sprites: Array(64).fill(null).map(() => ({ spriteId: -1, x: 0, y: 0 })),
-      tiles: Array(16).fill(null).map(() => Array(16).fill(-1)),
+      tiles: Array(MAX_TILES_Y).fill(null).map(() => Array(MAX_TILES_X).fill(-1)),
       backgroundColor: 0,
       palette: this.getDefaultPalette(),
       gameRunning: false,
       gamePaused: false,
-      score: 0
+      score: 0,
+      scroll: { x: 0, y: 0 }
     };
+
+    this.maxTilesX = MAX_TILES_X;
+    this.maxTilesY = MAX_TILES_Y;
 
     this.leaderboardLoading = false;
     this.loadingAnimationFrame = 0;
@@ -313,13 +321,13 @@ function doUpdate(deltaTime, input) {
   }
 
   setTile(x, y, tileId) {
-    if (x >= 0 && x < 16 && y >= 0 && y < 16) {
+    if (x >= 0 && x < this.maxTilesX && y >= 0 && y < this.maxTilesY) {
       this.state.tiles[y][x] = tileId;
     }
   }
 
   clearTile(x, y) {
-    if (x >= 0 && x < 16 && y >= 0 && y < 16) {
+    if (x >= 0 && x < this.maxTilesX && y >= 0 && y < this.maxTilesY) {
       this.state.tiles[y][x] = -1;
     }
   }
@@ -404,8 +412,8 @@ function doUpdate(deltaTime, input) {
       this.state.sprites[i] = { spriteId: -1, x: 0, y: 0 };
     }
 
-    for (let y = 0; y < 16; y++) {
-      for (let x = 0; x < 16; x++) {
+    for (let y = 0; y < this.maxTilesY; y++) {
+      for (let x = 0; x < this.maxTilesX; x++) {
         this.state.tiles[y][x] = -1;
       }
     }
@@ -413,6 +421,7 @@ function doUpdate(deltaTime, input) {
     this.state.score = 0;
     this.state.backgroundColor = 0;
     this.state.gamePaused = false;
+    this.state.scroll = { x: 0, y: 0 };
 
     if (this.gameDefinition && this.gameDefinition.initialState) {
       Object.assign(this.state, this.gameDefinition.initialState);
@@ -646,6 +655,13 @@ function doUpdate(deltaTime, input) {
       this.setBackgroundColor(commands.background);
     }
 
+    if (commands.scroll !== undefined) {
+      this.state.scroll = {
+        x: commands.scroll.x || 0,
+        y: commands.scroll.y || 0
+      };
+    }
+
     if (commands.score !== undefined) {
       this.setScore(commands.score);
       this.updateScoreDisplay();
@@ -696,15 +712,27 @@ function doUpdate(deltaTime, input) {
   }
 
   renderTiles() {
-    for (let y = 0; y < 16; y++) {
-      for (let x = 0; x < 16; x++) {
+    const scrollX = this.state.scroll.x;
+    const scrollY = this.state.scroll.y;
+
+    for (let y = 0; y < this.maxTilesY; y++) {
+      for (let x = 0; x < this.maxTilesX; x++) {
         const tileId = this.state.tiles[y][x];
         if (tileId >= 0) {
+          // Convert world tile coordinates to screen pixel coordinates
+          const screenX = x * 8 - scrollX;
+          const screenY = y * 8 - scrollY;
+
+          // Cull tiles outside viewport
+          if (screenX < -8 || screenX >= 128 || screenY < -8 || screenY >= 128) {
+            continue;
+          }
+
           const position = this.getSpritePosition(tileId);
           this.ctx.drawImage(
             this.spriteCanvas,
             position.x, position.y, position.width, position.height,
-            x * 8, y * 8, position.width, position.height
+            screenX, screenY, position.width, position.height
           );
         }
       }
@@ -712,14 +740,26 @@ function doUpdate(deltaTime, input) {
   }
 
   renderSprites() {
+    const scrollX = this.state.scroll.x;
+    const scrollY = this.state.scroll.y;
+
     for (let i = 0; i < 64; i++) {
       const sprite = this.state.sprites[i];
       if (sprite.spriteId >= 0) {
+        // Convert world coordinates to screen coordinates
+        const screenX = Math.round(sprite.x - scrollX);
+        const screenY = Math.round(sprite.y - scrollY);
+
+        // Cull sprites outside viewport
+        if (screenX < -8 || screenX >= 128 || screenY < -8 || screenY >= 128) {
+          continue;
+        }
+
         const position = this.getSpritePosition(sprite.spriteId);
         this.ctx.drawImage(
           this.spriteCanvas,
           position.x, position.y, position.width, position.height,
-          Math.round(sprite.x), Math.round(sprite.y), position.width, position.height
+          screenX, screenY, position.width, position.height
         );
       }
     }
