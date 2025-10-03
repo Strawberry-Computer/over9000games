@@ -285,10 +285,10 @@ function update(deltaTime, input) {
         facing: 1 // 1 = right, -1 = left
       },
       enemies: [
-        { x: 48, y: 56, vx: -ENEMY_SPEED_1, health: 2, walkFrame: 0, walkTimer: 0 },
-        { x: 160, y: 104, vx: ENEMY_SPEED_2, health: 2, walkFrame: 0, walkTimer: 0 },
-        { x: 280, y: 72, vx: -ENEMY_SPEED_1, health: 2, walkFrame: 0, walkTimer: 0 },
-        { x: 400, y: 88, vx: ENEMY_SPEED_2, health: 2, walkFrame: 0, walkTimer: 0 }
+        { x: 32, y: 56, vx: -ENEMY_SPEED_1, health: 2, walkFrame: 0, walkTimer: 0 },   // On row 9 platform (cols 3-5)
+        { x: 160, y: 96, vx: ENEMY_SPEED_2, health: 2, walkFrame: 0, walkTimer: 0 },   // On ground
+        { x: 216, y: 56, vx: -ENEMY_SPEED_1, health: 2, walkFrame: 0, walkTimer: 0 },  // On row 9 platform (cols 26-28)
+        { x: 368, y: 56, vx: ENEMY_SPEED_2, health: 2, walkFrame: 0, walkTimer: 0 }    // On row 9 platform (cols 45-47)
       ],
       tilemap: [
         // 16 rows x 64 columns (512px wide world with scrolling) - 0=empty, 6=platform, 9=brick, 10=metal, 11=spikes, 12=exit
