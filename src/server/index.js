@@ -73,26 +73,11 @@ router.get("/api/init", async (_req, res) => {
 
     // Get top 10 high scores using sorted set
     const leaderboardKey = `leaderboard:${postId}`;
-    const topPlayersWithScores = await redis.zRange(leaderboardKey, 0, 9, {
-      REV: true,
-      WITHSCORES: true
+    const topPlayers = await redis.zRange(leaderboardKey, 0, 9, {
+      REV: true
     });
 
-    const highScores = [];
-    for (let i = 0; i < topPlayersWithScores.length; i += 2) {
-      const playerName = topPlayersWithScores[i];
-      const playerScore = parseInt(topPlayersWithScores[i + 1]);
-
-      // Get player metadata
-      const playerData = await redis.hGetAll(`player:${postId}:${playerName}`);
-
-      highScores.push({
-        username: playerName,
-        score: playerScore,
-        timestamp: playerData.timestamp,
-        rank: Math.floor(i / 2) + 1
-      });
-    }
+    const highScores = await formatLeaderboard(postId, topPlayers);
 
     res.json({
       type: "init",
@@ -446,8 +431,7 @@ router.post("/api/score/submit", async (req, res) => {
       console.log(`Post-update: ascendingRank=${ascendingRank}, totalPlayers=${totalPlayers}`);
 
       const topPlayers = await redis.zRange(leaderboardKey, 0, 9, {
-        REV: true,
-        WITHSCORES: true
+        REV: true
       });
       console.log(`Retrieved top players:`, topPlayers);
 
@@ -506,8 +490,7 @@ router.get("/api/leaderboard", async (_req, res) => {
 
     // Get top 10 players from sorted set
     const topPlayers = await redis.zRange(leaderboardKey, 0, 9, {
-      REV: true,
-      WITHSCORES: true
+      REV: true
     });
 
     console.log("leaderboard: topPlayers raw data:", topPlayers);

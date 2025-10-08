@@ -853,10 +853,10 @@ function doUpdate(deltaTime, input) {
         // Rank
         renderBitmapText(this.ctx, medal, 6, yPos, '#ffff00', 1);
 
-        // Username (truncated if too long)
-        const maxUsernameLength = 10;
+        // Username (truncated if too long to prevent overlap with score)
+        const maxUsernameLength = 6;
         const username = score.username.length > maxUsernameLength ?
-          score.username.substring(0, maxUsernameLength - 3) + '...' : score.username;
+          score.username.substring(0, maxUsernameLength) : score.username;
         renderBitmapText(this.ctx, username, 24, yPos, '#ffffff', 1);
 
         // Score (right-aligned)
