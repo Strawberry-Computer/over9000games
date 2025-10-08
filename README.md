@@ -5,11 +5,12 @@ A retro 8-bit game console built on Reddit's Devvit platform featuring authentic
 ## Console Specifications
 
 ### Display
-- **Resolution**: 128×128 pixels
+- **Resolution**: 128×128 pixels (viewport)
 - **Color Depth**: 4-bit (16 colors)
 - **Sprites**: 8×8 pixels, unlimited positioning
 - **Max Sprites**: 64 simultaneous on screen
-- **Background**: 16×16 tile grid (8×8 pixel tiles)
+- **Background**: 128×16 tile grid (8×8 pixel tiles) - supports side-scrolling worlds up to 1024px wide
+- **Camera System**: Viewport scrolling with automatic sprite/tile culling
 
 ### Graphics System
 - **Sprite Definition**: Hex string format for direct palette indexing
@@ -26,9 +27,13 @@ A retro 8-bit game console built on Reddit's Devvit platform featuring authentic
 - **Response**: 60 FPS input polling
 
 ### Audio
-- **Channels**: 4-channel audio (2 pulse, 1 triangle, 1 noise)
+- **Channels**: 4-channel NES-style audio (pulse1, pulse2, triangle, noise)
+- **Sound Slots**: 8 independent sound slots for concurrent playback
 - **Format**: Web Audio API with 8-bit sound synthesis
-- **Music**: Simple pattern-based sequencer
+- **Sound Effects**: Note-based synthesis (C2-C6) with ADSR envelopes
+- **Envelopes**: Presets (sharp, soft, fade, sustain) or custom ADSR values
+- **Features**: Frequency sweeps, looping sounds, volume control, per-slot management
+- **Music**: Continuous sounds via looping slots (background music via sustained loops)
 
 ## Technology Stack
 
@@ -69,22 +74,43 @@ A retro 8-bit game console built on Reddit's Devvit platform featuring authentic
 
 ### Game Development Pattern
 ```javascript
-// Game loop - setters only, no direct rendering
-function gameUpdate() {
-  // Update game logic
-  player.x += velocity;
+// Games export three functions: metadata(), resources(), and update()
 
-  // Set sprite positions (deferred)
-  setSprite(0, 0, player.x, player.y); // 0 = player_walk sprite
-  setSprite(1, 1, enemy.x, enemy.y);   // 1 = enemy sprite
-  setTile(15, 20, 0); // 0 = grass tile
-
-  // Animation handled by changing sprite ID
-  const coinFrame = Math.floor(time / 10) % 4;
-  setSprite(2, 2 + coinFrame, coin.x, coin.y); // 2-5 = coin animation frames
+function metadata() {
+  return {
+    title: "My Game",
+    description: "A fun retro game",
+    controls: ["arrows: move", "z: jump"]
+  };
 }
 
-// Console handles actual rendering after game update
+function resources() {
+  return {
+    sprites: [/* sprite data */],
+    palette: [0x000000, 0xFFFFFF, /* ... */],
+    sounds: {/* optional sound definitions */}
+  };
+}
+
+function update(deltaTime, input) {
+  // Update game logic
+  player.x += velocity * deltaTime;
+
+  // Return game state as object
+  return {
+    sprites: [
+      { spriteId: 0, x: player.x, y: player.y },    // Player
+      { spriteId: 1, x: enemy.x, y: enemy.y }       // Enemy
+    ],
+    tiles: [
+      { x: 15, y: 20, tileId: 0 }  // Grass tile
+    ],
+    scroll: { x: player.x - 64, y: 0 },  // Camera follows player
+    background: 0,  // Background color palette index
+    score: score,
+    gameOver: false
+  };
+}
 ```
 
 ## Getting Started
@@ -235,13 +261,20 @@ const generatedGame = {
 ### API Endpoints
 
 #### Game Generation & Management
-• `POST /api/games/generate` - Generate game from natural language description
-• `GET /api/games/:id` - Retrieve game definition and state
-• `POST /api/games/:id/save` - Persist game state to Redis
-• `POST /api/games/:id/load` - Load saved game state
+• `POST /api/game/generate` - Create async job for AI game generation (returns jobId)
+• `POST /api/game/edit` - Create async job for editing existing game (returns jobId)
+• `GET /api/jobs/:jobId` - Poll job status and retrieve completed game
+• `POST /api/game/test` - Load test game by name for development
+
+#### Leaderboard & Scores
+• `POST /api/score/submit` - Submit player score to leaderboard
+• `GET /api/leaderboard` - Fetch top 5 high scores for current post
+
+#### Post Management
+• `POST /api/post/create` - Create shareable game post with screenshot
+• `GET /api/init` - Initialize application state and user context
 
 #### App Integration
-• `GET /api/init` - Initialize application state and user context
 • `POST /internal/on-app-install` - App installation handler
 • `POST /internal/menu/post-create` - Create new game post from subreddit menu
 
@@ -260,40 +293,105 @@ const generatedGame = {
 
 ### Game Development
 
-#### Minimal Game Interface
+#### Game Interface
 ```javascript
-// Games must define this function
-function gameUpdate(deltaTime, input) {
+// Games must export three functions:
+
+function metadata() {
+  return {
+    title: "Game Title",
+    description: "Game description",
+    controls: ["arrows: move", "z: action"]
+  };
+}
+
+function resources() {
+  return {
+    sprites: [/* 8×8 hex string arrays */],
+    palette: [/* up to 16 hex colors */],
+    sounds: {/* optional NES-style sound definitions */}
+  };
+}
+
+function update(deltaTime, input) {
   // deltaTime: seconds since last frame (e.g., 0.016 for 60fps)
   // input: { up, down, left, right, a, b,
   //          upPressed, downPressed, leftPressed, rightPressed,
   //          aPressed, bPressed }
 
-  // Return array of commands
-  return [
-    {type: 'sprite', slotId: 0, spriteId: 1, x: 10, y: 20},
-    {type: 'clearSprite', slotId: 1},
-    {type: 'tile', x: 5, y: 3, tileId: 2},
-    {type: 'clearTile', x: 5, y: 3},
-    {type: 'background', colorIndex: 2},
-    {type: 'score', value: 100},
-    {type: 'sound', soundId: 'beep'}
-  ];
+  // Return game state object
+  return {
+    sprites: [{spriteId, x, y}, ...],      // Up to 64 sprites
+    tiles: [{x, y, tileId}, ...],          // Background tiles
+    scroll: {x, y},                        // Camera position
+    background: colorIndex,                // Background color (0-15)
+    score: number,                         // Current score
+    sounds: [{channel, note, duration, ...}, ...], // Sound effects
+    audio: {music, volume},                // Background music control
+    gameOver: boolean                      // Triggers game over state
+  };
 }
 ```
 
-#### Command Types
-- **sprite**: `{type: 'sprite', slotId, spriteId, x, y}` - Place sprite
-- **clearSprite**: `{type: 'clearSprite', slotId}` - Remove sprite
-- **tile**: `{type: 'tile', x, y, tileId}` - Set background tile
-- **clearTile**: `{type: 'clearTile', x, y}` - Clear tile
-- **background**: `{type: 'background', colorIndex}` - Set background color
-- **score**: `{type: 'score', value}` - Update score display
-- **sound**: `{type: 'sound', soundId}` - Play sound (TODO)
+#### Return Object Properties
+- **sprites**: Array of `{spriteId, x, y}` objects (max 64, cleared each frame)
+- **tiles**: Array of `{x, y, tileId}` objects (cleared each frame)
+- **scroll**: `{x, y}` camera offset for side-scrolling (default: `{x: 0, y: 0}`)
+- **background**: Palette color index for background (0-15)
+- **score**: Numeric score value for display
+- **sounds**: Array of sound effect objects to play this frame
+- **audio**: Music and audio control object
+- **gameOver**: Boolean to trigger game over and leaderboard display
 
 #### Execution Model
-1. **LLM Generation**: Self-contained game code with sprites
-2. **QuickJS Loading**: Raw game code loaded into sandbox
-3. **Frame Execution**: `gameUpdate(deltaTime, input)` called at 60 FPS
-4. **Command Processing**: Returned commands executed by NES console
-5. **Console Rendering**: Sprites/tiles rendered based on commands
+1. **LLM Generation**: Self-contained game code with metadata, resources, and update functions
+2. **QuickJS Loading**: Game code loaded into sandbox, functions extracted
+3. **Resource Loading**: Sprites and palette pre-rendered to sprite sheet
+4. **Frame Execution**: `update(deltaTime, input)` called at 60 FPS
+5. **State Processing**: Returned state object processed by console
+6. **Console Rendering**: Sprites/tiles rendered with camera offset, culled if outside viewport
+
+#### Leaderboard System
+- **Automatic Display**: Game over triggers leaderboard overlay
+- **Pause to View**: Press Space during gameplay to view high scores
+- **Score Submission**: Automatic on game over (authenticated users only)
+- **Top 5**: Shows top 5 scores with username and rank
+- **Storage**: Redis sorted sets for efficient ranking
+- **High Score Detection**: "NEW HIGH SCORE" message for top 5 entries
+
+#### Audio System
+Games trigger sound effects using 8 independent sound slots:
+```javascript
+return {
+  // ... other game state ...
+  sounds: [
+    {
+      slotId: 0,                   // Sound slot (0-7)
+      soundId: 'jump',             // Optional ID to prevent restart
+      channel: 'pulse1',           // pulse1, pulse2, triangle, noise
+      note: 'C4',                  // Musical note (C2-C6) or use frequency
+      duration: 0.2,               // Seconds
+      volume: 0.5,                 // 0.0-1.0
+      envelope: 'sharp',           // sharp, soft, fade, sustain, or custom ADSR
+      loop: false                  // Enable looping for continuous sounds
+    },
+    {
+      slotId: 1,                   // Background music on separate slot
+      soundId: 'bgm_bass',
+      channel: 'triangle',
+      note: 'A2',
+      duration: 1.0,
+      volume: 0.3,
+      envelope: 'sustain',
+      loop: true                   // Loop for continuous background music
+    }
+  ]
+};
+```
+
+**Sound Features:**
+- **Frequency Sweeps**: Add `sweep: {target: 880}` or `sweep: {targetNote: 'A5', time: 0.5}` to slide pitch
+- **Noise Modes**: Use `mode: 'periodic'` for periodic noise (hi-hat style) vs white noise (explosion)
+- **Looping**: Set `loop: true` for continuous background music or ambient sounds
+- **Sound IDs**: Use `soundId` to prevent restarting same sound on each frame
+- **Master Volume**: Return `audio: {masterVolume: 0.7}` or `audio: {mute: true}` for global control

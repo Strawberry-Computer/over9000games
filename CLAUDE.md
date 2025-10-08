@@ -15,10 +15,12 @@ This is a Devvit web application that implements a retro NES-style game console 
 - **Scripts** (`scripts/`): AI model testing and game generation tools
 
 ### Core Systems
-- **NES Console**: 128×128 pixel display, 4-bit color depth, 8×8 sprites and tiles
+- **NES Console**: 128×128 viewport, 128×16 tile world, 4-bit color, 8×8 sprites/tiles, scrolling support
 - **QuickJS Engine**: Sandboxed JavaScript execution for user-generated games
-- **AI Generation**: OpenAI/Gemini integration for procedural game creation
+- **AI Generation**: Async job-based OpenAI/Gemini integration for game creation
 - **Game Schema**: Validation system for sprites, palettes, and game logic
+- **Audio System**: 8-slot NES-style audio with 4 channels (pulse1, pulse2, triangle, noise)
+- **Leaderboard**: Redis-based high score tracking with top 5 display
 
 ### Build System
 - Uses Vite for both client and server builds with WebAssembly support
@@ -50,28 +52,48 @@ This is a Devvit web application that implements a retro NES-style game console 
 
 ## Core Architecture Patterns
 
-### AI Game Generation Flow
+### AI Game Generation Flow (Async Job-Based)
 1. User provides natural language game description
-2. Server generates game using OpenAI/Gemini via `src/server/game-generator.js`
-3. Response parsed by `src/shared/game-prompt.js` (markdown → JSON + JavaScript)
-4. Game validated using `src/shared/game-schema.js`
-5. QuickJS executes game in client sandbox
+2. Client calls `POST /api/game/generate` → receives jobId
+3. Server creates job in Redis via `src/server/job-manager.js`
+4. Client polls `GET /api/jobs/:jobId` for status updates
+5. On first poll, server starts OpenAI Responses API request
+6. Subsequent polls check OpenAI completion status
+7. When complete, game code returned to client
+8. Response parsed by `src/shared/game-prompt.js` (markdown → JSON + JavaScript)
+9. Game validated using `src/shared/game-schema.js`
+10. QuickJS loads and executes game in client sandbox
 
 ### QuickJS Game Execution
-Games are self-contained JavaScript modules with this pattern:
+Games must export three functions:
 ```javascript
-function gameUpdate(deltaTime, input) {
+function metadata() {
+  return { title: "Game Title", description: "...", controls: [...] };
+}
+
+function resources() {
+  return { sprites: [...], palette: [...], sounds: {...} };
+}
+
+function update(deltaTime, input) {
   // Game logic here
-  return [
-    {type: 'sprite', slotId: 0, spriteId: 1, x: 10, y: 20},
-    {type: 'score', value: 100}
-  ];
+  return {
+    sprites: [{spriteId: 0, x: 10, y: 20}],
+    tiles: [{x: 5, y: 3, tileId: 2}],
+    scroll: {x: 0, y: 0},
+    background: 0,
+    score: 100,
+    sounds: [{slotId: 0, channel: 'pulse1', note: 'C4', duration: 0.2}],
+    gameOver: false
+  };
 }
 ```
 
 ### NES Console Rendering
+- Display: 128×128 viewport, 128×16 tile world (supports side-scrolling up to 1024px wide)
 - Sprites: Hex string arrays defining 8×8 pixel graphics with direct palette indexing
-- Commands: Games return command arrays, console handles rendering
+- State-based: Games return state objects, console processes and renders
+- Camera: Automatic viewport culling based on scroll offset
 - Performance: Single-pass canvas rendering with pre-compiled sprite sheets
 
 ### Devvit Integration
@@ -79,14 +101,21 @@ App registers subreddit menu for moderators (`/internal/menu/post-create`) and a
 
 ## API Endpoints
 
-### Game Management
-- `POST /api/games/generate`: Generate game from natural language description
-- `GET /api/games/:id`: Retrieve game definition and state
-- `POST /api/games/:id/save`: Persist game state to Redis
-- `POST /api/games/:id/load`: Load saved game state
+### Game Generation (Async Job-Based)
+- `POST /api/game/generate`: Create async AI generation job (returns jobId)
+- `POST /api/game/edit`: Create async game editing job (returns jobId)
+- `GET /api/jobs/:jobId`: Poll job status and retrieve completed game
+- `POST /api/game/test`: Load test game by name for development
 
-### Legacy Endpoints
+### Leaderboard & Scores
+- `POST /api/score/submit`: Submit player score to Redis leaderboard
+- `GET /api/leaderboard`: Fetch top 5 high scores for current post
+
+### Post Management
+- `POST /api/post/create`: Create shareable game post with screenshot
 - `GET /api/init`: Initialize application state and user context
+
+### App Integration
 - `POST /internal/on-app-install`: App installation handler
 - `POST /internal/menu/post-create`: Create new game post from subreddit menu
 
@@ -126,11 +155,13 @@ Project uses ES modules (`"type": "module"`) with separate tsconfig for client/s
 - **Generation Testing**: `scripts/test-generation.js` - AI model testing script
 
 ### Game Development Constraints
-- **Sprite Limits**: Maximum 64 sprites on screen, 8×8 pixels each
-- **Tile System**: 16×16 grid of background tiles (8×8 pixels each, same as sprites)
-- **Color Palette**: Maximum 16 colors per game
+- **Sprite Limits**: Maximum 64 sprites on screen, 8×8 pixels each, cleared each frame
+- **Tile System**: 128×16 grid of background tiles (8×8 pixels each), cleared each frame
+- **Color Palette**: Maximum 16 colors per game (4-bit)
+- **Audio Slots**: 8 sound slots, 4 channels (pulse1, pulse2, triangle, noise)
 - **QuickJS Sandbox**: No external dependencies, limited execution time
-- **Game Commands**: Use command-based rendering system, no direct canvas access
+- **State-Based Rendering**: Return state objects, no direct canvas access
+- **Camera System**: Scroll offset for side-scrolling worlds up to 1024px wide
 
 ### Debugging Tips
 - Use browser dev tools to debug QuickJS execution errors
