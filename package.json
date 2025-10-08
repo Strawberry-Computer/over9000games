@@ -16,7 +16,9 @@
     "dev:server": "cd src/server && vite build --watch",
     "login": "devvit login",
     "launch": "npm run build && npm run deploy && devvit publish",
-    "type-check": "tsc --build"
+    "type-check": "tsc --build",
+    "testbed": "npm run build:client && node --import ./src/testbed/loader.js src/testbed/server.js",
+    "testbed:dev": "concurrently -k -n \"CLIENT,SERVER\" -c \"blue,green\" \"npm run dev:client\" \"node --import ./src/testbed/loader.js --watch src/testbed/server.js\""
   },
   "dependencies": {
     "@devvit/web": "0.12.0",
@@ -28,7 +30,9 @@
   "devDependencies": {
     "@types/express": "5.0.1",
     "concurrently": "9.1.2",
+    "dotenv": "^16.4.5",
     "dotenv-cli": "8.0.0",
+    "redis": "^4.7.0",
     "typescript": "5.8.2",
     "vite": "6.2.4"
   }
