@@ -34,7 +34,7 @@
     "concurrently": "9.1.2",
     "dotenv": "^16.4.5",
     "dotenv-cli": "8.0.0",
-    "redis": "^4.7.0",
+    "redis": "^5.8.3",
     "typescript": "5.8.2",
     "vite": "6.2.4"
   }
