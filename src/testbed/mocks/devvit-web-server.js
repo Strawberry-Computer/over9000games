@@ -349,32 +349,106 @@ export function getServerPort() {
 }
 
 /**
- * Redis client wrapper to match Devvit Redis API
+ * Redis client wrapper to match Devvit Redis API 100%
  */
 export const redis = {
+  // String commands
   async get(key) {
     const client = await getRedisClient();
     return await client.get(key);
   },
 
-  async set(key, value) {
+  async getBuffer(key) {
     const client = await getRedisClient();
-    return await client.set(key, value);
+    const value = await client.getBuffer(key);
+    return value ? Buffer.from(value) : undefined;
   },
 
-  async hSet(key, obj) {
+  async set(key, value, options) {
     const client = await getRedisClient();
-    return await client.hSet(key, obj);
+    const opts = {};
+    if (options?.nx) opts.NX = true;
+    if (options?.xx) opts.XX = true;
+    if (options?.expiration) {
+      const expirationSeconds = Math.floor((options.expiration.getTime() - Date.now()) / 1000);
+      opts.EX = Math.max(1, expirationSeconds);
+    }
+    const result = await client.set(key, value, opts);
+    return result;
   },
 
-  async hGetAll(key) {
+  async exists(...keys) {
     const client = await getRedisClient();
-    return await client.hGetAll(key);
+    return await client.exists(...keys);
   },
 
-  async zAdd(key, { member, score }) {
+  async del(...keys) {
     const client = await getRedisClient();
-    return await client.zAdd(key, { score, value: member });
+    return await client.del(...keys);
+  },
+
+  async incrBy(key, value) {
+    const client = await getRedisClient();
+    return await client.incrBy(key, value);
+  },
+
+  async getRange(key, start, end) {
+    const client = await getRedisClient();
+    return await client.getRange(key, start, end);
+  },
+
+  async setRange(key, offset, value) {
+    const client = await getRedisClient();
+    return await client.setRange(key, offset, value);
+  },
+
+  async strLen(key) {
+    const client = await getRedisClient();
+    return await client.strLen(key);
+  },
+
+  async expire(key, seconds) {
+    const client = await getRedisClient();
+    return await client.expire(key, seconds);
+  },
+
+  async expireTime(key) {
+    const client = await getRedisClient();
+    return await client.expireTime(key);
+  },
+
+  async mGet(keys) {
+    const client = await getRedisClient();
+    return await client.mGet(keys);
+  },
+
+  async mSet(keyValues) {
+    const client = await getRedisClient();
+    const flattenedArgs = [];
+    for (const [key, value] of Object.entries(keyValues)) {
+      flattenedArgs.push(key, value);
+    }
+    return await client.mSet(flattenedArgs);
+  },
+
+  async type(key) {
+    const client = await getRedisClient();
+    return await client.type(key);
+  },
+
+  async rename(key, newKey) {
+    const client = await getRedisClient();
+    return await client.rename(key, newKey);
+  },
+
+  // Sorted Set commands
+  async zAdd(key, ...members) {
+    const client = await getRedisClient();
+    const zadd = members.map(m => ({
+      score: m.score,
+      value: m.member
+    }));
+    return await client.zAdd(key, zadd);
   },
 
   async zScore(key, member) {
@@ -382,24 +456,14 @@ export const redis = {
     return await client.zScore(key, member);
   },
 
-  async zRange(key, start, stop, opts = {}) {
-    const client = await getRedisClient();
-    const options = {};
-    if (opts.REV) options.REV = true;
-    if (opts.WITHSCORES) options.WITHSCORES = true;
-
-    const result = await client.zRange(key, start, stop, options);
-
-    // Convert to Devvit format
-    if (opts.WITHSCORES) {
-      return result.flatMap(item => [item.value, item.score]);
-    }
-    return result.map(item => typeof item === 'object' ? item.value : item);
-  },
-
   async zRank(key, member) {
     const client = await getRedisClient();
     return await client.zRank(key, member);
+  },
+
+  async zIncrBy(key, member, value) {
+    const client = await getRedisClient();
+    return await client.zIncrBy(key, member, value);
   },
 
   async zCard(key) {
@@ -407,9 +471,144 @@ export const redis = {
     return await client.zCard(key);
   },
 
+  async zRange(key, start, stop, options) {
+    const client = await getRedisClient();
+    // Build redis client options
+    const redisOpts = {};
+    if (options?.reverse) redisOpts.REV = true;
+    if (options?.by === 'lex') redisOpts.BYLEX = true;
+    if (options?.by === 'score') redisOpts.BYSCORE = true;
+    if (options?.limit) {
+      redisOpts.LIMIT = { offset: options.limit.offset, count: options.limit.count };
+    }
+
+    // Use zRangeWithScores to get both members and scores
+    const result = await client.zRangeWithScores(key, start, stop, redisOpts);
+
+    // redis npm client returns: [{ value: 'member1', score: 100 }, ...]
+    // Devvit API expects: [{ member: 'member1', score: 100 }, ...]
+    if (Array.isArray(result)) {
+      return result.map(item => ({
+        member: item.value,
+        score: item.score
+      }));
+    }
+
+    return [];
+  },
+
   async zRem(key, members) {
     const client = await getRedisClient();
     return await client.zRem(key, members);
+  },
+
+  async zRemRangeByLex(key, min, max) {
+    const client = await getRedisClient();
+    return await client.zRemRangeByLex(key, min, max);
+  },
+
+  async zRemRangeByRank(key, start, stop) {
+    const client = await getRedisClient();
+    return await client.zRemRangeByRank(key, start, stop);
+  },
+
+  async zRemRangeByScore(key, min, max) {
+    const client = await getRedisClient();
+    return await client.zRemRangeByScore(key, min, max);
+  },
+
+  async zScan(key, cursor, pattern, count) {
+    const client = await getRedisClient();
+    return await client.zScan(key, cursor, { MATCH: pattern, COUNT: count });
+  },
+
+  // Hash commands
+  async hGet(key, field) {
+    const client = await getRedisClient();
+    return await client.hGet(key, field);
+  },
+
+  async hMGet(key, fields) {
+    const client = await getRedisClient();
+    return await client.hMGet(key, fields);
+  },
+
+  async hSet(key, fieldValues) {
+    const client = await getRedisClient();
+    return await client.hSet(key, fieldValues);
+  },
+
+  async hSetNX(key, field, value) {
+    const client = await getRedisClient();
+    return await client.hSetNX(key, field, value);
+  },
+
+  async hGetAll(key) {
+    const client = await getRedisClient();
+    return await client.hGetAll(key);
+  },
+
+  async hDel(key, fields) {
+    const client = await getRedisClient();
+    return await client.hDel(key, fields);
+  },
+
+  async hScan(key, cursor, pattern, count) {
+    const client = await getRedisClient();
+    return await client.hScan(key, cursor, { MATCH: pattern, COUNT: count });
+  },
+
+  async hKeys(key) {
+    const client = await getRedisClient();
+    return await client.hKeys(key);
+  },
+
+  async hIncrBy(key, field, value) {
+    const client = await getRedisClient();
+    return await client.hIncrBy(key, field, value);
+  },
+
+  async hLen(key) {
+    const client = await getRedisClient();
+    return await client.hLen(key);
+  },
+
+  // Bitfield command (complex parsing)
+  async bitfield(key, ...cmds) {
+    const client = await getRedisClient();
+    const commands = [];
+    for (let argIndex = 0; argIndex < cmds.length;) {
+      const currentArg = cmds[argIndex];
+      switch (currentArg) {
+        case 'get': {
+          if (argIndex + 2 >= cmds.length) throw Error('bitfield: not enough arguments for get');
+          commands.push({ get: { encoding: cmds[argIndex + 1], offset: cmds[argIndex + 2].toString() } });
+          argIndex += 3;
+          break;
+        }
+        case 'set': {
+          if (argIndex + 3 >= cmds.length) throw Error('bitfield: not enough arguments for set');
+          commands.push({ set: { encoding: cmds[argIndex + 1], offset: cmds[argIndex + 2].toString(), value: cmds[argIndex + 3].toString() } });
+          argIndex += 4;
+          break;
+        }
+        case 'incrBy': {
+          if (argIndex + 3 >= cmds.length) throw Error('bitfield: not enough arguments for incrBy');
+          commands.push({ incrBy: { encoding: cmds[argIndex + 1], offset: cmds[argIndex + 2].toString(), increment: cmds[argIndex + 3].toString() } });
+          argIndex += 4;
+          break;
+        }
+        case 'overflow': {
+          if (argIndex + 1 >= cmds.length) throw Error('bitfield: not enough arguments for overflow');
+          commands.push({ overflow: cmds[argIndex + 1].toString() });
+          argIndex += 2;
+          break;
+        }
+        default:
+          throw Error(`bitfield: unrecognized command ${currentArg}`);
+      }
+    }
+    return await client.bitfield(key, commands);
   }
 };
 
@@ -442,7 +641,7 @@ export const reddit = {
         client.set(`post:${postId}:created`, now),
         client.set(`post:${postId}:creator`, creator),
         // Add to sorted set for feed listing (score = timestamp for reverse chronological order)
-        client.zAdd(`testbed:posts`, { score: Date.now(), value: postId })
+        redis.zAdd(`testbed:posts`, { score: Date.now(), member: postId })
       ]);
       console.log('[TESTBED] Stored post metadata for:', postId);
     } catch (err) {

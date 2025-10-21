@@ -19,12 +19,12 @@ const app = express();
 const jobManager = new JobManager(redis);
 
 // Helper function to format leaderboard data
+// topPlayers is an array from zRange with WITHSCORES: [{ member: 'name1', score: 100 }, { member: 'name2', score: 200 }, ...]
 async function formatLeaderboard(postId, topPlayers) {
   const highScores = [];
-  for (let i = 0; i < topPlayers.length; i++) {
-    const player = topPlayers[i];
-    const playerName = player.member;
-    const playerScore = player.score;
+  for (const playerEntry of topPlayers) {
+    const playerName = playerEntry.member;
+    const playerScore = playerEntry.score;
 
     // Get player metadata
     const playerData = await redis.hGetAll(`player:${postId}:${playerName}`);
@@ -33,7 +33,7 @@ async function formatLeaderboard(postId, topPlayers) {
       username: playerName,
       score: playerScore,
       timestamp: playerData.timestamp,
-      rank: i + 1
+      rank: highScores.length + 1
     });
   }
   return highScores;
@@ -74,7 +74,8 @@ router.get("/api/init", async (_req, res) => {
     // Get top 10 high scores using sorted set
     const leaderboardKey = `leaderboard:${postId}`;
     const topPlayers = await redis.zRange(leaderboardKey, 0, 9, {
-      REV: true
+      REV: true,
+      WITHSCORES: true
     });
 
     const highScores = await formatLeaderboard(postId, topPlayers);
@@ -431,7 +432,8 @@ router.post("/api/score/submit", async (req, res) => {
       console.log(`Post-update: ascendingRank=${ascendingRank}, totalPlayers=${totalPlayers}`);
 
       const topPlayers = await redis.zRange(leaderboardKey, 0, 9, {
-        REV: true
+        REV: true,
+        WITHSCORES: true
       });
       console.log(`Retrieved top players:`, topPlayers);
 
@@ -490,7 +492,8 @@ router.get("/api/leaderboard", async (_req, res) => {
 
     // Get top 10 players from sorted set
     const topPlayers = await redis.zRange(leaderboardKey, 0, 9, {
-      REV: true
+      REV: true,
+      WITHSCORES: true
     });
 
     console.log("leaderboard: topPlayers raw data:", topPlayers);
