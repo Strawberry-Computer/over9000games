@@ -204,23 +204,27 @@ async function loadLeaderboard() {
     currentHighScores = data.highScores;
     console.log("loadLeaderboard: currentHighScores", currentHighScores);
 
-    // Display leaderboard on canvas
-    if (gameRunner) {
-      console.log("loadLeaderboard: calling gameRunner.showLeaderboard");
-      gameRunner.showLeaderboard(currentHighScores);
-      console.log("loadLeaderboard: gameRunner state", {
-        showLeaderboard: gameRunner.state.showLeaderboard,
-        gameOver: gameRunner.state.gameOver,
-        leaderboardDataLength: gameRunner.leaderboardData?.length
-      });
+    // Populate leaderboard overlay
+    const scoresContainer = document.getElementById("leaderboard-scores");
+    if (scoresContainer) {
+      scoresContainer.innerHTML = "";
+      if (currentHighScores && currentHighScores.length > 0) {
+        currentHighScores.forEach((score, index) => {
+          const entry = document.createElement("div");
+          entry.className = "score-entry" + (index < 3 ? " top-3" : "");
+          entry.textContent = `#${index + 1} ${score.username} ${score.score}`;
+          scoresContainer.appendChild(entry);
+        });
+      } else {
+        scoresContainer.innerHTML = '<div style="color: #ffff00; padding: 20px;">NO SCORES YET</div>';
+      }
     }
 
   } catch (error) {
     console.error("Error loading leaderboard:", error);
-
-    // Show empty leaderboard on error
-    if (gameRunner) {
-      gameRunner.showLeaderboard([]);
+    const scoresContainer = document.getElementById("leaderboard-scores");
+    if (scoresContainer) {
+      scoresContainer.innerHTML = '<div style="color: #ff0000; padding: 20px;">ERROR LOADING</div>';
     }
   }
 }
@@ -272,10 +276,14 @@ function showDevMenu() {
   document.body.classList.add("dev-menu-active");
 }
 
+
 function hideAllModals() {
   gameCreationElement.style.display = "none";
   gamePublishingElement.style.display = "none";
   devMenuElement.style.display = "none";
+  if (gameRunner) {
+    gameRunner.hideLeaderboard();
+  }
 
   document.body.classList.remove(
     "game-creation-active",
@@ -320,6 +328,7 @@ function resetGameState() {
   editHistory = { versions: [], currentIndex: -1 };
   isEditMode = false;
   updateEditButtons();
+  updateShareButtonState();
   if (gameRunner) {
     gameRunner.setGeneratedGame(false);
   }
@@ -504,6 +513,7 @@ async function handleGenerationComplete(gameDefinition) {
 
     // Load and show the game
     await showGeneratedGame();
+    updateShareButtonState();
 
   } catch (error) {
     console.error("Error handling completed generation:", error);
@@ -582,8 +592,10 @@ async function showGeneratedGame() {
     // Start the game to trigger first frame callback
     gameRunner.startGame();
 
-    // Show the edit actions
-    editActionsElement.style.display = "block";
+    // Show the edit actions (on desktop only, mobile uses top bar)
+    if (window.innerWidth > 480) {
+      editActionsElement.style.display = "block";
+    }
 
     // Hide the creation modal and return to main view
     hideAllModals();
@@ -766,20 +778,133 @@ document.getElementById("btn-new-game")?.addEventListener("click", () => {
   resetGameState();
   showGameCreation();
 });
-document.getElementById("btn-restart-game")?.addEventListener("click", async () => {
+
+// Handle both mobile and desktop restart buttons
+const handleRestart = async () => {
   if (gameRunner && currentGameData?.gameCode) {
     gameRunner.hideLeaderboard();
     // Reload the game code to completely reset the VM state
     await gameRunner.loadCode(currentGameData.gameCode);
     gameRunner.startGame();
   }
-});
-document.getElementById("btn-publish-current")?.addEventListener("click", showGamePublishingFromMain);
-document.getElementById("btn-leaderboard")?.addEventListener("click", () => {
+};
+document.getElementById("btn-restart-game")?.addEventListener("click", handleRestart);
+document.getElementById("btn-restart-game-desktop")?.addEventListener("click", handleRestart);
+
+// Update share button disabled state
+function updateShareButtonState() {
+  // Only generated games can be shared
+  const canShare = isGeneratedGame && currentGameData;
+
+  document.querySelectorAll("#btn-publish-current, #btn-publish-current-desktop").forEach(btn => {
+    btn.disabled = !canShare;
+    btn.classList.toggle("disabled", !canShare);
+  });
+}
+
+// Handle both mobile and desktop share buttons
+const handleShare = () => {
+  // Guard: only allow sharing generated games (button should be disabled anyway)
+  if (!isGeneratedGame || !currentGameData) {
+    return;
+  }
+
+  if (gameRunner) {
+    gameRunner.pauseGame();
+    gameRunner.showLeaderboardLoading();
+  }
+  showGamePublishing();
+};
+document.getElementById("btn-publish-current")?.addEventListener("click", handleShare);
+document.getElementById("btn-publish-current-desktop")?.addEventListener("click", handleShare);
+
+// Desktop pause button
+document.getElementById("btn-leaderboard-desktop")?.addEventListener("click", () => {
   if (gameRunner) {
     gameRunner.togglePause();
   }
 });
+
+// Helper function to check if click is on edit or share buttons
+function isClickOnControlButton(target) {
+  return target.closest(
+    "#btn-edit-game, #btn-edit-game-desktop, " +
+    "#btn-publish-current, #btn-publish-current-desktop, " +
+    "#btn-restart-game, #btn-restart-game-desktop, " +
+    "#btn-menu, #btn-leaderboard-desktop"
+  );
+}
+
+// Helper function to resume game (hide leaderboard and start)
+async function resumeGame() {
+  if (!gameRunner || gameRunner.state.gameOver) return;
+
+  if (gameRunner.state.showLeaderboard) {
+    gameRunner.hideLeaderboard();
+    gameRunner.startGame();
+  }
+}
+
+// Console screen tap to pause/resume and show leaderboard
+const consoleScreen = document.getElementById("console-screen");
+consoleScreen?.addEventListener("click", async (e) => {
+  if (!gameRunner || gameRunner.state.gameOver) return;
+
+  // Check if click is on control buttons - don't handle if clicking those
+  if (isClickOnControlButton(e.target)) {
+    return; // Let button handlers take over
+  }
+
+  // Any tap on screen area pauses or resumes
+  if (gameRunner.state.showLeaderboard) {
+    gameRunner.hideLeaderboard();
+    gameRunner.startGame();
+  } else {
+    // Pause and show leaderboard
+    gameRunner.pauseGame();
+    gameRunner.showLeaderboardLoading();
+
+    // Fetch and display fresh leaderboard data
+    try {
+      const response = await fetch("/api/leaderboard");
+      if (response.ok) {
+        const data = await response.json();
+        gameRunner.showLeaderboard(data.highScores);
+        currentHighScores = data.highScores;
+      }
+    } catch (error) {
+      console.error("Error fetching leaderboard:", error);
+      gameRunner.showLeaderboard(currentHighScores);
+    }
+  }
+});
+
+// Document-wide tap outside console also resumes (except control buttons)
+document.addEventListener("click", (e) => {
+  if (!gameRunner || gameRunner.state.gameOver) return;
+
+  // Don't handle if already handled by console-screen
+  if (consoleScreen?.contains(e.target)) {
+    return;
+  }
+
+  // Don't resume on control buttons
+  if (isClickOnControlButton(e.target)) {
+    return;
+  }
+
+  // Don't resume if clicking inside modals/menus
+  const inModal = e.target.closest(
+    ".game-creation, .game-publishing, .dev-menu, .prompt-modal"
+  );
+  if (inModal) {
+    return;
+  }
+
+  // Only resume if leaderboard is showing (tapping outside to dismiss it)
+  resumeGame();
+}, true); // Use capture phase to catch clicks early
+
 document.getElementById("btn-menu")?.addEventListener("click", showDevMenu);
 document.getElementById("btn-close-dev-menu")?.addEventListener("click", hideAllModals);
 
@@ -840,7 +965,15 @@ document.getElementById("btn-back-to-game")?.addEventListener("click", () => {
 });
 
 // Edit control event listeners
-document.getElementById("btn-edit-game")?.addEventListener("click", startEditMode);
+const handleEdit = () => {
+  if (gameRunner) {
+    gameRunner.pauseGame();
+    gameRunner.showLeaderboardLoading();
+  }
+  startEditMode();
+};
+document.getElementById("btn-edit-game")?.addEventListener("click", handleEdit);
+document.getElementById("btn-edit-game-desktop")?.addEventListener("click", handleEdit);
 document.getElementById("btn-undo-edit")?.addEventListener("click", undoEdit);
 document.getElementById("btn-redo-edit")?.addEventListener("click", redoEdit);
 
@@ -949,8 +1082,8 @@ function redoEdit() {
 }
 
 function startEditMode() {
-  if (!isGeneratedGame || !currentGameData) {
-    gameInfoElement.textContent = "No generated game to edit!";
+  if (!currentGameData) {
+    gameInfoElement.textContent = "No game to edit!";
     gameInfoElement.style.color = "#f44336";
     return;
   }
@@ -963,3 +1096,4 @@ function startEditMode() {
 initializeConsole();
 fetchInitialData();
 setupMobileKeyboardHandling();
+updateShareButtonState();

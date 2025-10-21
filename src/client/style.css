@@ -66,8 +66,75 @@ body {
   padding: 0;
 }
 
-/* Header */
+/* Top bar - visible by default for all devices */
+.mobile-top-bar {
+  background: var(--nes-dark-gray);
+  padding: 8px 4px;
+  border-bottom: 4px solid var(--nes-shadow);
+  display: flex;
+  gap: 4px;
+  justify-content: space-around;
+  flex-shrink: 0;
+}
+
+.mobile-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  padding: 8px 6px;
+  border: none;
+  cursor: pointer;
+  text-shadow: 1px 1px 0px var(--nes-shadow);
+  outline: none;
+  flex: 1;
+  min-height: 36px;
+  transition: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-top: 3px solid var(--nes-white);
+  border-left: 3px solid var(--nes-white);
+  border-right: 3px solid var(--nes-dark-gray);
+  border-bottom: 3px solid var(--nes-dark-gray);
+}
+
+.mobile-btn.edit-btn {
+  background: var(--nes-blue);
+  color: var(--nes-white);
+  border-top: 3px solid #4444ff;
+  border-left: 3px solid #4444ff;
+  border-right: 3px solid #000088;
+  border-bottom: 3px solid #000088;
+}
+
+.mobile-btn.restart-btn {
+  background: var(--nes-green);
+  color: var(--nes-white);
+  border-top: 3px solid #00cc00;
+  border-left: 3px solid #00cc00;
+  border-right: 3px solid #004400;
+  border-bottom: 3px solid #004400;
+}
+
+.mobile-btn.share-btn {
+  background: var(--nes-purple);
+  color: var(--nes-white);
+  border-top: 3px solid #aa44aa;
+  border-left: 3px solid #aa44aa;
+  border-right: 3px solid #440044;
+  border-bottom: 3px solid #440044;
+}
+
+.mobile-btn:active {
+  border-top: 3px solid var(--nes-shadow);
+  border-left: 3px solid var(--nes-shadow);
+  border-right: 3px solid var(--nes-white);
+  border-bottom: 3px solid var(--nes-white);
+  transform: translate(1px, 1px);
+}
+
+/* Header - hidden by default, kept for desktop if needed */
 .console-header {
+  display: none;
   background: var(--nes-dark-gray);
   padding: 8px;
   text-align: center;
@@ -94,6 +161,8 @@ body {
   background: var(--nes-black);
   padding: 0;
   position: relative;
+  width: 100%;
+  height: 100%;
 }
 
 #console-canvas {
@@ -236,8 +305,9 @@ body {
   transform: translate(1px, 1px);
 }
 
-/* Game management */
+/* Game management - hidden by default */
 .game-management {
+  display: none;
   background: var(--nes-dark-gray);
   padding: 16px 12px;
   border-top: 4px solid var(--nes-white);

@@ -879,6 +879,27 @@ function doUpdate(deltaTime, input) {
       }
     }
 
+    // Draw RESUME button if not game over
+    if (!this.state.gameOver) {
+      this.renderResumeButton();
+    }
+
+  }
+
+  renderResumeButton() {
+    // Just render "tap to resume" text without button styling
+    const textY = 110;
+    renderCenteredBitmapText(this.ctx, 'TAP TO RESUME', 64, textY, '#ffffff', 1);
+
+    // Store bounds for click detection (lower half of screen)
+    this.resumeButtonBounds = { x: 0, y: 100, width: 128, height: 28 };
+  }
+
+  isResumeButtonClicked(x, y) {
+    if (!this.resumeButtonBounds) return false;
+    const bounds = this.resumeButtonBounds;
+    return x >= bounds.x && x <= bounds.x + bounds.width &&
+           y >= bounds.y && y <= bounds.y + bounds.height;
   }
 
   clear() {

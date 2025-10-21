@@ -16,15 +16,24 @@
   </head>
   <body class="app">
     <div class="console-container">
+      <!-- Mobile top bar with action buttons -->
+      <div class="mobile-top-bar" id="mobile-top-bar">
+        <button class="mobile-btn edit-btn" id="btn-edit-game">EDIT</button>
+        <button class="mobile-btn restart-btn" id="btn-restart-game">RESTART</button>
+        <button class="mobile-btn share-btn" id="btn-publish-current">SHARE</button>
+      </div>
+
+      <!-- Desktop header -->
       <div class="console-header">
         <div class="title">RES-9000</div>
         <div class="game-info" id="game-info">HEY PLAYER ONE!</div>
         <div class="current-game" id="current-game-name" style="font-size: 6px; color: var(--nes-cyan); margin-top: 4px;">None</div>
       </div>
 
-      <div class="console-screen">
+      <div class="console-screen" id="console-screen">
         <canvas id="console-canvas" width="128" height="128"></canvas>
         <canvas id="sprite-canvas" width="128" height="128" style="display: none;"></canvas>
+
       </div>
 
       <div class="controls">
@@ -45,17 +54,18 @@
 
       </div>
 
+      <!-- Desktop game management buttons (hidden on mobile) -->
       <div class="game-management">
         <div class="main-actions">
-          <button class="game-btn primary" id="btn-restart-game">RESTART</button>
-          <button class="game-btn secondary" id="btn-leaderboard">PAUSE</button>
+          <button class="game-btn primary" id="btn-restart-game-desktop">RESTART</button>
+          <button class="game-btn secondary" id="btn-leaderboard-desktop">PAUSE</button>
           <button class="game-btn tertiary" id="btn-menu">MENU</button>
         </div>
         <div class="edit-actions" id="edit-actions" style="display: none;">
           <button class="game-btn edit-btn" id="btn-undo-edit" style="display: none;">UNDO</button>
           <button class="game-btn edit-btn" id="btn-redo-edit" style="display: none;">REDO</button>
-          <button class="game-btn edit-btn" id="btn-edit-game">EDIT</button>
-          <button class="game-btn publish-btn" id="btn-publish-current">SHARE GAME</button>
+          <button class="game-btn edit-btn" id="btn-edit-game-desktop">EDIT</button>
+          <button class="game-btn publish-btn" id="btn-publish-current-desktop">SHARE GAME</button>
         </div>
       </div>
 
