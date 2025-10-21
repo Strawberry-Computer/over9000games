@@ -1,7 +1,6 @@
 import { navigateTo } from "@devvit/web/client";
 import { getGameRunner } from "./game-runner.js";
 import { getQuickJS } from "quickjs-emscripten";
-import { DraftManager } from "./draft-manager.js";
 
 const titleElement = document.getElementById("title");
 const gameInfoElement = document.getElementById("game-info");
@@ -31,7 +30,6 @@ const redoEditButton = document.getElementById("btn-redo-edit");
 let currentGameData = null;
 let isGeneratedGame = false;
 let isTestGame = false;
-let draftManager = null;
 
 // Edit state management
 let editHistory = {
@@ -50,11 +48,6 @@ function initializeConsole() {
   try {
     gameRunner = getGameRunner("console-canvas", "sprite-canvas");
     console.log("Game runner created");
-
-    // Initialize draft manager
-    draftManager = new DraftManager();
-
-    console.log("Draft manager initialized");
   } catch (error) {
     console.error("Failed to initialize game runner:", error);
   }
@@ -745,15 +738,6 @@ async function publishGameToReddit() {
     if (postData.success) {
       showPublishingStatus(`Game posted successfully! Redirecting to post`, "success");
 
-      // Clear the draft after successful publishing
-      if (draftManager) {
-        draftManager.updateDraft({
-          published: true,
-          publishedAt: Date.now(),
-          postUrl: postData.postUrl
-        }, 'published');
-      }
-
       // Redirect to the new post after 2 seconds
       setTimeout(() => {
         navigateTo(postData.postUrl);
@@ -867,47 +851,6 @@ document.addEventListener("gameOver", (event) => {
   submitScore(finalScore);
 });
 
-// Draft UI management
-function updateDraftUI() {
-  const draftStatusEl = document.getElementById('draft-status');
-  const restoreButtonEl = document.getElementById('btn-restore-draft');
-
-  if (!draftManager || !draftStatusEl) return;
-
-  if (draftManager.currentDraftId) {
-    const draft = draftManager.loadDraft(draftManager.currentDraftId);
-    if (draft) {
-      const timeSince = Math.floor((Date.now() - draft.updated) / 1000 / 60); // minutes
-      draftStatusEl.textContent = `Draft saved ${timeSince}m ago`;
-      draftStatusEl.style.color = '#4caf50';
-    }
-  } else if (draftManager.hasDrafts()) {
-    draftStatusEl.textContent = 'Previous drafts available';
-    draftStatusEl.style.color = '#ffc107';
-    if (restoreButtonEl) {
-      restoreButtonEl.style.display = 'inline-block';
-    }
-  }
-}
-
-// Draft event listeners
-document.getElementById("btn-restore-draft")?.addEventListener("click", () => {
-  if (draftManager) {
-    const restored = draftManager.restoreDraftToUI();
-    if (restored) {
-      updateDraftUI();
-    }
-  }
-});
-
-document.getElementById("btn-undo-description")?.addEventListener("click", () => {
-  if (draftManager) {
-    const undoSuccess = draftManager.undo();
-    if (undoSuccess) {
-      updateDraftUI();
-    }
-  }
-});
 
 // Game over events are now handled via canvas overlay instead of modal
 
