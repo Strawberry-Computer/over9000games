@@ -360,25 +360,33 @@ function doUpdate(deltaTime, input) {
     this.state.score += points;
   }
 
-  async startGame() {
-    // Initialize audio if needed (non-blocking)
+  startGame() {
+    // Initialize audio in background (non-blocking)
     if (!this.audioInitialized) {
       try {
-        await this.audioManager.initialize();
-        this.audioInitialized = true;
+        this.audioManager.initialize().then(() => {
+          this.audioInitialized = true;
+          // Resume audio once initialized
+          if (this.audioManager.ctx) {
+            this.audioManager.resume().catch(err => {
+              console.error("Audio resume failed:", err);
+            });
+          }
+        }).catch(error => {
+          console.error("Audio initialization failed:", error);
+        });
       } catch (error) {
         console.error("Audio initialization failed:", error);
       }
-    }
-
-    // Resume audio in background (don't wait for it)
-    if (this.audioInitialized && this.audioManager.ctx) {
+    } else if (this.audioInitialized && this.audioManager.ctx) {
+      // Resume audio in background (don't wait for it)
       this.audioManager.resume().catch(err => {
         console.error("Audio resume failed:", err);
       });
     }
 
     // Start the game immediately
+    console.log("Starting game loop, gameRunning set to true");
     this.state.gameRunning = true;
     this.state.gamePaused = false;
     this.gameLoop();
@@ -716,10 +724,24 @@ function doUpdate(deltaTime, input) {
     }
   }
 
+  showMessage(message, title = null) {
+    // Store message to be displayed
+    this.displayMessage = message;
+    this.displayTitle = title;
+    // Force a render to show the message
+    this.render();
+  }
+
   render() {
     const bgColor = this.state.palette[this.state.backgroundColor] || 0x000000;
     this.ctx.fillStyle = `#${bgColor.toString(16).padStart(6, '0')}`;
     this.ctx.fillRect(0, 0, 128, 128);
+
+    // If there's a message to display, show it instead of game
+    if (this.displayMessage && !this.state.gameRunning) {
+      this.renderMessageOverlay();
+      return;
+    }
 
     this.renderTiles();
     this.renderSprites();
@@ -727,6 +749,46 @@ function doUpdate(deltaTime, input) {
     // Render overlays
     if (this.state.showLeaderboard) {
       this.renderLeaderboardOverlay();
+    }
+  }
+
+  renderMessageOverlay() {
+    // Semi-transparent dark overlay
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    this.ctx.fillRect(0, 0, 128, 128);
+
+    // Message box background
+    this.ctx.fillStyle = '#2d2d2d';
+    this.ctx.fillRect(0, 0, 128, 128);
+
+    // Message box border (NES-style)
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.fillRect(0, 0, 128, 2); // Top
+    this.ctx.fillRect(0, 126, 128, 2); // Bottom
+    this.ctx.fillRect(0, 0, 2, 128); // Left
+    this.ctx.fillRect(126, 0, 2, 128); // Right
+
+    // Inner border
+    this.ctx.fillStyle = '#424242';
+    this.ctx.fillRect(2, 2, 124, 2); // Top
+    this.ctx.fillRect(2, 124, 124, 2); // Bottom
+    this.ctx.fillRect(2, 2, 2, 124); // Left
+    this.ctx.fillRect(124, 2, 2, 124); // Right
+
+    const centerX = 64;
+    let yPos = 20;
+
+    // Title if provided
+    if (this.displayTitle) {
+      renderCenteredBitmapText(this.ctx, this.displayTitle, centerX, yPos, '#ffff00', 1);
+      yPos += 20;
+    }
+
+    // Message text (split into lines if needed)
+    const lines = this.displayMessage.split('\n');
+    for (const line of lines) {
+      renderCenteredBitmapText(this.ctx, line, centerX, yPos, '#ffffff', 1);
+      yPos += 12;
     }
   }
 

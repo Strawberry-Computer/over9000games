@@ -3,8 +3,6 @@ import { getGameRunner } from "./game-runner.js";
 import { getQuickJS } from "quickjs-emscripten";
 
 const titleElement = document.getElementById("title");
-const gameInfoElement = document.getElementById("game-info");
-const currentGameNameElement = document.getElementById("current-game-name");
 const scoresListElement = document.getElementById("scores-list"); // Legacy, may be removed
 
 // Game creation elements
@@ -71,37 +69,26 @@ async function fetchInitialData() {
         currentGameData = data.gameDefinition;
 
         // Load all games via QuickJS runner
+        console.log("Loading initial game from Redis...");
         await gameRunner.loadCode(data.gameDefinition.gameCode);
-        gameInfoElement.textContent = "Game loaded! Playing...";
-        gameInfoElement.style.color = "#00ff00";
+        console.log("Game code loaded, starting game...");
         // Auto-start the game
         gameRunner.startGame();
+        console.log("Game started successfully");
       } else {
-        showNoGameState();
+        console.log("No game definition in init response");
+        gameRunner.showMessage("Generate a new game\nto start playing!", "NO GAME");
       }
     } else {
       console.error("Invalid response type from /api/init", data);
-      showErrorState("Failed to load game data");
+      gameRunner.showMessage("Failed to load\ngame data", "ERROR");
     }
   } catch (error) {
     console.error("Error fetching initial data:", error);
-    showErrorState("Connection error");
+    gameRunner.showMessage("Connection error", "ERROR");
   }
 }
 
-function showNoGameState() {
-  currentGameNameElement.textContent = "None";
-  gameInfoElement.textContent = "No game available. Generate a new game to start playing!";
-}
-
-function showErrorState(message) {
-  currentGameNameElement.textContent = "Error";
-  gameInfoElement.textContent = message;
-}
-
-function showGameReadyState() {
-  gameInfoElement.textContent += " - Press START to play!";
-}
 
 
 
@@ -130,9 +117,6 @@ async function loadTestGame(gameName) {
 
       // Load the raw game code directly into QuickJS
       await gameRunner.loadCode(data.gameDefinition.gameCode);
-      gameInfoElement.textContent = `Test game "${gameName}" loaded! Playing...`;
-      gameInfoElement.style.color = "#00ff00";
-      currentGameNameElement.textContent = gameName;
 
       // Set published status for test game
       gameRunner.setPublishedStatus(currentGameData.isPublished);
@@ -142,8 +126,7 @@ async function loadTestGame(gameName) {
     }
   } catch (error) {
     console.error(`Error loading test game "${gameName}":`, error);
-    gameInfoElement.textContent = `Failed to load test game: ${error.message}`;
-    gameInfoElement.style.color = "#f44336";
+    gameRunner.showMessage(`Failed to load\ntest game`, "ERROR");
   }
 }
 
@@ -238,13 +221,6 @@ function restartCurrentGame() {
   if (gameRunner) {
     gameRunner.resetGame();
     gameRunner.startGame();
-
-    // Reset game info display
-    const gameInfoElement = document.getElementById('game-info');
-    if (gameInfoElement) {
-      gameInfoElement.textContent = "Game restarted!";
-      gameInfoElement.style.color = "#00ff00";
-    }
   }
 }
 
@@ -324,7 +300,6 @@ function resetGameState() {
   isGeneratedGame = false;
   currentGameData = null;
   editActionsElement.style.display = "none";
-  currentGameNameElement.textContent = "None";
   editHistory = { versions: [], currentIndex: -1 };
   isEditMode = false;
   updateEditButtons();
@@ -572,10 +547,6 @@ async function showGeneratedGame() {
     gameRunner.setGeneratedGame(true);
     gameRunner.setPublishedStatus(currentGameData.isPublished);
 
-    // Update the main UI
-    gameInfoElement.textContent = "Game generated! Playing...";
-    gameInfoElement.style.color = "#00ff00";
-
     // Set up screenshot capture after first frame renders
     gameRunner.setFirstFrameCallback(async () => {
       try {
@@ -594,11 +565,6 @@ async function showGeneratedGame() {
 
     // Hide the creation modal and return to main view
     hideAllModals();
-
-    // Show success message
-    setTimeout(() => {
-      gameInfoElement.textContent = "Ready to play! Share your creation!";
-    }, 2000);
 
   } catch (error) {
     console.error("Error loading generated game:", error);
@@ -624,8 +590,6 @@ function showGamePublishing() {
 
 function showGamePublishingFromMain() {
   if (!isGeneratedGame || !currentGameData) {
-    gameInfoElement.textContent = "No generated game to publish!";
-    gameInfoElement.style.color = "#f44336";
     return;
   }
 
@@ -1066,8 +1030,6 @@ function redoEdit() {
 
 function startEditMode() {
   if (!currentGameData) {
-    gameInfoElement.textContent = "No game to edit!";
-    gameInfoElement.style.color = "#f44336";
     return;
   }
 
