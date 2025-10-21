@@ -361,13 +361,24 @@ function doUpdate(deltaTime, input) {
   }
 
   async startGame() {
-    // Initialize and resume audio (requires user interaction)
+    // Initialize audio if needed (non-blocking)
     if (!this.audioInitialized) {
-      await this.audioManager.initialize();
-      this.audioInitialized = true;
+      try {
+        await this.audioManager.initialize();
+        this.audioInitialized = true;
+      } catch (error) {
+        console.error("Audio initialization failed:", error);
+      }
     }
-    await this.audioManager.resume();
 
+    // Resume audio in background (don't wait for it)
+    if (this.audioInitialized && this.audioManager.ctx) {
+      this.audioManager.resume().catch(err => {
+        console.error("Audio resume failed:", err);
+      });
+    }
+
+    // Start the game immediately
     this.state.gameRunning = true;
     this.state.gamePaused = false;
     this.gameLoop();
