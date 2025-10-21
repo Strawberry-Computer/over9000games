@@ -592,11 +592,6 @@ async function showGeneratedGame() {
     // Start the game to trigger first frame callback
     gameRunner.startGame();
 
-    // Show the edit actions (on desktop only, mobile uses top bar)
-    if (window.innerWidth > 480) {
-      editActionsElement.style.display = "block";
-    }
-
     // Hide the creation modal and return to main view
     hideAllModals();
 
@@ -779,7 +774,7 @@ document.getElementById("btn-new-game")?.addEventListener("click", () => {
   showGameCreation();
 });
 
-// Handle both mobile and desktop restart buttons
+// Handle restart button
 const handleRestart = async () => {
   if (gameRunner && currentGameData?.gameCode) {
     gameRunner.hideLeaderboard();
@@ -789,20 +784,20 @@ const handleRestart = async () => {
   }
 };
 document.getElementById("btn-restart-game")?.addEventListener("click", handleRestart);
-document.getElementById("btn-restart-game-desktop")?.addEventListener("click", handleRestart);
 
 // Update share button disabled state
 function updateShareButtonState() {
   // Only generated games can be shared
   const canShare = isGeneratedGame && currentGameData;
 
-  document.querySelectorAll("#btn-publish-current, #btn-publish-current-desktop").forEach(btn => {
+  const btn = document.getElementById("btn-publish-current");
+  if (btn) {
     btn.disabled = !canShare;
     btn.classList.toggle("disabled", !canShare);
-  });
+  }
 }
 
-// Handle both mobile and desktop share buttons
+// Handle post button
 const handleShare = () => {
   // Guard: only allow sharing generated games (button should be disabled anyway)
   if (!isGeneratedGame || !currentGameData) {
@@ -816,22 +811,11 @@ const handleShare = () => {
   showGamePublishing();
 };
 document.getElementById("btn-publish-current")?.addEventListener("click", handleShare);
-document.getElementById("btn-publish-current-desktop")?.addEventListener("click", handleShare);
 
-// Desktop pause button
-document.getElementById("btn-leaderboard-desktop")?.addEventListener("click", () => {
-  if (gameRunner) {
-    gameRunner.togglePause();
-  }
-});
-
-// Helper function to check if click is on edit or share buttons
+// Helper function to check if click is on action buttons
 function isClickOnControlButton(target) {
   return target.closest(
-    "#btn-edit-game, #btn-edit-game-desktop, " +
-    "#btn-publish-current, #btn-publish-current-desktop, " +
-    "#btn-restart-game, #btn-restart-game-desktop, " +
-    "#btn-menu, #btn-leaderboard-desktop"
+    "#btn-edit-game, #btn-publish-current, #btn-restart-game, #btn-menu"
   );
 }
 
@@ -973,7 +957,6 @@ const handleEdit = () => {
   startEditMode();
 };
 document.getElementById("btn-edit-game")?.addEventListener("click", handleEdit);
-document.getElementById("btn-edit-game-desktop")?.addEventListener("click", handleEdit);
 document.getElementById("btn-undo-edit")?.addEventListener("click", undoEdit);
 document.getElementById("btn-redo-edit")?.addEventListener("click", redoEdit);
 

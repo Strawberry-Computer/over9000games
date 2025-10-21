@@ -66,8 +66,8 @@ body {
   padding: 0;
 }
 
-/* Top bar - visible by default for all devices */
-.mobile-top-bar {
+/* Action bar */
+.action-bar {
   background: var(--nes-dark-gray);
   padding: 8px 4px;
   border-bottom: 4px solid var(--nes-shadow);
@@ -77,7 +77,7 @@ body {
   flex-shrink: 0;
 }
 
-.mobile-btn {
+.btn {
   font-family: 'Press Start 2P', monospace;
   font-size: 7px;
   padding: 8px 6px;
@@ -97,7 +97,7 @@ body {
   border-bottom: 3px solid var(--nes-dark-gray);
 }
 
-.mobile-btn.edit-btn {
+.btn.edit-btn {
   background: var(--nes-blue);
   color: var(--nes-white);
   border-top: 3px solid #4444ff;
@@ -106,7 +106,7 @@ body {
   border-bottom: 3px solid #000088;
 }
 
-.mobile-btn.restart-btn {
+.btn.restart-btn {
   background: var(--nes-green);
   color: var(--nes-white);
   border-top: 3px solid #00cc00;
@@ -115,7 +115,7 @@ body {
   border-bottom: 3px solid #004400;
 }
 
-.mobile-btn.share-btn {
+.btn.post-btn {
   background: var(--nes-purple);
   color: var(--nes-white);
   border-top: 3px solid #aa44aa;
@@ -124,35 +124,12 @@ body {
   border-bottom: 3px solid #440044;
 }
 
-.mobile-btn:active {
+.btn:active {
   border-top: 3px solid var(--nes-shadow);
   border-left: 3px solid var(--nes-shadow);
   border-right: 3px solid var(--nes-white);
   border-bottom: 3px solid var(--nes-white);
   transform: translate(1px, 1px);
-}
-
-/* Header - hidden by default, kept for desktop if needed */
-.console-header {
-  display: none;
-  background: var(--nes-dark-gray);
-  padding: 8px;
-  text-align: center;
-  border-bottom: 4px solid var(--nes-shadow);
-}
-
-.title {
-  font-size: 12px;
-  color: var(--nes-yellow);
-  text-shadow: 2px 2px 0px var(--nes-shadow);
-  margin-bottom: 4px;
-  letter-spacing: 1px;
-}
-
-.game-info {
-  font-size: 8px;
-  color: var(--nes-white);
-  text-shadow: 1px 1px 0px var(--nes-shadow);
 }
 
 /* Console screen */
@@ -305,27 +282,6 @@ body {
   transform: translate(1px, 1px);
 }
 
-/* Game management - hidden by default */
-.game-management {
-  display: none;
-  background: var(--nes-dark-gray);
-  padding: 16px 12px;
-  border-top: 4px solid var(--nes-white);
-}
-
-.main-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.edit-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
 
 .game-btn {
   font-family: 'Press Start 2P', monospace;
@@ -653,84 +609,6 @@ body {
   }
 }
 
-/* Desktop layout optimization - ensure everything fits without scrolling */
-@media (hover: hover) and (pointer: fine) {
-  .controls {
-    display: none !important;
-  }
-
-  .console-container {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    margin: 0;
-    overflow: hidden;
-  }
-
-  .console-header {
-    flex-shrink: 0;
-    padding: 6px 8px;
-    margin: 0;
-  }
-
-  .title {
-    font-size: 11px;
-    margin-bottom: 2px;
-  }
-
-  .game-info {
-    font-size: 7px;
-  }
-
-  .console-screen {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 4px;
-    margin: 0;
-    min-height: 0;
-  }
-
-  #console-canvas {
-    max-width: min(calc(100vw - 8px), calc(100vh - 140px));
-    max-height: calc(100vh - 140px);
-    object-fit: contain;
-  }
-
-  .game-management {
-    flex-shrink: 0;
-    padding: 8px 12px;
-    margin: 0;
-    background: var(--nes-dark-gray);
-    border-top: 4px solid var(--nes-white);
-  }
-
-  .main-actions {
-    margin-bottom: 8px;
-  }
-
-  .game-btn {
-    font-size: 7px;
-    padding: 8px 6px;
-    min-height: 36px;
-  }
-
-  /* Make sure all modals are properly sized for desktop */
-  .prompt-modal {
-    max-width: 420px;
-    padding: 16px;
-  }
-
-  .form-container textarea {
-    height: 60px;
-  }
-
-  .game-btn.publish-btn {
-    margin-top: 4px;
-  }
-}
 
 /* Animation effects */
 @keyframes pixel-glow {
