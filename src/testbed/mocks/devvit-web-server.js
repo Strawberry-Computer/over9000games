@@ -412,6 +412,26 @@ export const reddit = {
       subredditName,
       splash: splash ? 'with splash' : 'no splash'
     });
+
+    // In testbed mode, store post metadata for the feed page
+    try {
+      const client = await getRedisClient();
+      const now = new Date().toISOString();
+      const creator = context.userId || 'testuser';
+
+      // Store post metadata
+      await Promise.all([
+        client.set(`post:${postId}:title`, title),
+        client.set(`post:${postId}:created`, now),
+        client.set(`post:${postId}:creator`, creator),
+        // Add to sorted set for feed listing (score = timestamp for reverse chronological order)
+        client.zAdd(`testbed:posts`, { score: Date.now(), value: postId })
+      ]);
+      console.log('[TESTBED] Stored post metadata for:', postId);
+    } catch (err) {
+      console.error('[TESTBED] Error storing post metadata:', err);
+    }
+
     return { id: postId };
   }
 };
