@@ -18,26 +18,6 @@ const app = express();
 // Initialize job manager
 const jobManager = new JobManager(redis);
 
-// Helper function to format leaderboard data
-// topPlayers is an array from zRange with WITHSCORES: [{ member: 'name1', score: 100 }, { member: 'name2', score: 200 }, ...]
-async function formatLeaderboard(postId, topPlayers) {
-  const highScores = [];
-  for (const playerEntry of topPlayers) {
-    const playerName = playerEntry.member;
-    const playerScore = playerEntry.score;
-
-    // Get player metadata
-    const playerData = await redis.hGetAll(`player:${postId}:${playerName}`);
-
-    highScores.push({
-      username: playerName,
-      score: playerScore,
-      timestamp: playerData.timestamp,
-      rank: highScores.length + 1
-    });
-  }
-  return highScores;
-}
 
 // Middleware for JSON body parsing
 app.use(express.json());
@@ -71,21 +51,11 @@ router.get("/api/init", async (_req, res) => {
       gameDefinition = { gameCode };
     }
 
-    // Get top 10 high scores using sorted set
-    const leaderboardKey = `leaderboard:${postId}`;
-    const topPlayers = await redis.zRange(leaderboardKey, 0, 9, {
-      REV: true,
-      WITHSCORES: true
-    });
-
-    const highScores = await formatLeaderboard(postId, topPlayers);
-
     res.json({
       type: "init",
       postId: postId,
       username: username ?? "anonymous",
       gameDefinition,
-      highScores,
     });
   } catch (error) {
     console.error(`API Init Error for post ${postId}:`, error);
@@ -426,38 +396,21 @@ router.post("/api/score/submit", async (req, res) => {
         console.log(`Score not updated: new=${score} <= current=${currentScore}`);
       }
 
-      // Get player's new rank and leaderboard
-      const ascendingRank = await redis.zRank(leaderboardKey, username);
+      // Get player's rank (descending - highest scores first)
+      const descendingRank = await redis.zRank(leaderboardKey, username);
       const totalPlayers = await redis.zCard(leaderboardKey);
-      console.log(`Post-update: ascendingRank=${ascendingRank}, totalPlayers=${totalPlayers}`);
+      console.log(`Post-update: descendingRank=${descendingRank}, totalPlayers=${totalPlayers}`);
 
-      const topPlayers = await redis.zRange(leaderboardKey, 0, 9, {
-        REV: true,
-        WITHSCORES: true
-      });
-      console.log(`Retrieved top players:`, topPlayers);
+      // Convert to 1-based rank (0-9 → 1-10 for top 10)
+      const playerRank = descendingRank !== undefined ? descendingRank + 1 : null;
 
-      // Format top players using shared helper
-      const highScores = await formatLeaderboard(postId, topPlayers);
-
-      // Check if player is actually in the high scores (top 10)
-      let playerRank = null;
-      let isHighScore = false;
-
-      for (let i = 0; i < highScores.length; i++) {
-        if (highScores[i].username === username) {
-          playerRank = i + 1;
-          // Only show "NEW HIGH SCORE" if score was actually updated
-          isHighScore = scoreWasUpdated;
-          break;
-        }
-      }
+      // Only show "NEW HIGH SCORE" if score was actually updated AND player is in top 10
+      const isHighScore = scoreWasUpdated && playerRank !== null && playerRank <= 10;
 
       res.json({
         type: "score",
         newRank: playerRank,
         isHighScore,
-        highScores,
       });
     } catch (redisError) {
       console.error(`Redis error for post ${postId}:`, redisError);
@@ -486,20 +439,19 @@ router.get("/api/leaderboard", async (_req, res) => {
     const leaderboardKey = `leaderboard:${postId}`;
     console.log(`Leaderboard fetch: postId=${postId}, key=${leaderboardKey}`);
 
-    // Check total players first
-    const totalPlayers = await redis.zCard(leaderboardKey);
-    console.log(`Leaderboard total players: ${totalPlayers}`);
-
     // Get top 10 players from sorted set
     const topPlayers = await redis.zRange(leaderboardKey, 0, 9, {
-      REV: true,
-      WITHSCORES: true
+      by: 'rank',
+      reverse: true
     });
 
     console.log("leaderboard: topPlayers raw data:", topPlayers);
 
-    // Format top players using shared helper
-    const highScores = await formatLeaderboard(postId, topPlayers);
+    // Format leaderboard data - just username and score
+    const highScores = topPlayers.map(playerEntry => ({
+      username: playerEntry.member,
+      score: playerEntry.score
+    }));
 
     res.json({
       type: "leaderboard",
