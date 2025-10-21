@@ -14,7 +14,33 @@ export let context = {
  * In production this comes from Devvit platform
  */
 function contextMiddleware(req, res, next) {
-  context.postId = req.query.gameId || req.params.gameId || 'default-game';
+  // Get postId from multiple sources:
+  // 1. Route params (after route matching)
+  // 2. Query params (API calls with ?postId=)
+  // 3. URL path (page load before route matching, e.g., /r/testbed/comments/post_123)
+  let postId = req.params.postId || req.query.postId;
+
+  if (!postId) {
+    // Try to extract from path for page loads like /r/testbed/comments/post_123
+    const pathMatch = req.path.match(/\/comments\/([^/?]+)/);
+    if (pathMatch) {
+      postId = pathMatch[1];
+    }
+  }
+
+  // Only require postId for API calls
+  if (req.path.startsWith('/api/') && !postId) {
+    console.error('[TESTBED] ERROR: No postId found in API request', {
+      path: req.path,
+      query: req.query
+    });
+    return res.status(400).json({
+      status: 'error',
+      message: 'postId is required but missing from request'
+    });
+  }
+
+  context.postId = postId || 'default-game';
   context.userId = req.headers['x-user-id'] || req.cookies?.userId || 'testuser';
   context.subredditName = 'testbed';
   next();

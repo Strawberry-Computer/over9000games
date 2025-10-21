@@ -46,19 +46,34 @@ export { context };
 async function serveClient(res, queryParams = '') {
   try {
     let html = await fs.readFile(indexPath, 'utf-8');
-    // Inject query params into the URL for client-side routing
-    if (queryParams) {
-      html = html.replace(
-        '</head>',
-        `<script>
-          // Inject query params for client-side routing
-          if (!window.location.search) {
-            window.history.replaceState({}, '', window.location.pathname + '${queryParams}');
-          }
-        </script>
-        </head>`
-      );
-    }
+
+    // Inject fetch interception and query params into the page
+    const injectedScript = `<script>
+      // Intercept fetch to automatically add postId parameter to API calls in testbed mode
+      const originalFetch = window.fetch;
+      window.fetch = function(resource, init) {
+        // Extract postId from current URL (e.g., /r/testbed/comments/post_123)
+        const pathMatch = window.location.pathname.match(/\\/comments\\/([^/]+)/);
+        const postId = pathMatch ? pathMatch[1] : null;
+
+        // Only intercept API calls that don't already have postId parameter
+        if (postId && typeof resource === 'string' && resource.startsWith('/api/')) {
+          const separator = resource.includes('?') ? '&' : '?';
+          resource = resource + separator + 'postId=' + encodeURIComponent(postId);
+          console.log('[TESTBED] Enhanced fetch URL with postId:', resource);
+        }
+
+        return originalFetch.apply(this, [resource, init]);
+      };
+      console.log('[TESTBED] Fetch interception installed');
+
+      // Inject query params for client-side routing if needed
+      ${queryParams ? `if (!window.location.search) {
+        window.history.replaceState({}, '', window.location.pathname + '${queryParams}');
+      }` : ''}
+    </script>`;
+
+    html = html.replace('</head>', injectedScript + '</head>');
     res.setHeader('Content-Type', 'text/html');
     res.send(html);
   } catch (error) {
@@ -78,7 +93,7 @@ export function createServer(app) {
 
   // New game submission page - serve client for game creation
   app.get('/r/testbed/submit', (req, res) => {
-    serveClient(res, '?create=true');
+    serveClient(res);
   });
 
   // Subreddit feed
@@ -120,11 +135,13 @@ export function createServer(app) {
     }
   });
 
-  // Game post page - serve client with gameId parameter
+  // Game post page - serve client
   app.get('/r/:subreddit/comments/:postId', (req, res) => {
     const { postId } = req.params;
     console.log(`[TESTBED] Loading game: ${postId}`);
-    serveClient(res, `?gameId=${postId}`);
+    // Set context for this specific request
+    context.postId = postId;
+    serveClient(res);
   });
 
   // Serve static files from dist/client (must be last)

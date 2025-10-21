@@ -7,6 +7,7 @@
   "scripts": {
     "postinstall": "npm run build",
     "build:client": "cd src/client && vite build",
+    "build:client:testbed": "cd src/client && vite build --config vite.config.testbed.ts",
     "build:server": "cd src/server && vite build",
     "build": "npm run build:client && npm run build:server",
     "deploy": "npm run build && devvit upload",
@@ -17,8 +18,9 @@
     "login": "devvit login",
     "launch": "npm run build && npm run deploy && devvit publish",
     "type-check": "tsc --build",
-    "testbed": "npm run build:client && node --import ./src/testbed/loader.js src/testbed/server.js",
-    "testbed:dev": "concurrently -k -n \"CLIENT,SERVER\" -c \"blue,green\" \"npm run dev:client\" \"node --import ./src/testbed/loader.js --watch src/testbed/server.js\""
+    "testbed": "npm run build:client:testbed && node --import ./src/testbed/loader.js src/testbed/server.js",
+    "testbed:dev": "concurrently -k -n \"CLIENT,SERVER\" -c \"blue,green\" \"npm run dev:client:testbed\" \"node --import ./src/testbed/loader.js --watch src/testbed/server.js\"",
+    "dev:client:testbed": "cd src/client && vite build --config vite.config.testbed.ts --watch"
   },
   "dependencies": {
     "@devvit/web": "0.12.0",

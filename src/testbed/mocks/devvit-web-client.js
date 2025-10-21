@@ -22,3 +22,6 @@ export function navigateTo(url) {
   // Otherwise use the URL as-is
   window.location.href = url;
 }
+
+// Note: Fetch interception is handled by HTML injection in devvit-web-server.js
+// to ensure it runs before client code loads
