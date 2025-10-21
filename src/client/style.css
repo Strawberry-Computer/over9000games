@@ -139,17 +139,19 @@ body {
   padding: 0;
   position: relative;
   width: 100%;
-  height: 100%;
+  min-height: 0;
 }
 
 #console-canvas {
   width: 100%;
+  height: 100%;
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
-  border: 4px solid var(--nes-dark-gray);
+  border: none;
   background: var(--nes-black);
-  object-fit: fill;
+  object-fit: contain;
+  display: block;
 }
 
 /* Controls */
@@ -162,6 +164,7 @@ body {
   border-top: 4px solid var(--nes-white);
   border-bottom: 4px solid var(--nes-shadow);
   min-height: 120px;
+  flex-shrink: 0;
 }
 
 /* D-pad */
@@ -580,21 +583,52 @@ body {
   }
 }
 
+/* Keyboard bindings display */
+.keyboard-bindings {
+  background: var(--nes-light-gray);
+  padding: 16px 12px;
+  border-top: 4px solid var(--nes-white);
+  border-bottom: 4px solid var(--nes-shadow);
+  display: none;
+  flex-shrink: 0;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.binding-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.binding-label {
+  font-size: 8px;
+  color: var(--nes-yellow);
+  text-shadow: 1px 1px 0px var(--nes-shadow);
+  font-weight: bold;
+}
+
+.binding-value {
+  font-size: 7px;
+  color: var(--nes-white);
+  text-shadow: 1px 1px 0px var(--nes-shadow);
+}
+
+/* Hide controls on desktop (mouse/pointer device) */
+@media (hover: hover) and (pointer: fine) {
+  .controls {
+    display: none !important;
+  }
+
+  .keyboard-bindings {
+    display: flex;
+  }
+}
+
 /* Landscape orientation adjustments */
 @media (orientation: landscape) and (max-height: 500px) {
-  .console-header {
-    padding: 8px;
-  }
-
-  .title {
-    font-size: 10px;
-    margin-bottom: 2px;
-  }
-
-  .game-info {
-    font-size: 6px;
-  }
-
   .console-screen {
     padding: 4px;
   }
@@ -602,10 +636,6 @@ body {
   .controls {
     padding: 8px;
     min-height: 80px;
-  }
-
-  .game-management {
-    padding: 8px;
   }
 }
 
