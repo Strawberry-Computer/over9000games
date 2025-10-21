@@ -230,10 +230,12 @@ function showGameCreation() {
     gameCreationTitleElement.textContent = "EDIT GAME";
     gameCreationSubtitleElement.textContent = "Describe your changes and AI will apply them!";
     gameDescriptionElement.placeholder = "make the snake move faster\nadd power-ups\nchange colors\nbigger sprites";
+    editActionsElement.style.display = "block";
   } else {
     gameCreationTitleElement.textContent = "CREATE NEW GAME";
     gameCreationSubtitleElement.textContent = "Describe your game and AI will build it!";
     gameDescriptionElement.placeholder = "snake game with power-ups\npong with lasers\nplatformer with coins\nspace shooter with aliens";
+    editActionsElement.style.display = "none";
   }
 
   gameCreationElement.style.display = "block";
@@ -299,7 +301,7 @@ function hideAllModals() {
 function resetGameState() {
   isGeneratedGame = false;
   currentGameData = null;
-  editActionsElement.style.display = "none";
+  if (editActionsElement) editActionsElement.style.display = "none";
   editHistory = { versions: [], currentIndex: -1 };
   isEditMode = false;
   updateEditButtons();
@@ -1000,8 +1002,8 @@ function updateEditButtons() {
   const canUndo = editHistory.currentIndex > 0;
   const canRedo = editHistory.currentIndex < editHistory.versions.length - 1;
 
-  undoEditButton.style.display = canUndo ? "inline-block" : "none";
-  redoEditButton.style.display = canRedo ? "inline-block" : "none";
+  if (undoEditButton) undoEditButton.style.display = canUndo ? "inline-block" : "none";
+  if (redoEditButton) redoEditButton.style.display = canRedo ? "inline-block" : "none";
 }
 
 function undoEdit() {
