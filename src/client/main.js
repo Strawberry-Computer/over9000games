@@ -1002,8 +1002,14 @@ function updateEditButtons() {
   const canUndo = editHistory.currentIndex > 0;
   const canRedo = editHistory.currentIndex < editHistory.versions.length - 1;
 
-  if (undoEditButton) undoEditButton.style.display = canUndo ? "inline-block" : "none";
-  if (redoEditButton) redoEditButton.style.display = canRedo ? "inline-block" : "none";
+  if (undoEditButton) {
+    undoEditButton.disabled = !canUndo;
+    undoEditButton.classList.toggle("disabled", !canUndo);
+  }
+  if (redoEditButton) {
+    redoEditButton.disabled = !canRedo;
+    redoEditButton.classList.toggle("disabled", !canRedo);
+  }
 }
 
 function undoEdit() {

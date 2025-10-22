@@ -93,6 +93,11 @@
           <h3 id="game-creation-title">CREATE NEW GAME</h3>
           <p id="game-creation-subtitle">Describe your game and AI will build it!</p>
 
+          <div id="edit-actions" style="display: none; text-align: center; margin-bottom: 20px;">
+            <button class="game-btn secondary" id="btn-undo-edit">↶ UNDO</button>
+            <button class="game-btn secondary" id="btn-redo-edit">↷ REDO</button>
+          </div>
+
           <div class="form-container">
             <label for="game-description">GAME DESCRIPTION:</label>
             <textarea id="game-description" placeholder="snake game with power-ups
@@ -102,11 +107,6 @@ space shooter with aliens"></textarea>
 
             <div class="examples">
               EXAMPLES: "pong", "platformer", "space shooter", "maze game"
-            </div>
-
-            <div id="edit-actions" style="display: none;">
-              <button class="game-btn secondary" id="btn-undo-edit">↶ UNDO</button>
-              <button class="game-btn secondary" id="btn-redo-edit">↷ REDO</button>
             </div>
 
             <div class="prompt-actions">
