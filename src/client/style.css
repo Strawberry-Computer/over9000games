@@ -235,14 +235,15 @@ body {
   grid-row: 3;
 }
 
-/* Action buttons */
+/* Action buttons - Game Boy diagonal layout */
 .action-buttons {
-  display: flex;
-  gap: 12px;
-  align-items: center;
+  position: relative;
+  width: 140px;
+  height: 100px;
 }
 
 .action-btn {
+  position: absolute;
   width: 56px !important;
   height: 56px !important;
   border-radius: 50%;
@@ -253,11 +254,15 @@ body {
 #btn-b {
   background: var(--nes-red);
   color: var(--nes-white);
+  bottom: 0;
+  left: 0;
 }
 
 #btn-a {
   background: var(--nes-green);
   color: var(--nes-white);
+  top: 0;
+  right: 0;
 }
 
 /* Menu buttons */
@@ -560,6 +565,11 @@ body {
     height: 40px;
   }
 
+  .action-buttons {
+    width: 120px;
+    height: 85px;
+  }
+
   .action-btn {
     width: 48px !important;
     height: 48px !important;
@@ -595,6 +605,11 @@ body {
   .control-btn:not(.action-btn) {
     width: 36px;
     height: 36px;
+  }
+
+  .action-buttons {
+    width: 110px;
+    height: 75px;
   }
 
   .action-btn {
