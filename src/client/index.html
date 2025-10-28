@@ -173,6 +173,28 @@ space shooter with aliens"></textarea>
       </div>
     </div>
 
+    <!-- High Score Comment Prompt Modal -->
+    <div class="high-score-comment" id="high-score-comment" style="display: none;">
+      <div class="prompt-overlay">
+        <div class="prompt-modal">
+          <h3 id="high-score-title">HIGH SCORE!</h3>
+          <p id="high-score-subtitle">Share your achievement with a comment?</p>
+
+          <div class="form-container">
+            <label for="comment-message">YOUR MESSAGE:</label>
+            <textarea id="comment-message" placeholder="Just scored 1000! 🎮" rows="3"></textarea>
+
+            <div class="prompt-actions">
+              <button class="game-btn primary" id="btn-post-comment">POST COMMENT</button>
+              <button class="game-btn secondary" id="btn-skip-comment">SKIP</button>
+            </div>
+
+            <div id="comment-status" class="status-message" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="main.js" defer></script>
   </body>
 </html>

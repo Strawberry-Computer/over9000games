@@ -13,9 +13,12 @@ const devMenuElement = document.getElementById("dev-menu");
 const gameDescriptionElement = document.getElementById("game-description");
 const publishTitleElement = document.getElementById("publish-title");
 const publishMessageElement = document.getElementById("publish-message");
+const highScoreCommentElement = document.getElementById("high-score-comment");
+const commentMessageElement = document.getElementById("comment-message");
 
 const generationStatusElement = document.getElementById("generation-status");
 const publishingStatusElement = document.getElementById("publishing-status");
+const commentStatusElement = document.getElementById("comment-status");
 
 const publishCurrentButton = document.getElementById("btn-publish-current");
 const editActionsElement = document.getElementById("edit-actions");
@@ -69,7 +72,9 @@ async function fetchInitialData() {
 
         // Load all games via QuickJS runner
         console.log("Loading initial game from Redis...");
-        await gameRunner.loadCode(data.gameDefinition.gameCode);
+        await gameRunner.loadCode(data.gameDefinition.gameCode, {
+          isPublished: data.gameDefinition.isPublished
+        });
         console.log("Game loaded and started successfully");
       } else {
         console.log("No game definition in init response");
@@ -161,6 +166,9 @@ async function submitScore(score) {
       if (gameRunner) {
         gameRunner.setHighScoreMessage(`HIGH SCORE! #${data.newRank}`);
       }
+
+      // Show comment prompt for high scores
+      showHighScoreCommentPrompt(score, data.newRank);
     }
 
   } catch (error) {
@@ -181,27 +189,16 @@ async function loadLeaderboard() {
     currentHighScores = data.highScores;
     console.log("loadLeaderboard: currentHighScores", currentHighScores);
 
-    // Populate leaderboard overlay
-    const scoresContainer = document.getElementById("leaderboard-scores");
-    if (scoresContainer) {
-      scoresContainer.innerHTML = "";
-      if (currentHighScores && currentHighScores.length > 0) {
-        currentHighScores.forEach((score, index) => {
-          const entry = document.createElement("div");
-          entry.className = "score-entry" + (index < 3 ? " top-3" : "");
-          entry.textContent = `#${index + 1} ${score.username} ${score.score}`;
-          scoresContainer.appendChild(entry);
-        });
-      } else {
-        scoresContainer.innerHTML = '<div style="color: #ffff00; padding: 20px;">NO SCORES YET</div>';
-      }
+    // Show leaderboard on game runner canvas
+    if (gameRunner) {
+      gameRunner.showLeaderboard(currentHighScores);
     }
 
   } catch (error) {
     console.error("Error loading leaderboard:", error);
-    const scoresContainer = document.getElementById("leaderboard-scores");
-    if (scoresContainer) {
-      scoresContainer.innerHTML = '<div style="color: #ff0000; padding: 20px;">ERROR LOADING</div>';
+    // Show error on game runner
+    if (gameRunner) {
+      gameRunner.showLeaderboard([]);
     }
   }
 }
@@ -257,6 +254,7 @@ function hideAllModals() {
   gameCreationElement.style.display = "none";
   gamePublishingElement.style.display = "none";
   devMenuElement.style.display = "none";
+  highScoreCommentElement.style.display = "none";
   const newGameConfirmElement = document.getElementById("new-game-confirm");
   if (newGameConfirmElement) {
     newGameConfirmElement.style.display = "none";
@@ -268,7 +266,8 @@ function hideAllModals() {
   document.body.classList.remove(
     "game-creation-active",
     "game-publishing-active",
-    "dev-menu-active"
+    "dev-menu-active",
+    "high-score-comment-active"
   );
   isEditMode = false;
 
@@ -276,14 +275,17 @@ function hideAllModals() {
   gameDescriptionElement.value = "";
   publishTitleElement.value = "";
   publishMessageElement.value = "";
+  commentMessageElement.value = "";
 
   // Re-enable form elements
   gameDescriptionElement.disabled = false;
   publishTitleElement.disabled = false;
   publishMessageElement.disabled = false;
+  commentMessageElement.disabled = false;
 
   const generateButton = document.getElementById("btn-generate-game");
   const publishButton = document.getElementById("btn-post-to-reddit");
+  const commentButton = document.getElementById("btn-post-comment");
 
   if (generateButton) {
     generateButton.disabled = false;
@@ -295,9 +297,15 @@ function hideAllModals() {
     publishButton.classList.remove("disabled");
   }
 
+  if (commentButton) {
+    commentButton.disabled = false;
+    commentButton.classList.remove("disabled");
+  }
+
   // Hide status messages
   generationStatusElement.style.display = "none";
   publishingStatusElement.style.display = "none";
+  commentStatusElement.style.display = "none";
 }
 
 function showNewGameConfirmation() {
@@ -775,7 +783,88 @@ async function publishGameToReddit() {
   }
 }
 
+// High Score Comment Functions
+function showHighScoreCommentPrompt(score, rank) {
+  // Update modal title and subtitle
+  const titleElement = document.getElementById("high-score-title");
+  const subtitleElement = document.getElementById("high-score-subtitle");
 
+  if (titleElement) {
+    titleElement.textContent = `HIGH SCORE! #${rank}`;
+  }
+  if (subtitleElement) {
+    subtitleElement.textContent = "Share your achievement with a comment?";
+  }
+
+  // Pre-fill comment with score
+  commentMessageElement.value = `Just scored ${score}! 🎮`;
+
+  // Show the modal
+  highScoreCommentElement.style.display = "block";
+  document.body.classList.add("high-score-comment-active");
+  commentMessageElement.focus();
+}
+
+function showCommentStatus(message, type = "loading") {
+  commentStatusElement.textContent = message;
+  commentStatusElement.className = `status-message ${type}`;
+  commentStatusElement.style.display = "block";
+}
+
+async function postHighScoreComment() {
+  const message = commentMessageElement.value.trim();
+
+  if (!message) {
+    showCommentStatus("Please enter a message!", "error");
+    return;
+  }
+
+  // Disable form during submission
+  const commentButton = document.getElementById("btn-post-comment");
+  const skipButton = document.getElementById("btn-skip-comment");
+
+  commentMessageElement.disabled = true;
+  commentButton.disabled = true;
+  commentButton.classList.add("disabled");
+  skipButton.disabled = true;
+
+  try {
+    showCommentStatus("Posting comment...", "loading");
+
+    const response = await fetch("/api/comment/post", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to post comment: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      showCommentStatus("Comment posted successfully!", "success");
+
+      // Close modal after 1.5 seconds
+      setTimeout(() => {
+        hideAllModals();
+      }, 1500);
+    } else {
+      throw new Error(data.message || "Failed to post comment");
+    }
+
+  } catch (error) {
+    console.error("Error posting comment:", error);
+    showCommentStatus(`Error: ${error.message}`, "error");
+
+    // Re-enable form on error
+    commentMessageElement.disabled = false;
+    commentButton.disabled = false;
+    commentButton.classList.remove("disabled");
+    skipButton.disabled = false;
+  }
+}
 
 
 // Event Listeners
@@ -957,6 +1046,10 @@ document.getElementById("btn-back-to-game")?.addEventListener("click", () => {
   gamePublishingElement.style.display = "none";
   document.body.classList.remove("game-publishing-active");
 });
+
+// High score comment event listeners
+document.getElementById("btn-post-comment")?.addEventListener("click", postHighScoreComment);
+document.getElementById("btn-skip-comment")?.addEventListener("click", hideAllModals);
 
 // Edit control event listeners
 const handleEdit = () => {

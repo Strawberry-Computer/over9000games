@@ -48,7 +48,7 @@ router.get("/api/init", async (_req, res) => {
 
     let gameDefinition;
     if (gameCode) {
-      gameDefinition = { gameCode };
+      gameDefinition = { gameCode, isPublished: true };
     }
 
     res.json({
@@ -462,6 +462,49 @@ router.get("/api/leaderboard", async (_req, res) => {
     res.status(500).json({
       status: "error",
       message: "Failed to load leaderboard",
+    });
+  }
+});
+
+router.post("/api/comment/post", async (req, res) => {
+  const { postId } = context;
+  if (!postId) {
+    res.status(400).json({
+      status: "error",
+      message: "postId is required",
+    });
+    return;
+  }
+
+  try {
+    const { message } = req.body;
+
+    if (!message || message.trim().length === 0) {
+      res.status(400).json({
+        status: "error",
+        message: "Comment message is required",
+      });
+      return;
+    }
+
+    // Post comment to Reddit
+    await reddit.submitComment({
+      id: postId,
+      text: message.trim()
+    });
+
+    console.log(`Comment posted to post ${postId}`);
+
+    res.json({
+      success: true,
+      message: "Comment posted successfully"
+    });
+
+  } catch (error) {
+    console.error(`Error posting comment for post ${postId}:`, error);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to post comment",
     });
   }
 });
