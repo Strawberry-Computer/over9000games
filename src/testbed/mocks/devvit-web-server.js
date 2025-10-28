@@ -83,73 +83,6 @@ async function serveClient(res, queryParams = '') {
 }
 
 /**
- * Serve client HTML with comments section
- */
-async function serveClientWithComments(res, postId, comments) {
-  try {
-    let html = await fs.readFile(indexPath, 'utf-8');
-
-    // Inject fetch interception
-    const injectedScript = `<script>
-      const originalFetch = window.fetch;
-      window.fetch = function(resource, init) {
-        const pathMatch = window.location.pathname.match(/\\/comments\\/([^/]+)/);
-        const postId = pathMatch ? pathMatch[1] : null;
-
-        if (postId && typeof resource === 'string' && resource.startsWith('/api/')) {
-          const separator = resource.includes('?') ? '&' : '?';
-          resource = resource + separator + 'postId=' + encodeURIComponent(postId);
-        }
-
-        return originalFetch.apply(this, [resource, init]);
-      };
-    </script>`;
-
-    // Generate comments HTML
-    const formatTime = (dateStr) => {
-      try {
-        const date = new Date(dateStr);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-
-        if (diffMins < 1) return 'just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        return `${diffHours}h ago`;
-      } catch (e) {
-        return dateStr;
-      }
-    };
-
-    const commentsHTML = `
-      <div style="max-width: 800px; margin: 20px auto; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #d7dadc; background: #1a1a1b;">
-        <h2 style="margin-bottom: 20px; font-size: 16px; font-weight: 600;">Comments (${comments.length})</h2>
-        ${comments.length === 0 ? `
-          <p style="color: #818384; padding: 20px 0;">No comments yet. Be the first to comment!</p>
-        ` : comments.map(c => `
-          <div style="background: #262626; border: 1px solid #343536; border-radius: 4px; padding: 12px; margin-bottom: 10px;">
-            <div style="font-size: 12px; color: #818384; margin-bottom: 8px;">
-              <strong style="color: #d7dadc;">u/${c.author}</strong> • ${formatTime(c.timestamp)}
-            </div>
-            <div style="font-size: 14px; line-height: 1.5; white-space: pre-wrap;">${c.text}</div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-
-    html = html.replace('</head>', injectedScript + '</head>');
-    html = html.replace('</body>', commentsHTML + '</body>');
-
-    res.setHeader('Content-Type', 'text/html');
-    res.send(html);
-  } catch (error) {
-    console.error('[TESTBED] Error serving client with comments:', error);
-    res.status(500).send(`Error: ${error.message}`);
-  }
-}
-
-/**
  * Create server - in testbed mode add subreddit routes and static file serving
  */
 export function createServer(app) {
@@ -181,12 +114,16 @@ export function createServer(app) {
           client.get(`post:${postId}:creator`)
         ]);
 
+        // Get comment count for this post
+        const commentCount = await redis.zCard(`comments:${postId}:ids`) || 0;
+
         if (title) {
           games.push({
             postId,
             title,
             created,
             creator,
+            commentCount,
             url: `/r/testbed/comments/${postId}`
           });
         }
@@ -202,18 +139,31 @@ export function createServer(app) {
     }
   });
 
-  // Game post page - serve client
-  app.get('/r/:subreddit/comments/:postId', async (req, res) => {
+  // Game post page - serve game only
+  app.get('/r/:subreddit/comments/:postId', (req, res) => {
     const { postId } = req.params;
     console.log(`[TESTBED] Loading game: ${postId}`);
     // Set context for this specific request
     context.postId = postId;
+    serveClient(res);
+  });
 
-    // Load comments for this post
+  // Comments page - dedicated comments view
+  app.get('/r/:subreddit/comments/:postId/view', async (req, res) => {
+    const { postId } = req.params;
+    console.log(`[TESTBED] Loading comments for: ${postId}`);
+
     try {
       const client = await getRedisClient();
-      const commentIds = await redis.zRange(`comments:${postId}:ids`, 0, -1, { reverse: false });
 
+      // Load post metadata
+      const [title, creator] = await Promise.all([
+        client.get(`post:${postId}:title`),
+        client.get(`post:${postId}:creator`)
+      ]);
+
+      // Load comments
+      const commentIds = await redis.zRange(`comments:${postId}:ids`, 0, -1, { reverse: false });
       const comments = [];
       for (const commentObj of commentIds) {
         const commentId = typeof commentObj === 'object' ? commentObj.member : commentObj;
@@ -224,11 +174,12 @@ export function createServer(app) {
         }
       }
 
-      // Serve client with comments injected
-      await serveClientWithComments(res, postId, comments);
+      const html = generateCommentsPageHTML(postId, title || 'Game', creator || 'unknown', comments);
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
     } catch (err) {
       console.error('[TESTBED] Error loading comments:', err);
-      serveClient(res);
+      res.status(500).send(`Error: ${err.message}`);
     }
   });
 
@@ -236,6 +187,176 @@ export function createServer(app) {
   app.use(express.static(clientPath));
 
   return app;
+}
+
+/**
+ * Generate comments page HTML
+ */
+function generateCommentsPageHTML(postId, title, creator, comments) {
+  const escapeHtml = (text) => {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+  };
+
+  const formatTime = (dateStr) => {
+    try {
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+
+      if (diffMins < 1) return 'just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      return `${diffHours}h ago`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>${escapeHtml(title)} - Comments</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #030303;
+      color: #d7dadc;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background: #1a1a1b;
+      border: 1px solid #343536;
+      border-radius: 4px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .post-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #d7dadc;
+      margin-bottom: 8px;
+    }
+    .post-meta {
+      font-size: 12px;
+      color: #818384;
+      margin-bottom: 12px;
+    }
+    .nav-links {
+      display: flex;
+      gap: 12px;
+    }
+    .nav-btn {
+      background: #818384;
+      color: #000;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .nav-btn:hover {
+      background: #a6a6a6;
+    }
+    .comments-section {
+      background: #1a1a1b;
+      border: 1px solid #343536;
+      border-radius: 4px;
+      padding: 20px;
+    }
+    .comments-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #343536;
+    }
+    .comments-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .comment {
+      background: #262626;
+      border: 1px solid #343536;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .comment-meta {
+      font-size: 12px;
+      color: #818384;
+      margin-bottom: 8px;
+    }
+    .comment-author {
+      color: #d7dadc;
+      font-weight: 600;
+    }
+    .comment-text {
+      font-size: 14px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .empty {
+      color: #818384;
+      padding: 20px 0;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="post-title">${escapeHtml(title)}</div>
+      <div class="post-meta">Posted by <strong>u/${escapeHtml(creator)}</strong></div>
+      <div class="nav-links">
+        <a href="/r/testbed/comments/${postId}" class="nav-btn">← Back to Game</a>
+        <a href="/r/testbed" class="nav-btn">← Subreddit</a>
+        <button onclick="window.location.reload()" class="nav-btn">Refresh</button>
+      </div>
+    </div>
+
+    <div class="comments-section">
+      <div class="comments-header">
+        <div class="comments-title">Comments (${comments.length})</div>
+      </div>
+      ${comments.length === 0 ? `
+        <div class="empty">No comments yet. Play the game and get a high score to leave a comment!</div>
+      ` : comments.map(c => `
+        <div class="comment">
+          <div class="comment-meta">
+            <span class="comment-author">u/${escapeHtml(c.author)}</span> • ${formatTime(c.timestamp)}
+          </div>
+          <div class="comment-text">${escapeHtml(c.text)}</div>
+        </div>
+      `).join('')}
+    </div>
+  </div>
+</body>
+</html>
+  `;
 }
 
 /**
@@ -416,7 +537,10 @@ function generateSubredditHTML(games) {
                 <div class="post-meta">
                   Posted by <strong>u/${escapeHtml(game.creator)}</strong> • ${formatTime(game.created)}
                 </div>
-                <a href="${game.url}" class="post-link">Play Game →</a>
+                <div style="display: flex; gap: 12px; margin-top: 8px;">
+                  <a href="${game.url}" class="post-link">Play Game →</a>
+                  ${game.commentCount > 0 ? `<a href="${game.url}/view" class="post-link">💬 ${game.commentCount} comment${game.commentCount !== 1 ? 's' : ''}</a>` : ''}
+                </div>
               </div>
             </div>
           </a>
