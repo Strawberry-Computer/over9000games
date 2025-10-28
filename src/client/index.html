@@ -97,8 +97,9 @@
           <p id="game-creation-subtitle">Describe your game and AI will build it!</p>
 
           <div id="edit-actions" style="display: none; text-align: center; margin-bottom: 20px;">
-            <button class="game-btn secondary" id="btn-undo-edit">↶ UNDO</button>
-            <button class="game-btn secondary" id="btn-redo-edit">↷ REDO</button>
+            <button class="game-btn secondary" id="btn-new-game-edit">NEW GAME</button>
+            <button class="game-btn secondary" id="btn-undo-edit">UNDO</button>
+            <button class="game-btn secondary" id="btn-redo-edit">REDO</button>
           </div>
 
           <div class="form-container">
@@ -143,6 +144,22 @@ space shooter with aliens"></textarea>
             </div>
 
             <div id="publishing-status" class="status-message" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Game Confirmation Modal -->
+    <div class="new-game-confirm" id="new-game-confirm" style="display: none;">
+      <div class="prompt-overlay">
+        <div class="prompt-modal confirm-modal">
+          <h3>CONFIRM NEW GAME</h3>
+          <p>Starting a new game will clear your current game and all edit history.</p>
+          <p><strong>Are you sure you want to continue?</strong></p>
+
+          <div class="prompt-actions">
+            <button class="game-btn primary" id="btn-confirm-new-game">YES, CLEAR</button>
+            <button class="game-btn secondary" id="btn-cancel-new-game">CANCEL</button>
           </div>
         </div>
       </div>

@@ -26,7 +26,6 @@ const redoEditButton = document.getElementById("btn-redo-edit");
 
 // Current game state
 let currentGameData = null;
-let isGeneratedGame = false;
 let isTestGame = false;
 
 // Edit state management
@@ -71,10 +70,7 @@ async function fetchInitialData() {
         // Load all games via QuickJS runner
         console.log("Loading initial game from Redis...");
         await gameRunner.loadCode(data.gameDefinition.gameCode);
-        console.log("Game code loaded, starting game...");
-        // Auto-start the game
-        gameRunner.startGame();
-        console.log("Game started successfully");
+        console.log("Game loaded and started successfully");
       } else {
         console.log("No game definition in init response");
         gameRunner.showMessage("Generate a new game\nto start playing!", "NO GAME");
@@ -116,13 +112,11 @@ async function loadTestGame(gameName) {
       };
 
       // Load the raw game code directly into QuickJS
-      await gameRunner.loadCode(data.gameDefinition.gameCode);
-
-      // Set published status for test game
-      gameRunner.setPublishedStatus(currentGameData.isPublished);
-
-      // Auto-start the game
-      gameRunner.startGame();
+      await gameRunner.loadCode(data.gameDefinition.gameCode, {
+        autoStart: true,
+        isPublished: currentGameData.isPublished,
+        isGenerated: false
+      });
     }
   } catch (error) {
     console.error(`Error loading test game "${gameName}":`, error);
@@ -219,8 +213,7 @@ window.restartCurrentGame = restartCurrentGame;
 
 function restartCurrentGame() {
   if (gameRunner) {
-    gameRunner.resetGame();
-    gameRunner.startGame();
+    gameRunner.restartGame();
   }
 }
 
@@ -259,6 +252,10 @@ function hideAllModals() {
   gameCreationElement.style.display = "none";
   gamePublishingElement.style.display = "none";
   devMenuElement.style.display = "none";
+  const newGameConfirmElement = document.getElementById("new-game-confirm");
+  if (newGameConfirmElement) {
+    newGameConfirmElement.style.display = "none";
+  }
   if (gameRunner) {
     gameRunner.hideLeaderboard();
   }
@@ -298,17 +295,52 @@ function hideAllModals() {
   publishingStatusElement.style.display = "none";
 }
 
+function showNewGameConfirmation() {
+  const newGameConfirmElement = document.getElementById("new-game-confirm");
+  if (newGameConfirmElement) {
+    newGameConfirmElement.style.display = "block";
+  }
+}
+
+function hideNewGameConfirmation() {
+  const newGameConfirmElement = document.getElementById("new-game-confirm");
+  if (newGameConfirmElement) {
+    newGameConfirmElement.style.display = "none";
+  }
+}
+
+function confirmNewGame() {
+  // Hide confirmation dialog
+  hideNewGameConfirmation();
+
+  // Close the edit modal
+  hideAllModals();
+
+  // Reset game state and history
+  resetGameState();
+
+  // Clear localStorage edit history
+  localStorage.removeItem('editHistory');
+
+  // Stop the current game and show "NO GAME" message
+  if (gameRunner) {
+    gameRunner.stopGame({
+      message: "Generate a new game\nto start playing!",
+      title: "NO GAME"
+    });
+  }
+
+  // Show game creation modal
+  showGameCreation();
+}
+
 function resetGameState() {
-  isGeneratedGame = false;
   currentGameData = null;
   if (editActionsElement) editActionsElement.style.display = "none";
   editHistory = { versions: [], currentIndex: -1 };
   isEditMode = false;
   updateEditButtons();
   updateShareButtonState();
-  if (gameRunner) {
-    gameRunner.setGeneratedGame(false);
-  }
 }
 
 function showGenerationStatus(message, type = "loading") {
@@ -531,8 +563,12 @@ function cancelGeneration() {
 async function reloadGameInPlace() {
   try {
     // Load the game code without showing modals or status
-    await gameRunner.loadCode(currentGameData.gameCode);
-    gameRunner.startGame();
+    // Keep existing published/generated state
+    await gameRunner.loadCode(currentGameData.gameCode, {
+      autoStart: true,
+      isPublished: currentGameData.isPublished,
+      isGenerated: gameRunner.isGeneratedGame
+    });
   } catch (error) {
     console.error("Error reloading game:", error);
   }
@@ -550,29 +586,23 @@ async function showGeneratedGame() {
     console.log("Game code type:", typeof currentGameData.gameCode);
     console.log("First 200 chars of code:", currentGameData.gameCode?.substring(0, 200));
 
-    // Load the game into the main console
-    await gameRunner.loadCode(currentGameData.gameCode);
-
-    // Mark this as a generated game and set published status
-    isGeneratedGame = true;
-    gameRunner.setGeneratedGame(true);
-    gameRunner.setPublishedStatus(currentGameData.isPublished);
-
-    // Set up screenshot capture after first frame renders
-    gameRunner.setFirstFrameCallback(async () => {
-      try {
-        const screenshot = await captureGameScreenshot();
-        if (screenshot) {
-          currentGameData.autoScreenshot = screenshot;
-          console.log("Auto-screenshot generated after first frame");
+    // Load the game into the main console with options
+    await gameRunner.loadCode(currentGameData.gameCode, {
+      autoStart: true,
+      isPublished: currentGameData.isPublished,
+      isGenerated: true,
+      firstFrameCallback: async () => {
+        try {
+          const screenshot = await captureGameScreenshot();
+          if (screenshot) {
+            currentGameData.autoScreenshot = screenshot;
+            console.log("Auto-screenshot generated after first frame");
+          }
+        } catch (error) {
+          console.error("Error generating auto-screenshot:", error);
         }
-      } catch (error) {
-        console.error("Error generating auto-screenshot:", error);
       }
     });
-
-    // Start the game to trigger first frame callback
-    gameRunner.startGame();
 
     // Hide the creation modal and return to main view
     hideAllModals();
@@ -600,7 +630,7 @@ function showGamePublishing() {
 }
 
 function showGamePublishingFromMain() {
-  if (!isGeneratedGame || !currentGameData) {
+  if (!gameRunner || !gameRunner.isGeneratedGame || !currentGameData) {
     return;
   }
 
@@ -611,7 +641,7 @@ function showGamePublishingFromMain() {
 async function captureGameScreenshot() {
   try {
     // Run the game for a few frames to get an interesting state
-    if (gameRunner && isGeneratedGame) {
+    if (gameRunner && gameRunner.isGeneratedGame) {
       // Let the game run for a bit to get some action
       await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -752,10 +782,13 @@ document.getElementById("btn-new-game")?.addEventListener("click", () => {
 // Handle restart button
 const handleRestart = async () => {
   if (gameRunner && currentGameData?.gameCode) {
-    gameRunner.hideLeaderboard();
     // Reload the game code to completely reset the VM state
-    await gameRunner.loadCode(currentGameData.gameCode);
-    gameRunner.startGame();
+    // loadCode now auto-hides leaderboard and auto-starts
+    await gameRunner.loadCode(currentGameData.gameCode, {
+      autoStart: true,
+      isPublished: currentGameData.isPublished,
+      isGenerated: gameRunner.isGeneratedGame
+    });
   }
 };
 document.getElementById("btn-restart-game")?.addEventListener("click", handleRestart);
@@ -763,7 +796,7 @@ document.getElementById("btn-restart-game")?.addEventListener("click", handleRes
 // Update share button disabled state
 function updateShareButtonState() {
   // Only generated games can be shared
-  const canShare = isGeneratedGame && currentGameData;
+  const canShare = gameRunner && gameRunner.isGeneratedGame && currentGameData;
 
   const btn = document.getElementById("btn-publish-current");
   if (btn) {
@@ -775,13 +808,13 @@ function updateShareButtonState() {
 // Handle post button
 const handleShare = () => {
   // Guard: only allow sharing generated games (button should be disabled anyway)
-  if (!isGeneratedGame || !currentGameData) {
+  if (!gameRunner || !gameRunner.isGeneratedGame || !currentGameData) {
     return;
   }
 
+  // pauseGame now auto-shows leaderboard by default
   if (gameRunner) {
     gameRunner.pauseGame();
-    gameRunner.showLeaderboardLoading();
   }
   showGamePublishing();
 };
@@ -799,8 +832,7 @@ async function resumeGame() {
   if (!gameRunner || gameRunner.state.gameOver) return;
 
   if (gameRunner.state.showLeaderboard) {
-    gameRunner.hideLeaderboard();
-    gameRunner.startGame();
+    gameRunner.resumeGame();
   }
 }
 
@@ -816,12 +848,10 @@ consoleScreen?.addEventListener("click", async (e) => {
 
   // Any tap on screen area pauses or resumes
   if (gameRunner.state.showLeaderboard) {
-    gameRunner.hideLeaderboard();
-    gameRunner.startGame();
+    gameRunner.resumeGame();
   } else {
-    // Pause and show leaderboard
+    // Pause and show leaderboard (pauseGame now auto-shows leaderboard)
     gameRunner.pauseGame();
-    gameRunner.showLeaderboardLoading();
 
     // Fetch and display fresh leaderboard data
     try {
@@ -926,14 +956,19 @@ document.getElementById("btn-back-to-game")?.addEventListener("click", () => {
 // Edit control event listeners
 const handleEdit = () => {
   if (gameRunner) {
+    // pauseGame now auto-shows leaderboard by default
     gameRunner.pauseGame();
-    gameRunner.showLeaderboardLoading();
   }
   startEditMode();
 };
 document.getElementById("btn-edit-game")?.addEventListener("click", handleEdit);
 document.getElementById("btn-undo-edit")?.addEventListener("click", undoEdit);
 document.getElementById("btn-redo-edit")?.addEventListener("click", redoEdit);
+document.getElementById("btn-new-game-edit")?.addEventListener("click", showNewGameConfirmation);
+
+// New game confirmation listeners
+document.getElementById("btn-confirm-new-game")?.addEventListener("click", confirmNewGame);
+document.getElementById("btn-cancel-new-game")?.addEventListener("click", hideNewGameConfirmation);
 
 
 // Custom game event for score submission

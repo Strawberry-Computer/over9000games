@@ -282,7 +282,14 @@ export class GameRunner {
     });
   }
 
-  async loadCode(gameCode) {
+  async loadCode(gameCode, options = {}) {
+    const {
+      autoStart = true,
+      isPublished = false,
+      isGenerated = false,
+      firstFrameCallback = null
+    } = options;
+
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -291,6 +298,10 @@ export class GameRunner {
       this.vm.dispose();
       this.vm = null;
     }
+
+    // Clear any persistent messages when loading new game
+    this.displayMessage = null;
+    this.displayTitle = null;
 
     this.vm = this.runtime.newContext();
 
@@ -361,6 +372,18 @@ function doUpdate(deltaTime, input) {
     });
 
     console.log("Game loaded successfully:", metadata.title);
+
+    // Apply options
+    this.isPublished = isPublished;
+    this.isGeneratedGame = isGenerated;
+
+    if (firstFrameCallback) {
+      this.setFirstFrameCallback(firstFrameCallback);
+    }
+
+    if (autoStart) {
+      this.startGame();
+    }
   }
 
   loadGame(gameDefinition) {
@@ -496,21 +519,40 @@ function doUpdate(deltaTime, input) {
     this.gameLoop();
   }
 
-  stopGame() {
+  stopGame(options = {}) {
     this.state.gameRunning = false;
     this.state.gamePaused = false;
+    this.hideLeaderboard();
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
+
+    // Optionally show a message after stopping
+    if (options.message) {
+      this.showMessage(options.message, options.title);
+    }
   }
 
-  pauseGame() {
+  pauseGame(showLeaderboard = true) {
     this.state.gamePaused = true;
+    if (showLeaderboard) {
+      this.showLeaderboardLoading();
+    }
   }
 
   unpauseGame() {
     this.state.gamePaused = false;
+  }
+
+  resumeGame() {
+    this.hideLeaderboard();
+    this.startGame();
+  }
+
+  restartGame() {
+    this.resetGame();
+    this.startGame();
   }
 
   togglePause() {
@@ -562,14 +604,6 @@ function doUpdate(deltaTime, input) {
   setFirstFrameCallback(callback) {
     this.firstFrameCallback = callback;
     this.firstFrameExecuted = false;
-  }
-
-  setGeneratedGame(isGenerated) {
-    this.isGeneratedGame = isGenerated;
-  }
-
-  setPublishedStatus(isPublished) {
-    this.isPublished = isPublished;
   }
 
   showLeaderboard(leaderboardData) {
