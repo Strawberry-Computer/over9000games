@@ -211,9 +211,14 @@ window.loadLeaderboard = loadLeaderboard;
 window.submitScore = submitScore;
 window.restartCurrentGame = restartCurrentGame;
 
-function restartCurrentGame() {
-  if (gameRunner) {
-    gameRunner.restartGame();
+async function restartCurrentGame() {
+  if (gameRunner && currentGameData?.gameCode) {
+    // Reload the game code to completely reset the VM state
+    await gameRunner.loadCode(currentGameData.gameCode, {
+      autoStart: true,
+      isPublished: currentGameData.isPublished,
+      isGenerated: gameRunner.isGeneratedGame
+    });
   }
 }
 
