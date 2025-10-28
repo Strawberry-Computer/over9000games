@@ -658,6 +658,15 @@ body {
   }
 }
 
+/* Force mobile mode - show touch controls even on desktop when ?force_mobile=true */
+body.force-mobile .controls {
+  display: flex !important;
+}
+
+body.force-mobile .keyboard-bindings {
+  display: none !important;
+}
+
 /* Landscape orientation adjustments */
 @media (orientation: landscape) and (max-height: 500px) {
   .console-screen {

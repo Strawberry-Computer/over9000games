@@ -185,7 +185,7 @@ export class GameRunner {
     const touchZone = document.getElementById('dpad-touch-zone');
     if (!touchZone) return;
 
-    let activeTouch = null;
+    let isActive = false;
     const directionButtons = {
       up: document.getElementById('btn-up'),
       down: document.getElementById('btn-down'),
@@ -243,43 +243,43 @@ export class GameRunner {
           directionButtons[dir].classList.remove('pressed');
         }
       });
-      activeTouch = null;
+      isActive = false;
     };
 
-    touchZone.addEventListener('touchstart', (e) => {
+    // Unified start handler for both touch and mouse
+    const handleStart = (e) => {
       e.preventDefault();
-      if (activeTouch === null && e.touches.length > 0) {
-        activeTouch = e.touches[0].identifier;
-        updateDirectionFromTouch(e.touches[0]);
+      if (!isActive) {
+        isActive = true;
+        const point = e.touches ? e.touches[0] : e;
+        updateDirectionFromTouch(point);
       }
-    });
+    };
 
-    touchZone.addEventListener('touchmove', (e) => {
+    // Unified move handler for both touch and mouse
+    const handleMove = (e) => {
       e.preventDefault();
-      if (activeTouch !== null) {
-        for (let i = 0; i < e.touches.length; i++) {
-          if (e.touches[i].identifier === activeTouch) {
-            updateDirectionFromTouch(e.touches[i]);
-            break;
-          }
-        }
+      if (isActive) {
+        const point = e.touches ? e.touches[0] : e;
+        updateDirectionFromTouch(point);
       }
-    });
+    };
 
-    touchZone.addEventListener('touchend', (e) => {
+    // Unified end handler for both touch and mouse
+    const handleEnd = (e) => {
       e.preventDefault();
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === activeTouch) {
-          clearDirections();
-          break;
-        }
+      if (isActive) {
+        clearDirections();
       }
-    });
+    };
 
-    touchZone.addEventListener('touchcancel', (e) => {
-      e.preventDefault();
-      clearDirections();
-    });
+    // Add listeners for both touch and mouse events
+    ['touchstart', 'mousedown'].forEach(evt => touchZone.addEventListener(evt, handleStart));
+    ['touchmove', 'mousemove'].forEach(evt => touchZone.addEventListener(evt, handleMove));
+    ['touchend', 'mouseup'].forEach(evt => touchZone.addEventListener(evt, handleEnd));
+
+    touchZone.addEventListener('touchcancel', handleEnd);
+    touchZone.addEventListener('mouseleave', handleEnd);
   }
 
   async loadCode(gameCode, options = {}) {

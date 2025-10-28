@@ -1200,7 +1200,17 @@ function startEditMode() {
   showGameCreation();
 }
 
+// Check for force_mobile URL parameter to show touch controls on desktop
+function checkForceMobileFlag() {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('force_mobile') === 'true' || urlParams.get('force_mobile') === '1') {
+    document.body.classList.add('force-mobile');
+    console.log('🎮 Force mobile mode enabled - touch controls visible on desktop');
+  }
+}
+
 // Initialize everything
+checkForceMobileFlag();
 initializeConsole();
 fetchInitialData();
 setupMobileKeyboardHandling();
