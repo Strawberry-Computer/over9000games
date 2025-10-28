@@ -58,12 +58,15 @@ body {
 /* Main container */
 .console-container {
   width: 100vw;
-  height: 100vh;
+  height: 100dvh; /* Use dynamic viewport height for mobile */
   background: var(--nes-light-gray);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
 }
 
 /* Action bar */
@@ -134,12 +137,14 @@ body {
 
 /* Console screen */
 .console-screen {
-  flex: 1;
+  flex: 1 1 auto;
   background: var(--nes-black);
   padding: 0;
   position: relative;
   width: 100%;
   min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 #console-canvas {
@@ -164,7 +169,28 @@ body {
   border-top: 4px solid var(--nes-white);
   border-bottom: 4px solid var(--nes-shadow);
   min-height: 120px;
+  flex: 0 0 auto;
   flex-shrink: 0;
+}
+
+/* D-pad container */
+.dpad-container {
+  position: relative;
+  display: inline-block;
+}
+
+/* D-pad touch zone - larger touch area around the d-pad */
+.dpad-touch-zone {
+  position: absolute;
+  top: -30px;
+  left: -30px;
+  right: -30px;
+  bottom: -30px;
+  z-index: 10;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: auto;
 }
 
 /* D-pad */
@@ -173,6 +199,11 @@ body {
   grid-template-rows: 48px 48px 48px;
   grid-template-columns: 48px 48px 48px;
   gap: 2px;
+  position: relative;
+}
+
+.dpad .control-btn {
+  pointer-events: none; /* Let touch zone handle all touches */
 }
 
 .dpad-up {

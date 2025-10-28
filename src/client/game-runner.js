@@ -176,6 +176,110 @@ export class GameRunner {
         });
       }
     });
+
+    // Enhanced touch zone for d-pad
+    this.setupDPadTouchZone();
+  }
+
+  setupDPadTouchZone() {
+    const touchZone = document.getElementById('dpad-touch-zone');
+    if (!touchZone) return;
+
+    let activeTouch = null;
+    const directionButtons = {
+      up: document.getElementById('btn-up'),
+      down: document.getElementById('btn-down'),
+      left: document.getElementById('btn-left'),
+      right: document.getElementById('btn-right')
+    };
+
+    const updateDirectionFromTouch = (touch) => {
+      const rect = touchZone.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      const deltaX = touch.clientX - centerX;
+      const deltaY = touch.clientY - centerY;
+
+      // Deadzone threshold (pixels)
+      const deadzone = 15;
+
+      // Clear all directions first
+      ['up', 'down', 'left', 'right'].forEach(dir => {
+        this.inputState[dir] = false;
+        if (directionButtons[dir]) {
+          directionButtons[dir].classList.remove('pressed');
+        }
+      });
+
+      // Apply new directions based on touch position
+      if (Math.abs(deltaX) > deadzone || Math.abs(deltaY) > deadzone) {
+        if (Math.abs(deltaY) > Math.abs(deltaX) * 0.4) {
+          if (deltaY < 0) {
+            this.inputState['up'] = true;
+            directionButtons.up?.classList.add('pressed');
+          } else {
+            this.inputState['down'] = true;
+            directionButtons.down?.classList.add('pressed');
+          }
+        }
+
+        if (Math.abs(deltaX) > Math.abs(deltaY) * 0.4) {
+          if (deltaX < 0) {
+            this.inputState['left'] = true;
+            directionButtons.left?.classList.add('pressed');
+          } else {
+            this.inputState['right'] = true;
+            directionButtons.right?.classList.add('pressed');
+          }
+        }
+      }
+    };
+
+    const clearDirections = () => {
+      ['up', 'down', 'left', 'right'].forEach(dir => {
+        this.inputState[dir] = false;
+        if (directionButtons[dir]) {
+          directionButtons[dir].classList.remove('pressed');
+        }
+      });
+      activeTouch = null;
+    };
+
+    touchZone.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (activeTouch === null && e.touches.length > 0) {
+        activeTouch = e.touches[0].identifier;
+        updateDirectionFromTouch(e.touches[0]);
+      }
+    });
+
+    touchZone.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (activeTouch !== null) {
+        for (let i = 0; i < e.touches.length; i++) {
+          if (e.touches[i].identifier === activeTouch) {
+            updateDirectionFromTouch(e.touches[i]);
+            break;
+          }
+        }
+      }
+    });
+
+    touchZone.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === activeTouch) {
+          clearDirections();
+          break;
+        }
+      }
+    });
+
+    touchZone.addEventListener('touchcancel', (e) => {
+      e.preventDefault();
+      clearDirections();
+    });
   }
 
   async loadCode(gameCode) {
