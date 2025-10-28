@@ -887,6 +887,13 @@ const handleRestart = async () => {
 };
 document.getElementById("btn-restart-game")?.addEventListener("click", handleRestart);
 
+// Pause button handler
+document.getElementById("btn-pause")?.addEventListener("click", () => {
+  if (gameRunner) {
+    gameRunner.togglePause();
+  }
+});
+
 // Update share button disabled state
 function updateShareButtonState() {
   // Only generated games can be shared

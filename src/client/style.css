@@ -265,6 +265,31 @@ body {
   right: 0;
 }
 
+.pause-btn {
+  background: var(--nes-dark-gray);
+  color: var(--nes-white);
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-top: 3px solid var(--nes-light-gray);
+  border-left: 3px solid var(--nes-light-gray);
+  border-right: 3px solid var(--nes-shadow);
+  border-bottom: 3px solid var(--nes-shadow);
+}
+
+.pause-btn:active {
+  border-top: 3px solid var(--nes-shadow);
+  border-left: 3px solid var(--nes-shadow);
+  border-right: 3px solid var(--nes-light-gray);
+  border-bottom: 3px solid var(--nes-light-gray);
+  transform: translate(-50%, -50%) translate(1px, 1px);
+}
+
 /* Menu buttons */
 .menu-buttons {
   position: absolute;
@@ -575,6 +600,12 @@ body {
     height: 48px !important;
   }
 
+  .pause-btn {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 9px;
+  }
+
   .game-btn {
     font-size: 7px;
     padding: 10px 6px;
@@ -616,6 +647,12 @@ body {
     width: 44px !important;
     height: 44px !important;
     font-size: 12px;
+  }
+
+  .pause-btn {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 8px;
   }
 
   .game-btn {
