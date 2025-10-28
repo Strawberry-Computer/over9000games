@@ -273,9 +273,9 @@ body {
   border-radius: 4px;
   font-size: 10px;
   font-weight: bold;
-  top: 50%;
+  bottom: 0;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   border-top: 3px solid var(--nes-light-gray);
   border-left: 3px solid var(--nes-light-gray);
   border-right: 3px solid var(--nes-shadow);
@@ -287,7 +287,7 @@ body {
   border-left: 3px solid var(--nes-shadow);
   border-right: 3px solid var(--nes-light-gray);
   border-bottom: 3px solid var(--nes-light-gray);
-  transform: translate(-50%, -50%) translate(1px, 1px);
+  transform: translateX(-50%) translate(1px, 1px);
 }
 
 /* Menu buttons */
