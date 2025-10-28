@@ -83,6 +83,73 @@ async function serveClient(res, queryParams = '') {
 }
 
 /**
+ * Serve client HTML with comments section
+ */
+async function serveClientWithComments(res, postId, comments) {
+  try {
+    let html = await fs.readFile(indexPath, 'utf-8');
+
+    // Inject fetch interception
+    const injectedScript = `<script>
+      const originalFetch = window.fetch;
+      window.fetch = function(resource, init) {
+        const pathMatch = window.location.pathname.match(/\\/comments\\/([^/]+)/);
+        const postId = pathMatch ? pathMatch[1] : null;
+
+        if (postId && typeof resource === 'string' && resource.startsWith('/api/')) {
+          const separator = resource.includes('?') ? '&' : '?';
+          resource = resource + separator + 'postId=' + encodeURIComponent(postId);
+        }
+
+        return originalFetch.apply(this, [resource, init]);
+      };
+    </script>`;
+
+    // Generate comments HTML
+    const formatTime = (dateStr) => {
+      try {
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+
+        if (diffMins < 1) return 'just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        return `${diffHours}h ago`;
+      } catch (e) {
+        return dateStr;
+      }
+    };
+
+    const commentsHTML = `
+      <div style="max-width: 800px; margin: 20px auto; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #d7dadc; background: #1a1a1b;">
+        <h2 style="margin-bottom: 20px; font-size: 16px; font-weight: 600;">Comments (${comments.length})</h2>
+        ${comments.length === 0 ? `
+          <p style="color: #818384; padding: 20px 0;">No comments yet. Be the first to comment!</p>
+        ` : comments.map(c => `
+          <div style="background: #262626; border: 1px solid #343536; border-radius: 4px; padding: 12px; margin-bottom: 10px;">
+            <div style="font-size: 12px; color: #818384; margin-bottom: 8px;">
+              <strong style="color: #d7dadc;">u/${c.author}</strong> • ${formatTime(c.timestamp)}
+            </div>
+            <div style="font-size: 14px; line-height: 1.5; white-space: pre-wrap;">${c.text}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    html = html.replace('</head>', injectedScript + '</head>');
+    html = html.replace('</body>', commentsHTML + '</body>');
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  } catch (error) {
+    console.error('[TESTBED] Error serving client with comments:', error);
+    res.status(500).send(`Error: ${error.message}`);
+  }
+}
+
+/**
  * Create server - in testbed mode add subreddit routes and static file serving
  */
 export function createServer(app) {
@@ -136,12 +203,33 @@ export function createServer(app) {
   });
 
   // Game post page - serve client
-  app.get('/r/:subreddit/comments/:postId', (req, res) => {
+  app.get('/r/:subreddit/comments/:postId', async (req, res) => {
     const { postId } = req.params;
     console.log(`[TESTBED] Loading game: ${postId}`);
     // Set context for this specific request
     context.postId = postId;
-    serveClient(res);
+
+    // Load comments for this post
+    try {
+      const client = await getRedisClient();
+      const commentIds = await redis.zRange(`comments:${postId}:ids`, 0, -1, { reverse: false });
+
+      const comments = [];
+      for (const commentObj of commentIds) {
+        const commentId = typeof commentObj === 'object' ? commentObj.member : commentObj;
+        const commentJson = await client.get(`comment:${commentId}`);
+
+        if (commentJson) {
+          comments.push(JSON.parse(commentJson));
+        }
+      }
+
+      // Serve client with comments injected
+      await serveClientWithComments(res, postId, comments);
+    } catch (err) {
+      console.error('[TESTBED] Error loading comments:', err);
+      serveClient(res);
+    }
   });
 
   // Serve static files from dist/client (must be last)
@@ -649,6 +737,35 @@ export const reddit = {
     }
 
     return { id: postId };
+  },
+
+  async submitComment({ id, text }) {
+    const postId = id;
+    const commentId = `comment_${Date.now()}`;
+    const author = context.userId || 'testuser';
+    const timestamp = new Date().toISOString();
+
+    console.log('[TESTBED] Storing comment:', { postId, commentId, author, text: text.substring(0, 50) });
+
+    try {
+      const client = await getRedisClient();
+
+      // Store comment as JSON object
+      const commentData = JSON.stringify({ id: commentId, text, author, timestamp });
+
+      await Promise.all([
+        client.set(`comment:${commentId}`, commentData),
+        // Add to sorted set for chronological ordering
+        redis.zAdd(`comments:${postId}:ids`, { score: Date.now(), member: commentId })
+      ]);
+
+      console.log('[TESTBED] Comment stored successfully');
+    } catch (err) {
+      console.error('[TESTBED] Error storing comment:', err);
+      throw err;
+    }
+
+    return { id: commentId };
   }
 };
 
