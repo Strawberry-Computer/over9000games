@@ -112,7 +112,7 @@ async function loadTestGame(gameName) {
       // Store the test game data just like generated games
       currentGameData = {
         ...data.gameDefinition,
-        originalDescription: `Test game: ${gameName}`
+        description: `Test game: ${gameName}`
       };
 
       // Load the raw game code directly into QuickJS
@@ -465,11 +465,10 @@ async function handleGenerationComplete(gameDefinition) {
       // Save current version to history before updating
       saveToEditHistory(currentGameData);
 
-      // Store the edited game
+      // Store the edited game with the edit description
       currentGameData = {
         ...gameDefinition,
-        originalDescription: currentGameData.originalDescription,
-        editDescription: gameDescriptionElement.value.trim()
+        description: gameDescriptionElement.value.trim()
       };
 
       // Save new version to history
@@ -480,7 +479,7 @@ async function handleGenerationComplete(gameDefinition) {
       // Store the generated game and initialize edit history
       currentGameData = {
         ...gameDefinition,
-        originalDescription: gameDescriptionElement.value.trim()
+        description: gameDescriptionElement.value.trim()
       };
 
       editHistory = { versions: [], currentIndex: -1 };
@@ -527,6 +526,16 @@ function cancelGeneration() {
 
   showGenerationStatus("Generation cancelled", "error");
   resetGenerationForm();
+}
+
+async function reloadGameInPlace() {
+  try {
+    // Load the game code without showing modals or status
+    await gameRunner.loadCode(currentGameData.gameCode);
+    gameRunner.startGame();
+  } catch (error) {
+    console.error("Error reloading game:", error);
+  }
 }
 
 async function showGeneratedGame() {
@@ -580,9 +589,9 @@ function showGamePublishing() {
   document.body.classList.add("game-publishing-active");
   publishTitleElement.focus();
 
-  // Auto-suggest a title based on the original description
-  if (!publishTitleElement.value && currentGameData?.originalDescription) {
-    const words = currentGameData.originalDescription.split(' ').slice(0, 3);
+  // Auto-suggest a title based on the game description
+  if (!publishTitleElement.value && currentGameData?.description) {
+    const words = currentGameData.description.split(' ').slice(0, 3);
     const suggestedTitle = words.map(word =>
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
@@ -696,7 +705,7 @@ async function publishGameToReddit() {
       body: JSON.stringify({
         title,
         message: message || `Just created "${title}"! Try to beat my high score!`,
-        gameDescription: currentGameData.originalDescription,
+        gameDescription: currentGameData.description,
         gameCode: currentGameData.gameCode,
         screenshot: screenshot // Include screenshot data URI
       }),
@@ -1019,8 +1028,11 @@ function undoEdit() {
     updateEditButtons();
     localStorage.setItem('editHistory', JSON.stringify(editHistory));
 
-    // Reload the game with previous version
-    showGeneratedGame();
+    // Restore the description in the textarea
+    gameDescriptionElement.value = currentGameData.description || "";
+
+    // Reload the game with previous version (keep modal open)
+    reloadGameInPlace();
   }
 }
 
@@ -1031,8 +1043,11 @@ function redoEdit() {
     updateEditButtons();
     localStorage.setItem('editHistory', JSON.stringify(editHistory));
 
-    // Reload the game with next version
-    showGeneratedGame();
+    // Restore the description in the textarea
+    gameDescriptionElement.value = currentGameData.description || "";
+
+    // Reload the game with next version (keep modal open)
+    reloadGameInPlace();
   }
 }
 
@@ -1042,6 +1057,13 @@ function startEditMode() {
   }
 
   isEditMode = true;
+
+  // Initialize edit history if starting fresh (editing existing game)
+  if (editHistory.versions.length === 0) {
+    saveToEditHistory(currentGameData);
+  }
+
+  updateEditButtons();
   showGameCreation();
 }
 

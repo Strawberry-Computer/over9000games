@@ -31,14 +31,17 @@
 
       <!-- Touch controls (mobile/tablet) -->
       <div class="controls">
-        <div class="dpad">
-          <button class="control-btn dpad-up" id="btn-up">▲</button>
-          <div class="dpad-row">
-            <button class="control-btn dpad-left" id="btn-left">◀</button>
-            <div class="dpad-center"></div>
-            <button class="control-btn dpad-right" id="btn-right">▶</button>
+        <div class="dpad-container">
+          <div class="dpad-touch-zone" id="dpad-touch-zone"></div>
+          <div class="dpad">
+            <button class="control-btn dpad-up" id="btn-up">▲</button>
+            <div class="dpad-row">
+              <button class="control-btn dpad-left" id="btn-left">◀</button>
+              <div class="dpad-center"></div>
+              <button class="control-btn dpad-right" id="btn-right">▶</button>
+            </div>
+            <button class="control-btn dpad-down" id="btn-down">▼</button>
           </div>
-          <button class="control-btn dpad-down" id="btn-down">▼</button>
         </div>
 
         <div class="action-buttons">

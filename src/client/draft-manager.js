@@ -49,7 +49,6 @@ export class DraftManager {
         title: initialData.title || '',
         message: initialData.message || '',
         gameCode: initialData.gameCode || null,
-        originalDescription: initialData.originalDescription || '',
         ...initialData
       },
       history: [{

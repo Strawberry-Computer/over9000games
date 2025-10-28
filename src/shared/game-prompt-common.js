@@ -66,7 +66,7 @@ export function createGameEditPromptWithSamples(editDescription, previousGame, p
 GAME TO EDIT:
 Title: ${previousGame.metadata?.title || 'Unknown Game'}
 Description: ${previousGame.metadata?.description || 'No description'}
-Original Request: ${previousGame.originalDescription || 'No original description'}
+Original Request: ${previousGame.description || 'No original description'}
 
 \`\`\`javascript
 ${previousGame.gameCode}
