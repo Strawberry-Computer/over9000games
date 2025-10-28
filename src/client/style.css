@@ -268,25 +268,25 @@ body {
 .pause-btn {
   background: var(--nes-dark-gray);
   color: var(--nes-white);
-  width: 36px !important;
-  height: 36px !important;
-  border-radius: 4px;
-  font-size: 10px;
+  width: 48px !important;
+  height: 20px !important;
+  border-radius: 10px;
+  font-size: 6px;
   font-weight: bold;
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  border-top: 3px solid var(--nes-light-gray);
-  border-left: 3px solid var(--nes-light-gray);
-  border-right: 3px solid var(--nes-shadow);
-  border-bottom: 3px solid var(--nes-shadow);
+  border-top: 2px solid var(--nes-light-gray);
+  border-left: 2px solid var(--nes-light-gray);
+  border-right: 2px solid var(--nes-shadow);
+  border-bottom: 2px solid var(--nes-shadow);
 }
 
 .pause-btn:active {
-  border-top: 3px solid var(--nes-shadow);
-  border-left: 3px solid var(--nes-shadow);
-  border-right: 3px solid var(--nes-light-gray);
-  border-bottom: 3px solid var(--nes-light-gray);
+  border-top: 2px solid var(--nes-shadow);
+  border-left: 2px solid var(--nes-shadow);
+  border-right: 2px solid var(--nes-light-gray);
+  border-bottom: 2px solid var(--nes-light-gray);
   transform: translateX(-50%) translate(1px, 1px);
 }
 
@@ -601,9 +601,9 @@ body {
   }
 
   .pause-btn {
-    width: 32px !important;
-    height: 32px !important;
-    font-size: 9px;
+    width: 42px !important;
+    height: 18px !important;
+    font-size: 5px;
   }
 
   .game-btn {
@@ -650,9 +650,9 @@ body {
   }
 
   .pause-btn {
-    width: 28px !important;
-    height: 28px !important;
-    font-size: 8px;
+    width: 38px !important;
+    height: 16px !important;
+    font-size: 5px;
   }
 
   .game-btn {
