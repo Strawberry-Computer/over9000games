@@ -245,6 +245,41 @@ export class AudioManager {
     }
   }
 
+  /**
+   * Synchronous one-time resume attempt for user gesture handlers.
+   * Call this directly in touch/click event handlers to satisfy Safari's autoplay policy.
+   * Safe to call multiple times - only attempts resume once.
+   */
+  tryResume() {
+    if (!this.ctx) {
+      // Initialize synchronously if not done yet
+      try {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.connect(this.ctx.destination);
+
+        for (let i = 0; i < 8; i++) {
+          this.slots[i] = createSoundSlot(i);
+        }
+
+        this.initialized = true;
+        console.log("Audio context created synchronously on user gesture");
+      } catch (error) {
+        console.warn("Failed to create audio context:", error);
+        return;
+      }
+    }
+
+    // Resume synchronously if suspended
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().then(() => {
+        console.log("Audio context resumed on user gesture");
+      }).catch(err => {
+        console.warn("Audio resume failed:", err);
+      });
+    }
+  }
+
   processCommands(commands) {
     if (!this.initialized || !this.ctx) return;
 

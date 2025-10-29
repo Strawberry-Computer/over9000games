@@ -129,6 +129,7 @@ export class GameRunner {
         );
 
         if (!isInputElement) {
+          this.audioManager.tryResume(); // Auto-enable audio on keyboard input
           this.inputState[button] = true;
           e.preventDefault();
         }
@@ -172,10 +173,14 @@ export class GameRunner {
     ['up', 'down', 'left', 'right', 'a', 'b'].forEach(btn => {
       const element = document.getElementById(`btn-${btn}`);
       if (element) {
-        element.addEventListener('mousedown', () => this.inputState[btn] = true);
+        element.addEventListener('mousedown', () => {
+          this.audioManager.tryResume(); // Auto-enable audio on any interaction
+          this.inputState[btn] = true;
+        });
         element.addEventListener('mouseup', () => this.inputState[btn] = false);
         element.addEventListener('touchstart', (e) => {
           e.preventDefault();
+          this.audioManager.tryResume(); // Auto-enable audio on any touch
           this.inputState[btn] = true;
         });
         element.addEventListener('touchend', (e) => {
@@ -257,6 +262,7 @@ export class GameRunner {
     // Unified start handler for both touch and mouse
     const handleStart = (e) => {
       e.preventDefault();
+      this.audioManager.tryResume(); // Auto-enable audio on D-pad touch
       if (!isActive) {
         isActive = true;
         const point = e.touches ? e.touches[0] : e;

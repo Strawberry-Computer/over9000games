@@ -1008,6 +1008,11 @@ async function handlePauseResume() {
 // Console screen tap to pause/resume and show leaderboard
 const consoleScreen = document.getElementById("console-screen");
 consoleScreen?.addEventListener("click", async (e) => {
+  // Auto-enable audio on any console tap
+  if (gameRunner?.audioManager) {
+    gameRunner.audioManager.tryResume();
+  }
+
   // Check if click is on control buttons - don't handle if clicking those
   if (isClickOnControlButton(e.target)) {
     return; // Let button handlers take over
