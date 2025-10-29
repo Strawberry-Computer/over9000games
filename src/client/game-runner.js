@@ -31,7 +31,7 @@ export class GameRunner {
     const MAX_TILES_Y = 16;
 
     this.state = {
-      sprites: Array(64).fill(null).map(() => ({ spriteId: -1, x: 0, y: 0 })),
+      sprites: Array(64).fill(null).map(() => ({ spriteId: -1, x: 0, y: 0, flipH: false, flipV: false })),
       tiles: Array(MAX_TILES_Y).fill(null).map(() => Array(MAX_TILES_X).fill(-1)),
       backgroundColor: 0,
       palette: this.getDefaultPalette(),
@@ -457,15 +457,15 @@ function doUpdate(deltaTime, input) {
     this.spriteCtx.putImageData(imageData, position.x, position.y);
   }
 
-  setSprite(slotId, spriteId, x, y) {
+  setSprite(slotId, spriteId, x, y, flipH = false, flipV = false) {
     if (slotId >= 0 && slotId < 64) {
-      this.state.sprites[slotId] = { spriteId: spriteId, x, y };
+      this.state.sprites[slotId] = { spriteId: spriteId, x, y, flipH, flipV };
     }
   }
 
   clearSprite(slotId) {
     if (slotId >= 0 && slotId < 64) {
-      this.state.sprites[slotId] = { spriteId: -1, x: 0, y: 0 };
+      this.state.sprites[slotId] = { spriteId: -1, x: 0, y: 0, flipH: false, flipV: false };
     }
   }
 
@@ -588,7 +588,7 @@ function doUpdate(deltaTime, input) {
 
   resetGame() {
     for (let i = 0; i < 64; i++) {
-      this.state.sprites[i] = { spriteId: -1, x: 0, y: 0 };
+      this.state.sprites[i] = { spriteId: -1, x: 0, y: 0, flipH: false, flipV: false };
     }
 
     for (let y = 0; y < this.maxTilesY; y++) {
@@ -819,7 +819,14 @@ function doUpdate(deltaTime, input) {
     if (commands.sprites && Array.isArray(commands.sprites)) {
       commands.sprites.forEach((sprite, index) => {
         if (index < 64) {
-          this.setSprite(index, sprite.spriteId, sprite.x, sprite.y);
+          this.setSprite(
+            index,
+            sprite.spriteId,
+            sprite.x,
+            sprite.y,
+            sprite.flipH || false,
+            sprite.flipV || false
+          );
         }
       });
     }
@@ -990,11 +997,33 @@ function doUpdate(deltaTime, input) {
         }
 
         const position = this.getSpritePosition(sprite.spriteId);
-        this.ctx.drawImage(
-          this.spriteCanvas,
-          position.x, position.y, position.width, position.height,
-          screenX, screenY, position.width, position.height
-        );
+
+        // Apply sprite flipping if needed
+        if (sprite.flipH || sprite.flipV) {
+          this.ctx.save();
+
+          // Move to sprite center
+          this.ctx.translate(screenX + 4, screenY + 4);
+
+          // Apply flipping
+          this.ctx.scale(sprite.flipH ? -1 : 1, sprite.flipV ? -1 : 1);
+
+          // Draw sprite centered at origin
+          this.ctx.drawImage(
+            this.spriteCanvas,
+            position.x, position.y, position.width, position.height,
+            -4, -4, position.width, position.height
+          );
+
+          this.ctx.restore();
+        } else {
+          // No flipping - standard draw
+          this.ctx.drawImage(
+            this.spriteCanvas,
+            position.x, position.y, position.width, position.height,
+            screenX, screenY, position.width, position.height
+          );
+        }
       }
     }
   }

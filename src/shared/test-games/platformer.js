@@ -13,39 +13,38 @@ function metadata() {
 function resources() {
   return {
     sprites: [
-      // NOTE: Sprite slots 2 and 5 are AVAILABLE for new sprites
-      // Sprite 0: Explorer head - brown hat brim, tan face, clear features
+      // Sprite 0: Explorer head (standing/walk frame 0) - profile view with fedora hat
       [
-        "09999990",
-        "9dd99dd9",
-        "dd0dd0dd",
-        "dd0dd0dd",
-        "0ddddddd",
-        "00d22d00",
-        "00d99d00",
-        "000dd000"
+        "00999990",
+        "09dddd90",
+        "9ddddd90",
+        "9dd0dd00",
+        "0dddd000",
+        "00d2d000",
+        "00ddd000",
+        "000d0000"
       ],
-      // Sprite 1: Explorer body - tan shirt with brown vest and belt
+      // Sprite 1: Explorer body walk frame 1 - right leg forward, left leg back
       [
-        "00d99d00",
-        "0d9dd9d0",
-        "d99dd99d",
-        "d9dddd9d",
+        "000d0000",
+        "00d9d000",
+        "0d9dd900",
+        "d99dd990",
+        "d9ddd990",
         "0d9009d0",
-        "0dd00dd0",
-        "0dd00dd0",
-        "09d00d90"
+        "00dd09d0",
+        "009d0d00"
       ],
-      // Sprite 2: Heart - red health indicator
+      // Sprite 2: Explorer body walk frame 2 - left leg forward, right leg back
       [
-        "00000000",
-        "02200220",
-        "22222222",
-        "22222222",
-        "02222220",
-        "00222200",
-        "00022000",
-        "00000000"
+        "000d0000",
+        "00d9d000",
+        "0d9dd900",
+        "d99dd990",
+        "d9ddd990",
+        "0d9009d0",
+        "0d9d0d00",
+        "0d009d00"
       ],
       // Sprite 3: Scorpion front - claws and head connecting to body
       [
@@ -156,6 +155,39 @@ function resources() {
         "9d8dd8d9",
         "09d88d90",
         "00999900"
+      ],
+      // Sprite 13: Heart - red health indicator
+      [
+        "00000000",
+        "02200220",
+        "22222222",
+        "22222222",
+        "02222220",
+        "00222200",
+        "00022000",
+        "00000000"
+      ],
+      // Sprite 14: Explorer body hurt - recoiling/knocked back pose
+      [
+        "000d0000",
+        "00d9d000",
+        "0d9dd900",
+        "d99dd990",
+        "d9ddd990",
+        "00d99d00",
+        "0d00d000",
+        "d000d000"
+      ],
+      // Sprite 15: Explorer body death - falling/collapsed pose
+      [
+        "00000000",
+        "00000000",
+        "ddd9ddd0",
+        "99ddd990",
+        "d99d9900",
+        "0d9009d0",
+        "00d00d00",
+        "00d00d00"
       ]
     ],
     palette: [
@@ -234,13 +266,25 @@ const TILE_EXIT = 12;
 
 // Sprite IDs
 const SPRITE_EXPLORER_HEAD = 0;
-const SPRITE_EXPLORER_BODY = 1;
-const SPRITE_HEART = 2;
+const SPRITE_EXPLORER_BODY_WALK1 = 1;  // Right leg forward
+const SPRITE_EXPLORER_BODY_WALK2 = 2;  // Left leg forward
 const SPRITE_SCORPION_FRONT = 3;
 const SPRITE_SCORPION_BACK = 4;
 const SPRITE_BAT = 5;
 const SPRITE_TREASURE = 7;
 const SPRITE_TORCH = 8;
+const SPRITE_HEART = 13;
+const SPRITE_EXPLORER_BODY_HURT = 14;   // Damage recoil pose
+const SPRITE_EXPLORER_BODY_DEATH = 15;  // Death/collapsed pose
+
+// Death melody - sad descending notes played when player dies
+const DEATH_MELODY = [
+  {note: 'C4', duration: 0.4},
+  {note: 'B3', duration: 0.4},
+  {note: 'A3', duration: 0.4},
+  {note: 'G3', duration: 0.6},
+  {note: 'F3', duration: 0.8}
+];
 
 // Background music - NES style two-channel adventure theme
 const MUSIC = {
@@ -294,7 +338,11 @@ function update(deltaTime, input) {
         facing: 1, // 1 = right, -1 = left
         health: 3, // Start with 3 hearts
         invincible: false,
-        invincibleTimer: 0
+        invincibleTimer: 0,
+        isDead: false,
+        deathTimer: 0,
+        deathMusicIndex: 0,
+        deathMusicTimer: 0
       },
       enemies: [
         { x: 32, y: 56, vx: -ENEMY_SPEED_1, vy: 0, onGround: false, health: 1, type: 'scorpion', walkFrame: 0, walkTimer: 0 },   // Scorpion on row 9 platform
@@ -363,6 +411,67 @@ function update(deltaTime, input) {
   const dt = deltaTime; // Use deltaTime directly
   const sounds = [];
 
+  // Handle death animation
+  if (gameState.player.isDead) {
+    gameState.player.deathTimer -= dt;
+    if (gameState.player.deathTimer <= 0) {
+      gameState.gameOver = true;
+    }
+
+    // Play death melody
+    gameState.player.deathMusicTimer += dt;
+    if (gameState.player.deathMusicIndex < DEATH_MELODY.length) {
+      const currentNote = DEATH_MELODY[gameState.player.deathMusicIndex];
+      if (gameState.player.deathMusicTimer >= currentNote.duration) {
+        gameState.player.deathMusicIndex++;
+        gameState.player.deathMusicTimer = 0;
+      }
+      // Play current note
+      sounds.push({
+        slotId: 4,
+        soundId: `death_${gameState.player.deathMusicIndex}`,
+        channel: 'pulse1',
+        note: currentNote.note,
+        duration: currentNote.duration,
+        volume: 0.4,
+        envelope: 'soft'
+      });
+    }
+
+    // During death animation, apply gravity but check for ground collision
+    if (!gameState.gameOver) {
+      // Apply gravity
+      gameState.player.vy += GRAVITY * dt;
+      const newY = gameState.player.y + gameState.player.vy * dt;
+
+      // Simple ground collision for death animation
+      const bottomEdge = newY + PLAYER_HEIGHT;
+      const playerLeft = gameState.player.x;
+      const playerRight = gameState.player.x + PLAYER_WIDTH - 1;
+      let hitGround = false;
+
+      for (let x = playerLeft; x <= playerRight; x += 4) {
+        const tileX = Math.floor(x / TILE_SIZE);
+        const tileY = Math.floor(bottomEdge / TILE_SIZE);
+        if (tileX >= 0 && tileX < TILES_X && tileY >= 0 && tileY < TILES_Y) {
+          const tileId = gameState.tilemap[tileY][tileX];
+          if (tileId === TILE_PLATFORM || tileId === TILE_BRICK || tileId === TILE_METAL) {
+            // Hit ground - stop falling
+            gameState.player.y = tileY * TILE_SIZE - PLAYER_HEIGHT;
+            gameState.player.vy = 0;
+            hitGround = true;
+            break;
+          }
+        }
+      }
+
+      // If didn't hit ground, continue falling
+      if (!hitGround) {
+        gameState.player.y = newY;
+      }
+    }
+  }
+
   // Update invincibility timer
   if (gameState.player.invincible) {
     gameState.player.invincibleTimer -= dt;
@@ -393,40 +502,82 @@ function update(deltaTime, input) {
     }
 
     // Render player and enemies even when game over (frozen state)
+    const facingLeft = gameState.player.facing < 0;
+    let bodySprite;
+    let shouldRenderHead = true;
+
+    // Show death pose if player died, otherwise normal pose
+    if (gameState.player.isDead) {
+      bodySprite = SPRITE_EXPLORER_BODY_DEATH;
+      shouldRenderHead = false; // Don't render head during death
+    } else {
+      bodySprite = gameState.player.walkFrame === 0 ? SPRITE_EXPLORER_BODY_WALK1 : SPRITE_EXPLORER_BODY_WALK2;
+    }
+
+    // Render head (unless dead)
+    if (shouldRenderHead) {
+      sprites.push({
+        spriteId: SPRITE_EXPLORER_HEAD,
+        x: gameState.player.x,
+        y: gameState.player.y,
+        flipH: facingLeft
+      });
+    }
+
+    // Render body
     sprites.push({
-      spriteId: SPRITE_EXPLORER_HEAD,
+      spriteId: bodySprite,
       x: gameState.player.x,
-      y: gameState.player.y
-    });
-    sprites.push({
-      spriteId: SPRITE_EXPLORER_BODY,
-      x: gameState.player.x,
-      y: gameState.player.y + SPRITE_SIZE
+      y: gameState.player.y + SPRITE_SIZE,
+      flipH: facingLeft
     });
 
-    // Render scorpions (2 sprites wide)
+    // Render scorpions (2 sprites wide with sprite flipping)
     for (const enemy of gameState.enemies) {
       if (enemy.health > 0) {
-        sprites.push({
-          spriteId: SPRITE_SCORPION_FRONT,
-          x: enemy.x,
-          y: enemy.y
-        });
-        sprites.push({
-          spriteId: SPRITE_SCORPION_BACK,
-          x: enemy.x + SPRITE_SIZE,
-          y: enemy.y
-        });
+        const enemyFacingLeft = enemy.vx < 0;
+
+        if (enemyFacingLeft) {
+          // When facing left, swap sprite order and flip both
+          sprites.push({
+            spriteId: SPRITE_SCORPION_BACK,
+            x: enemy.x,
+            y: enemy.y,
+            flipH: true
+          });
+          sprites.push({
+            spriteId: SPRITE_SCORPION_FRONT,
+            x: enemy.x + SPRITE_SIZE,
+            y: enemy.y,
+            flipH: true
+          });
+        } else {
+          // When facing right, normal order without flip
+          sprites.push({
+            spriteId: SPRITE_SCORPION_FRONT,
+            x: enemy.x,
+            y: enemy.y,
+            flipH: false
+          });
+          sprites.push({
+            spriteId: SPRITE_SCORPION_BACK,
+            x: enemy.x + SPRITE_SIZE,
+            y: enemy.y,
+            flipH: false
+          });
+        }
       }
     }
 
-    // Render bats
+    // Render bats (with sprite flipping)
     for (const bat of gameState.bats) {
       if (bat.health > 0) {
+        const batFacingLeft = bat.vx < 0;
         sprites.push({
           spriteId: SPRITE_BAT,
           x: bat.x,
-          y: bat.y
+          y: bat.y,
+          flipH: batFacingLeft
         });
       }
     }
@@ -440,62 +591,69 @@ function update(deltaTime, input) {
     };
   }
 
-  // Player input handling with deltaTime
-  if (input.left) {
-    gameState.player.vx = -gameState.playerSpeed;
-    gameState.player.facing = -1;
-  } else if (input.right) {
-    gameState.player.vx = gameState.playerSpeed;
-    gameState.player.facing = 1;
+  // Player input handling with deltaTime (disabled during death)
+  if (!gameState.player.isDead) {
+    if (input.left) {
+      gameState.player.vx = -gameState.playerSpeed;
+      gameState.player.facing = -1;
+    } else if (input.right) {
+      gameState.player.vx = gameState.playerSpeed;
+      gameState.player.facing = 1;
+    } else {
+      gameState.player.vx = 0;
+    }
+
+    // Jump (using up arrow or B button)
+    if ((input.up || input.b) && gameState.player.onGround) {
+      gameState.player.vy = -gameState.jumpPower;
+      gameState.player.onGround = false;
+      // Jump sound
+      sounds.push({
+        slotId: 0,
+        soundId: 'jump',
+        channel: 'pulse1',
+        frequency: 800,
+        duration: 0.12,
+        volume: 0.5,
+        envelope: 'soft',
+        sweep: {target: 200, time: 0.12}
+      });
+    }
+
+    // Attack (using A button)
+    if (input.aPressed && gameState.projectiles.length < MAX_PROJECTILES) {
+      gameState.projectiles.push({
+        x: gameState.player.x + (gameState.player.facing > 0 ? SPRITE_SIZE : -SPRITE_SIZE),
+        y: gameState.player.y + 4,
+        vx: gameState.player.facing * PROJECTILE_SPEED,
+        life: PROJECTILE_LIFETIME
+      });
+      // Shoot sound
+      sounds.push({
+        slotId: 1,
+        soundId: 'shoot',
+        channel: 'pulse2',
+        frequency: 1200,
+        duration: 0.08,
+        volume: 0.6,
+        envelope: 'sharp'
+      });
+    }
   } else {
+    // During death, stop horizontal movement
     gameState.player.vx = 0;
   }
 
-  // Jump (using up arrow or B button)
-  if ((input.up || input.b) && gameState.player.onGround) {
-    gameState.player.vy = -gameState.jumpPower;
-    gameState.player.onGround = false;
-    // Jump sound
-    sounds.push({
-      slotId: 0,
-      soundId: 'jump',
-      channel: 'pulse1',
-      frequency: 800,
-      duration: 0.12,
-      volume: 0.5,
-      envelope: 'soft',
-      sweep: {target: 200, time: 0.12}
-    });
-  }
+  // Apply gravity to player (skip if dead - already handled in death animation)
+  if (!gameState.player.isDead) {
+    if (!gameState.player.onGround) {
+      gameState.player.vy += gameState.gravity * dt;
+    }
 
-  // Attack (using A button)
-  if (input.aPressed && gameState.projectiles.length < MAX_PROJECTILES) {
-    gameState.projectiles.push({
-      x: gameState.player.x + (gameState.player.facing > 0 ? SPRITE_SIZE : -SPRITE_SIZE),
-      y: gameState.player.y + 4,
-      vx: gameState.player.facing * PROJECTILE_SPEED,
-      life: PROJECTILE_LIFETIME
-    });
-    // Shoot sound
-    sounds.push({
-      slotId: 1,
-      soundId: 'shoot',
-      channel: 'pulse2',
-      frequency: 1200,
-      duration: 0.08,
-      volume: 0.6,
-      envelope: 'sharp'
-    });
+    // Update player position with deltaTime
+    gameState.player.x += gameState.player.vx * dt;
+    gameState.player.y += gameState.player.vy * dt;
   }
-
-  // Apply gravity to player
-  if (!gameState.player.onGround) {
-    gameState.player.vy += gameState.gravity * dt;
-  }
-
-  // Update player position with deltaTime
-  gameState.player.x += gameState.player.vx * dt;
-  gameState.player.y += gameState.player.vy * dt;
 
   // No camera in single screen mode
 
@@ -525,6 +683,8 @@ function update(deltaTime, input) {
     return TILE_EMPTY;
   }
 
+  // Skip collision detection and physics if dead (death animation handles falling)
+  if (!gameState.player.isDead) {
   // Horizontal collision detection
   if (Math.abs(gameState.player.vx) > 0) {
     const newX = gameState.player.x + gameState.player.vx * dt;
@@ -594,9 +754,19 @@ function update(deltaTime, input) {
       const tileId = getTileAt(x, bottomEdge);
 
       // Check for deadly tiles
-      if (tileId === TILE_SPIKES) {
-        gameState.gameOver = true;
-        return;
+      if (tileId === TILE_SPIKES && !gameState.player.isDead) {
+        gameState.player.health = 0;
+        gameState.player.isDead = true;
+        gameState.player.deathTimer = 3.0;
+        // Death sound
+        sounds.push({
+          slotId: 7,
+          channel: 'noise',
+          mode: 'random',
+          duration: 0.5,
+          volume: 0.7,
+          envelope: 'fade'
+        });
       }
 
       // Check for exit
@@ -642,78 +812,80 @@ function update(deltaTime, input) {
     gameState.player.y = newY;
   }
 
-  // Check for any overlapping deadly tiles (spikes) - using current position
-  const playerTop = gameState.player.y;
-  const playerBottom = gameState.player.y + PLAYER_HEIGHT - 1;
+  // Check for scorpion collision (damage with invincibility) - skip if already dead
+  if (!gameState.player.isDead) {
+    for (const enemy of gameState.enemies) {
+      if (enemy.health > 0 && !gameState.player.invincible &&
+          gameState.player.x + PLAYER_WIDTH > enemy.x &&
+          gameState.player.x < enemy.x + SCORPION_WIDTH &&
+          gameState.player.y + PLAYER_HEIGHT > enemy.y &&
+          gameState.player.y < enemy.y + SCORPION_HEIGHT) {
+        gameState.player.health--;
+        gameState.player.invincible = true;
+        gameState.player.invincibleTimer = 1.5; // 1.5 seconds of invincibility
 
-  for (let x = playerLeft; x <= playerRight; x += 4) {
-    for (let y = playerTop; y <= playerBottom; y += 4) {
-      const tileId = getTileAt(x, y);
-      if (tileId === TILE_SPIKES) {
-        gameState.gameOver = true;
-        return;
-      }
-      if (tileId === TILE_EXIT) {
-        gameState.levelComplete = true;
-        return;
-      }
-    }
-  }
+        // Damage sound
+        sounds.push({
+          slotId: 6,
+          channel: 'noise',
+          mode: 'periodic',
+          frequency: 100,
+          duration: 0.2,
+          volume: 0.6,
+          envelope: 'fade'
+        });
 
-  // Check for scorpion collision (damage with invincibility)
-  for (const enemy of gameState.enemies) {
-    if (enemy.health > 0 && !gameState.player.invincible &&
-        gameState.player.x + PLAYER_WIDTH > enemy.x &&
-        gameState.player.x < enemy.x + SCORPION_WIDTH &&
-        gameState.player.y + PLAYER_HEIGHT > enemy.y &&
-        gameState.player.y < enemy.y + SCORPION_HEIGHT) {
-      gameState.player.health--;
-      gameState.player.invincible = true;
-      gameState.player.invincibleTimer = 1.5; // 1.5 seconds of invincibility
-
-      // Damage sound
-      sounds.push({
-        slotId: 6,
-        channel: 'noise',
-        mode: 'periodic',
-        frequency: 100,
-        duration: 0.2,
-        volume: 0.6,
-        envelope: 'fade'
-      });
-
-      if (gameState.player.health <= 0) {
-        gameState.gameOver = true;
-        return;
+        if (gameState.player.health <= 0) {
+          gameState.player.isDead = true;
+          gameState.player.deathTimer = 3.0; // 3 second death animation before game over
+          // Death sound
+          sounds.push({
+            slotId: 7,
+            channel: 'noise',
+            mode: 'random',
+            duration: 0.5,
+            volume: 0.7,
+            envelope: 'fade'
+          });
+        }
       }
     }
-  }
 
-  // Check for bat collision (damage with invincibility)
-  for (const bat of gameState.bats) {
-    if (bat.health > 0 && !gameState.player.invincible &&
-        gameState.player.x + PLAYER_WIDTH > bat.x &&
-        gameState.player.x < bat.x + SPRITE_SIZE &&
-        gameState.player.y + PLAYER_HEIGHT > bat.y &&
-        gameState.player.y < bat.y + SPRITE_SIZE) {
-      gameState.player.health--;
-      gameState.player.invincible = true;
-      gameState.player.invincibleTimer = 1.5;
+    // Check for bat collision (damage with invincibility)
+    for (const bat of gameState.bats) {
+      if (bat.health > 0 && !gameState.player.invincible &&
+          gameState.player.x + PLAYER_WIDTH > bat.x &&
+          gameState.player.x < bat.x + SPRITE_SIZE &&
+          gameState.player.y + PLAYER_HEIGHT > bat.y &&
+          gameState.player.y < bat.y + SPRITE_SIZE) {
+        gameState.player.health--;
+        gameState.player.invincible = true;
+        gameState.player.invincibleTimer = 1.5;
 
-      // Damage sound
-      sounds.push({
-        slotId: 6,
-        channel: 'noise',
-        mode: 'periodic',
-        frequency: 100,
-        duration: 0.2,
-        volume: 0.6,
-        envelope: 'fade'
-      });
+        // Damage sound
+        sounds.push({
+          slotId: 6,
+          channel: 'noise',
+          mode: 'periodic',
+          frequency: 100,
+          duration: 0.2,
+          volume: 0.6,
+          envelope: 'fade'
+        });
 
-      if (gameState.player.health <= 0) {
-        gameState.gameOver = true;
-        return;
+        if (gameState.player.health <= 0) {
+          gameState.player.isDead = true;
+          gameState.player.deathTimer = 3.0; // 3 second death animation before game over
+          // Death sound
+          sounds.push({
+            slotId: 7,
+            channel: 'noise',
+            mode: 'random',
+            duration: 0.5,
+            volume: 0.7,
+            envelope: 'fade'
+          });
+        }
       }
     }
   }
@@ -725,6 +897,40 @@ function update(deltaTime, input) {
     gameState.player.y = PLAYER_START_Y;
     gameState.player.x = PLAYER_START_X;
     gameState.player.vy = 0;
+  }
+
+  } // End of if (!gameState.player.isDead) collision check block
+
+  // Check for deadly tiles (spikes) and exit - checked even when alive
+  if (!gameState.player.isDead) {
+    const playerTop = gameState.player.y;
+    const playerBottom = gameState.player.y + PLAYER_HEIGHT - 1;
+    const playerLeft = gameState.player.x;
+    const playerRight = gameState.player.x + PLAYER_WIDTH - 1;
+
+    for (let x = playerLeft; x <= playerRight; x += 4) {
+      for (let y = playerTop; y <= playerBottom; y += 4) {
+        const tileId = getTileAt(x, y);
+        if (tileId === TILE_SPIKES) {
+          gameState.player.health = 0;
+          gameState.player.isDead = true;
+          gameState.player.deathTimer = 3.0;
+          // Death sound
+          sounds.push({
+            slotId: 7,
+            channel: 'noise',
+            mode: 'random',
+            duration: 0.5,
+            volume: 0.7,
+            envelope: 'fade'
+          });
+        }
+        if (tileId === TILE_EXIT) {
+          gameState.levelComplete = true;
+          return;
+        }
+      }
+    }
   }
 
   // Update scorpion enemies with deltaTime and gravity
@@ -916,43 +1122,45 @@ function update(deltaTime, input) {
     }
   }
 
-  // Update background music
-  // Bass track
-  gameState.music.bass.timer += dt;
-  const bassNote = MUSIC.bass[gameState.music.bass.index];
-  if (gameState.music.bass.timer >= bassNote.duration) {
-    gameState.music.bass.index = (gameState.music.bass.index + 1) % MUSIC.bass.length;
-    gameState.music.bass.timer = 0;
+  // Update background music (skip when dead - death melody plays instead)
+  if (!gameState.player.isDead) {
+    // Bass track
+    gameState.music.bass.timer += dt;
+    const bassNote = MUSIC.bass[gameState.music.bass.index];
+    if (gameState.music.bass.timer >= bassNote.duration) {
+      gameState.music.bass.index = (gameState.music.bass.index + 1) % MUSIC.bass.length;
+      gameState.music.bass.timer = 0;
+    }
+
+    // Melody track
+    gameState.music.melody.timer += dt;
+    const melodyNote = MUSIC.melody[gameState.music.melody.index];
+    if (gameState.music.melody.timer >= melodyNote.duration) {
+      gameState.music.melody.index = (gameState.music.melody.index + 1) % MUSIC.melody.length;
+      gameState.music.melody.timer = 0;
+    }
+
+    // Add music to sounds (slots 4-5 reserved for music)
+    sounds.push({
+      slotId: 4,
+      soundId: `bass_${gameState.music.bass.index}`,
+      channel: 'triangle',
+      note: bassNote.note,
+      duration: bassNote.duration,
+      volume: 0.2,
+      envelope: 'sustain'
+    });
+
+    sounds.push({
+      slotId: 5,
+      soundId: `melody_${gameState.music.melody.index}`,
+      channel: 'pulse1',
+      note: melodyNote.note,
+      duration: melodyNote.duration,
+      volume: 0.25,
+      envelope: 'soft'
+    });
   }
-
-  // Melody track
-  gameState.music.melody.timer += dt;
-  const melodyNote = MUSIC.melody[gameState.music.melody.index];
-  if (gameState.music.melody.timer >= melodyNote.duration) {
-    gameState.music.melody.index = (gameState.music.melody.index + 1) % MUSIC.melody.length;
-    gameState.music.melody.timer = 0;
-  }
-
-  // Add music to sounds (slots 4-5 reserved for music)
-  sounds.push({
-    slotId: 4,
-    soundId: `bass_${gameState.music.bass.index}`,
-    channel: 'triangle',
-    note: bassNote.note,
-    duration: bassNote.duration,
-    volume: 0.2,
-    envelope: 'sustain'
-  });
-
-  sounds.push({
-    slotId: 5,
-    soundId: `melody_${gameState.music.melody.index}`,
-    channel: 'pulse1',
-    note: melodyNote.note,
-    duration: melodyNote.duration,
-    volume: 0.25,
-    envelope: 'soft'
-  });
 
   // Build render commands (new grouped format)
   const tiles = [];
@@ -983,41 +1191,98 @@ function update(deltaTime, input) {
     }
   }
 
-  // Render explorer (2-sprite character)
-  sprites.push({
-    spriteId: SPRITE_EXPLORER_HEAD,
-    x: gameState.player.x,
-    y: gameState.player.y
-  });
-  sprites.push({
-    spriteId: SPRITE_EXPLORER_BODY,
-    x: gameState.player.x,
-    y: gameState.player.y + SPRITE_SIZE
-  });
+  // Render explorer (2-sprite character with sprite flipping and animation)
+  const facingLeft = gameState.player.facing < 0;
+  let bodySprite;
+  let shouldRenderHead = true;
+  let spriteAlpha = 1.0;
 
-  // Render scorpions (2 sprites wide)
+  // Determine which body sprite to use based on state (check death first!)
+  if (gameState.player.isDead) {
+    // Death animation overrides everything
+    bodySprite = SPRITE_EXPLORER_BODY_DEATH;
+    shouldRenderHead = false; // Don't render head during death
+  } else if (gameState.player.invincible && gameState.player.invincibleTimer > 0 && gameState.player.health > 0) {
+    // Flashing during invincibility (only if still alive)
+    const flashSpeed = 10; // Flash rate
+    const shouldShow = Math.floor(gameState.player.invincibleTimer * flashSpeed) % 2 === 0;
+    if (!shouldShow) {
+      // Skip rendering during flash-off frames
+      bodySprite = null;
+    } else {
+      bodySprite = SPRITE_EXPLORER_BODY_HURT;
+    }
+  } else {
+    // Normal walking animation
+    bodySprite = gameState.player.walkFrame === 0 ? SPRITE_EXPLORER_BODY_WALK1 : SPRITE_EXPLORER_BODY_WALK2;
+  }
+
+  // Render head (unless dead)
+  if (shouldRenderHead && bodySprite !== null) {
+    sprites.push({
+      spriteId: SPRITE_EXPLORER_HEAD,
+      x: gameState.player.x,
+      y: gameState.player.y,
+      flipH: facingLeft
+    });
+  }
+
+  // Render body
+  if (bodySprite !== null) {
+    sprites.push({
+      spriteId: bodySprite,
+      x: gameState.player.x,
+      y: gameState.player.y + SPRITE_SIZE,
+      flipH: facingLeft
+    });
+  }
+
+  // Render scorpions (2 sprites wide with sprite flipping)
   for (const enemy of gameState.enemies) {
     if (enemy.health > 0) {
-      sprites.push({
-        spriteId: SPRITE_SCORPION_FRONT,
-        x: enemy.x,
-        y: enemy.y
-      });
-      sprites.push({
-        spriteId: SPRITE_SCORPION_BACK,
-        x: enemy.x + SPRITE_SIZE,
-        y: enemy.y
-      });
+      const enemyFacingLeft = enemy.vx < 0;
+
+      if (enemyFacingLeft) {
+        // When facing left, swap sprite order and flip both
+        sprites.push({
+          spriteId: SPRITE_SCORPION_BACK,
+          x: enemy.x,
+          y: enemy.y,
+          flipH: true
+        });
+        sprites.push({
+          spriteId: SPRITE_SCORPION_FRONT,
+          x: enemy.x + SPRITE_SIZE,
+          y: enemy.y,
+          flipH: true
+        });
+      } else {
+        // When facing right, normal order without flip
+        sprites.push({
+          spriteId: SPRITE_SCORPION_FRONT,
+          x: enemy.x,
+          y: enemy.y,
+          flipH: false
+        });
+        sprites.push({
+          spriteId: SPRITE_SCORPION_BACK,
+          x: enemy.x + SPRITE_SIZE,
+          y: enemy.y,
+          flipH: false
+        });
+      }
     }
   }
 
-  // Render bats (single sprite)
+  // Render bats (single sprite with sprite flipping)
   for (const bat of gameState.bats) {
     if (bat.health > 0) {
+      const batFacingLeft = bat.vx < 0;
       sprites.push({
         spriteId: SPRITE_BAT,
         x: bat.x,
-        y: bat.y
+        y: bat.y,
+        flipH: batFacingLeft
       });
     }
   }
