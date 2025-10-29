@@ -1171,6 +1171,32 @@ function setupMobileKeyboardHandling() {
         modal.classList.remove('keyboard-visible');
       }
     });
+
+    // Add Cmd+Enter / Ctrl+Enter handler to submit the parent form
+    input.addEventListener('keydown', (e) => {
+      const isAcceptShortcut = e.key === 'Enter' && (e.metaKey || e.ctrlKey);
+      if (!isAcceptShortcut) return;
+
+      e.preventDefault();
+
+      // Find which modal this input belongs to and trigger appropriate action
+      if (input === gameDescriptionElement) {
+        const generateButton = document.getElementById('btn-generate-game');
+        if (generateButton && !generateButton.disabled) {
+          generateButton.click();
+        }
+      } else if (input === publishTitleElement || input === publishMessageElement) {
+        const publishButton = document.getElementById('btn-post-to-reddit');
+        if (publishButton && !publishButton.disabled) {
+          publishButton.click();
+        }
+      } else if (input === commentMessageElement) {
+        const commentButton = document.getElementById('btn-post-comment');
+        if (commentButton && !commentButton.disabled) {
+          commentButton.click();
+        }
+      }
+    });
   });
 
   // Handle visual viewport changes (modern approach)
