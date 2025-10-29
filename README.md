@@ -321,8 +321,8 @@ function update(deltaTime, input) {
 
   // Return game state object
   return {
-    sprites: [{spriteId, x, y}, ...],      // Up to 64 sprites
-    tiles: [{x, y, tileId}, ...],          // Background tiles
+    sprites: [{spriteId, x, y, flipH?, flipV?}, ...], // Up to 64 sprites
+    tiles: [{x, y, tileId}, ...],          // Background tiles (grid-based)
     scroll: {x, y},                        // Camera position
     background: colorIndex,                // Background color (0-15)
     score: number,                         // Current score
@@ -334,8 +334,10 @@ function update(deltaTime, input) {
 ```
 
 #### Return Object Properties
-- **sprites**: Array of `{spriteId, x, y}` objects (max 64, cleared each frame)
-- **tiles**: Array of `{x, y, tileId}` objects (cleared each frame)
+- **sprites**: Array of `{spriteId, x, y, flipH?, flipV?}` objects (max 64, cleared each frame)
+  - `flipH`: Optional boolean to flip sprite horizontally (useful for character facing direction)
+  - `flipV`: Optional boolean to flip sprite vertically
+- **tiles**: Array of `{x, y, tileId}` objects (cleared each frame, positioned on 8×8 grid)
 - **scroll**: `{x, y}` camera offset for side-scrolling (default: `{x: 0, y: 0}`)
 - **background**: Palette color index for background (0-15)
 - **score**: Numeric score value for display
@@ -391,7 +393,42 @@ return {
 
 **Sound Features:**
 - **Frequency Sweeps**: Add `sweep: {target: 880}` or `sweep: {targetNote: 'A5', time: 0.5}` to slide pitch
-- **Noise Modes**: Use `mode: 'periodic'` for periodic noise (hi-hat style) vs white noise (explosion)
+- **Noise Modes**:
+  - `mode: 'random'` - White noise for explosions/death sounds (default)
+  - `mode: 'periodic'` - Periodic noise for hi-hats/damage sounds
 - **Looping**: Set `loop: true` for continuous background music or ambient sounds
-- **Sound IDs**: Use `soundId` to prevent restarting same sound on each frame
+- **Sound IDs**: Use `soundId` to prevent restarting same sound on each frame (if same soundId is triggered multiple frames in a row, sound continues playing instead of restarting)
 - **Master Volume**: Return `audio: {masterVolume: 0.7}` or `audio: {mute: true}` for global control
+- **Envelope Presets**: `sharp`, `soft`, `fade`, `sustain` or custom ADSR object `{attack: 0.01, decay: 0.05, sustain: 0.3, release: 0.05}`
+
+**Font Sprites for HUD:**
+The console provides pre-rendered font sprites at IDs `0x100+` for displaying text:
+```javascript
+// Display "SCORE: 100" using sprites (pixel-perfect positioning)
+const scoreText = "SCORE: 100";
+for (let i = 0; i < scoreText.length; i++) {
+  sprites.push({
+    spriteId: 0x100 + scoreText.charCodeAt(i),
+    x: 10 + (i * 8),
+    y: 2
+  });
+}
+
+// Or use tiles for grid-aligned text
+tiles.push({x: 1, y: 0, tileId: 0x100 + 'S'.charCodeAt(0)}); // Grid position (8, 0)
+```
+
+**Sprite Flipping for Character Direction:**
+```javascript
+// Character facing left/right without separate sprites
+return {
+  sprites: [
+    {
+      spriteId: 0,           // Player sprite
+      x: player.x,
+      y: player.y,
+      flipH: player.facing < 0  // Flip horizontally when facing left
+    }
+  ]
+};
+```

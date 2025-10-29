@@ -78,12 +78,12 @@ function resources() {
 function update(deltaTime, input) {
   // Game logic here
   return {
-    sprites: [{spriteId: 0, x: 10, y: 20}],
+    sprites: [{spriteId: 0, x: 10, y: 20, flipH: false, flipV: false}],
     tiles: [{x: 5, y: 3, tileId: 2}],
     scroll: {x: 0, y: 0},
     background: 0,
     score: 100,
-    sounds: [{slotId: 0, channel: 'pulse1', note: 'C4', duration: 0.2}],
+    sounds: [{slotId: 0, soundId: 'jump', channel: 'pulse1', note: 'C4', duration: 0.2, envelope: 'soft'}],
     gameOver: false
   };
 }
@@ -156,9 +156,12 @@ Project uses ES modules (`"type": "module"`) with separate tsconfig for client/s
 
 ### Game Development Constraints
 - **Sprite Limits**: Maximum 64 sprites on screen, 8×8 pixels each, cleared each frame
+- **Sprite Flipping**: Sprites support `flipH` and `flipV` properties for horizontal/vertical mirroring
+- **Font Sprites**: Pre-rendered font available at sprite IDs 0x100+ for HUD text rendering
 - **Tile System**: 128×16 grid of background tiles (8×8 pixels each), cleared each frame
 - **Color Palette**: Maximum 16 colors per game (4-bit)
 - **Audio Slots**: 8 sound slots, 4 channels (pulse1, pulse2, triangle, noise)
+- **Audio Features**: Sound IDs prevent restart, envelope presets (sharp/soft/fade/sustain), noise modes (random/periodic)
 - **QuickJS Sandbox**: No external dependencies, limited execution time
 - **State-Based Rendering**: Return state objects, no direct canvas access
 - **Camera System**: Scroll offset for side-scrolling worlds up to 1024px wide
