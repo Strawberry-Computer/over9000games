@@ -15,7 +15,7 @@ export class ResponsesAPI {
       model,
       input: prompt,
       instructions: 'You are a retro game designer that creates NES-style games. You must respond with a single JavaScript block in markdown format (```javascript) containing three functions: metadata(), resources(), and update().',
-      max_output_tokens: 15000,
+      max_output_tokens: 24000,
       background: true
     };
 
