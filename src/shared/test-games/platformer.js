@@ -294,16 +294,76 @@ function parseMelody(str) {
   });
 }
 
-// Death melody - sad descending notes with pauses
-const DEATH_MELODY = parseMelody("C4:0.4 -:0.1 B3:0.4 -:0.1 A3:0.4 -:0.1 G3:0.6 -:0.1 F3:0.8");
+// Death melody - sad descending notes with pauses (120 BPM)
+// Using standard note durations: quarter=0.5s, eighth=0.25s, half=1.0s
+const DEATH_MELODY = parseMelody("C4:0.5 -:0.25 B3:0.5 -:0.25 A3:0.5 -:0.25 G3:0.75 -:0.25 F3:1.0");
 
-// Background music - NES style two-channel adventure theme
+// Background music - structured song with repeating sections (120 BPM)
+// Note durations: whole=2.0, half=1.0, quarter=0.5, eighth=0.25, sixteenth=0.125
+// INTRO → VERSE → CHORUS → VERSE → CHORUS → BRIDGE → CHORUS (finale)
 const MUSIC = {
-  // Triangle channel - walking bass line with chord progression and rests
-  bass: parseMelody("C2:0.4 -:0.05 C2:0.4 E2:0.4 G2:0.4 -:0.05 G2:0.4 B2:0.4 A2:0.4 -:0.05 A2:0.4 C3:0.4 F2:0.4 -:0.05 F2:0.4 A2:0.4 E2:0.4 -:0.05 E2:0.4 G2:0.4 D2:0.4 -:0.05 D2:0.4 F2:0.4 C2:0.4 -:0.05 C2:0.4 E2:0.4 G2:0.6 -:0.1 F2:0.6 -:0.1 E2:0.6"),
+  // Bass: Repeating patterns that support the melody structure
+  bass: parseMelody(
+    // Intro bass (4 bars) - ominous entry
+    "A1:0.5 -:0.25 A1:0.5 -:0.25 E2:0.5 -:0.25 A1:0.5 -:0.25 " +
+    // Verse bass pattern (8 bars) - walking quarter notes
+    "A1:0.5 A1:0.5 E2:0.5 A1:0.5 G1:0.5 G1:0.5 D2:0.5 G1:0.5 " +
+    "F1:0.5 F1:0.5 C2:0.5 F1:0.5 E1:0.5 E1:0.5 B1:0.5 E1:0.5 " +
+    // Chorus bass (8 bars) - powerful dotted quarters
+    "A1:0.75 -:0.25 E2:0.5 A1:0.5 G1:0.75 -:0.25 D2:0.5 G1:0.5 " +
+    "F1:0.75 -:0.25 C2:0.5 F1:0.5 E1:0.75 G#1:0.5 A1:0.5 -:0.25 " +
+    // Verse bass (repeat - 8 bars)
+    "A1:0.5 A1:0.5 E2:0.5 A1:0.5 G1:0.5 G1:0.5 D2:0.5 G1:0.5 " +
+    "F1:0.5 F1:0.5 C2:0.5 F1:0.5 E1:0.5 E1:0.5 B1:0.5 E1:0.5 " +
+    // Chorus bass (repeat - 8 bars)
+    "A1:0.75 -:0.25 E2:0.5 A1:0.5 G1:0.75 -:0.25 D2:0.5 G1:0.5 " +
+    "F1:0.75 -:0.25 C2:0.5 F1:0.5 E1:0.75 G#1:0.5 A1:0.5 -:0.25 " +
+    // Bridge bass (4 bars) - tension/discovery
+    "F1:0.25 F1:0.25 C2:0.5 -:0.5 G1:0.25 G1:0.25 D2:0.5 -:0.5 " +
+    // Chorus finale (8 bars) - triumphant ending
+    "A1:0.75 -:0.25 E2:0.5 A1:0.5 G1:0.75 -:0.25 D2:0.5 G1:0.5 " +
+    "F1:0.75 -:0.25 C2:0.5 F1:0.5 E1:0.75 A1:0.75 A1:1.0"
+  ),
 
-  // Pulse channel - epic adventure melody with rests for phrasing
-  melody: parseMelody("E4:0.2 E4:0.2 E4:0.4 -:0.1 G4:0.2 E4:0.2 C4:0.4 -:0.1 E4:0.2 G4:0.2 C5:0.6 -:0.2 B4:0.2 B4:0.2 B4:0.4 -:0.1 A4:0.2 G4:0.2 E4:0.4 -:0.1 G4:0.2 A4:0.2 B4:0.6 -:0.2 C5:0.2 D5:0.2 E5:0.4 -:0.1 D5:0.2 C5:0.2 B4:0.4 -:0.1 A4:0.2 B4:0.2 C5:0.6 -:0.2 G4:0.2 E4:0.2 D4:0.4 -:0.1 E4:0.2 F4:0.2 G4:0.4 -:0.1 E4:0.4 C4:0.8")
+  // Melody: Clear song structure with memorable hooks
+  melody: parseMelody(
+    // INTRO (4 bars) - mysterious, sets the mood
+    "A3:0.5 -:0.25 C4:0.5 -:0.25 E4:0.75 -:0.5 E4:0.5 D4:0.5 C4:0.75 -:0.5 " +
+
+    // VERSE (8 bars) - sneaking through the tomb, main exploration theme
+    "A3:0.5 -:0.25 C4:0.25 -:0.25 E4:0.5 E4:0.25 D4:0.25 C4:0.5 -:0.25 " +
+    "G3:0.5 -:0.25 B3:0.25 -:0.25 D4:0.5 D4:0.25 C4:0.25 B3:0.5 -:0.25 " +
+    "A3:0.5 -:0.25 C4:0.25 -:0.25 E4:0.5 E4:0.25 F4:0.25 E4:0.5 -:0.25 " +
+    "D4:0.5 C4:0.5 B3:0.5 A3:0.75 -:0.5 " +
+
+    // CHORUS (8 bars) - DANGER! Main hook that repeats
+    "E4:0.25 E4:0.25 -:0.125 G4:0.25 -:0.125 A4:0.5 -:0.25 A4:0.25 G4:0.25 E4:0.5 -:0.25 " +
+    "D4:0.25 D4:0.25 -:0.125 F4:0.25 -:0.125 G4:0.5 -:0.25 G4:0.25 F4:0.25 D4:0.5 -:0.25 " +
+    "C4:0.25 E4:0.25 G4:0.25 B4:0.25 -:0.125 A4:0.5 -:0.25 G4:0.25 E4:0.25 D4:0.5 -:0.25 " +
+    "C4:0.5 B3:0.5 A3:0.75 -:0.5 A3:0.5 -:0.25 " +
+
+    // VERSE (repeat - 8 bars) - deeper into danger, slight variation
+    "A3:0.5 -:0.25 C4:0.25 -:0.25 E4:0.5 E4:0.25 D4:0.25 C4:0.5 -:0.25 " +
+    "G3:0.5 -:0.25 B3:0.25 -:0.25 D4:0.5 D4:0.25 C4:0.25 B3:0.5 -:0.25 " +
+    "A3:0.5 -:0.25 C4:0.25 -:0.25 E4:0.5 E4:0.25 F4:0.25 G4:0.5 -:0.25 " +
+    "F4:0.5 E4:0.5 D4:0.5 C4:0.75 -:0.5 " +
+
+    // CHORUS (repeat - 8 bars) - main hook returns
+    "E4:0.25 E4:0.25 -:0.125 G4:0.25 -:0.125 A4:0.5 -:0.25 A4:0.25 G4:0.25 E4:0.5 -:0.25 " +
+    "D4:0.25 D4:0.25 -:0.125 F4:0.25 -:0.125 G4:0.5 -:0.25 G4:0.25 F4:0.25 D4:0.5 -:0.25 " +
+    "C4:0.25 E4:0.25 G4:0.25 B4:0.25 -:0.125 A4:0.5 -:0.25 G4:0.25 E4:0.25 D4:0.5 -:0.25 " +
+    "C4:0.5 B3:0.5 A3:0.75 -:0.5 A3:0.5 -:0.25 " +
+
+    // BRIDGE (4 bars) - discovery moment! Chromatic tension + treasure glimpse
+    "C5:0.25 C5:0.25 E5:0.25 -:0.25 G5:0.5 -:0.25 F5:0.25 E5:0.25 D5:0.5 -:0.25 " +
+    "G#4:0.125 G4:0.125 F#4:0.125 F4:0.125 E4:0.25 D#4:0.125 D4:0.125 C#4:0.125 C4:0.125 -:0.25 " +
+
+    // CHORUS FINALE (8 bars) - triumphant escape, ultimate payoff
+    "E4:0.25 E4:0.25 -:0.125 G4:0.25 -:0.125 A4:0.5 -:0.25 A4:0.25 G4:0.25 E4:0.5 -:0.25 " +
+    "D4:0.25 D4:0.25 -:0.125 F4:0.25 -:0.125 G4:0.5 -:0.25 G4:0.25 F4:0.25 D4:0.5 -:0.25 " +
+    "C4:0.25 E4:0.25 G4:0.25 B4:0.25 -:0.125 A4:0.5 -:0.25 G4:0.25 E4:0.25 D4:0.5 -:0.25 " +
+    "E4:0.5 -:0.25 A4:0.75 -:0.25 A4:1.0"
+  )
 };
 
 let gameState;
