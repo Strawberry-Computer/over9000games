@@ -889,9 +889,11 @@ async function postHighScoreComment() {
     if (data.success) {
       showCommentStatus("Comment posted successfully!", "success");
 
-      // Close modal after 1.5 seconds
-      setTimeout(() => {
+      // Close modal after 1.5 seconds and reload leaderboard
+      setTimeout(async () => {
         hideAllModals();
+        // Reload leaderboard to show updated scores
+        await loadLeaderboard();
       }, 1500);
     } else {
       throw new Error(data.message || "Failed to post comment");
@@ -1099,7 +1101,11 @@ document.getElementById("btn-love-it")?.addEventListener("click", showGamePublis
 
 // High score comment event listeners
 document.getElementById("btn-post-comment")?.addEventListener("click", postHighScoreComment);
-document.getElementById("btn-skip-comment")?.addEventListener("click", hideAllModals);
+document.getElementById("btn-skip-comment")?.addEventListener("click", async () => {
+  hideAllModals();
+  // Show leaderboard when skipping comment
+  await loadLeaderboard();
+});
 
 // Edit control event listeners
 const handleEdit = () => {
