@@ -570,6 +570,7 @@ async function handleGenerationComplete(gameDefinition) {
       currentGameData = {
         ...gameDefinition,
         description: gameDescriptionElement.value.trim()
+        // autoScreenshot will be regenerated via firstFrameCallback (game may look different)
       };
 
       // Save new version to history
@@ -581,6 +582,7 @@ async function handleGenerationComplete(gameDefinition) {
       currentGameData = {
         ...gameDefinition,
         description: gameDescriptionElement.value.trim()
+        // autoScreenshot will be generated via firstFrameCallback
       };
 
       editHistory = { versions: [], currentIndex: -1 };
@@ -709,17 +711,8 @@ function showGamePublishingFromMain() {
 // Enhanced screenshot capture function with 4x resolution and landscape formatting
 async function captureGameScreenshot() {
   try {
-    // Run the game for a few frames to get an interesting state
+    // Capture the current frame immediately (no waiting)
     if (gameRunner && gameRunner.isGeneratedGame) {
-      // Let the game run for a bit to get some action
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Start the game if not already running
-      gameRunner.startGame();
-
-      // Wait a bit more for the game to start
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       // Get the main console canvas
       const sourceCanvas = document.getElementById("console-canvas");
       if (!sourceCanvas) return null;
@@ -786,14 +779,11 @@ async function publishGameToReddit() {
   publishButton.classList.add("disabled");
 
   try {
-    // Use auto-generated screenshot if available, otherwise capture new one
-    let screenshot = currentGameData.autoScreenshot;
+    // Use auto-generated screenshot (captured after first frame)
+    const screenshot = currentGameData.autoScreenshot;
 
     if (!screenshot) {
-      showPublishingStatus("Capturing screenshot", "loading");
-      screenshot = await captureGameScreenshot();
-    } else {
-      showPublishingStatus("Using auto-generated screenshot", "loading");
+      throw new Error("Screenshot not available. Please restart the game and try again.");
     }
 
     showPublishingStatus("Creating Reddit post", "loading");
@@ -1310,7 +1300,19 @@ function setupEscapeKeyHandler() {
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
 
-    // Don't handle ESC if typing in an input/textarea (let user cancel their own typing)
+    // Check which modal is open first (priority order)
+    // For high score comment modal, always close immediately (even if textarea is focused)
+    if (highScoreCommentElement && highScoreCommentElement.style.display !== 'none') {
+      // Skip comment
+      const skipButton = document.getElementById('btn-skip-comment');
+      if (skipButton && !skipButton.disabled) {
+        skipButton.click();
+        e.preventDefault();
+      }
+      return;
+    }
+
+    // For other modals, check if typing in an input/textarea first
     const activeElement = document.activeElement;
     if (activeElement && (
       activeElement.tagName === 'INPUT' ||
@@ -1335,13 +1337,6 @@ function setupEscapeKeyHandler() {
       const backButton = document.getElementById('btn-back-to-game');
       if (backButton && !backButton.disabled) {
         backButton.click();
-        e.preventDefault();
-      }
-    } else if (highScoreCommentElement && highScoreCommentElement.style.display !== 'none') {
-      // Skip comment
-      const skipButton = document.getElementById('btn-skip-comment');
-      if (skipButton && !skipButton.disabled) {
-        skipButton.click();
         e.preventDefault();
       }
     } else if (devMenuElement && devMenuElement.style.display !== 'none') {
