@@ -9,7 +9,6 @@ import {
 } from "@devvit/web/server";
 import { media } from "@devvit/media";
 import { createPost } from "./core/post.js";
-import { generateGameWithAI } from "./game-generator.js";
 import { JobManager } from "./job-manager.js";
 import { getTestGameCode, getAvailableTestGames } from "../shared/test-games/server-loader.js";
 
@@ -133,12 +132,18 @@ router.post("/api/game/generate", async (req, res) => {
       return;
     }
 
+    // Use gpt-5-nano for testbed, gpt-5 for dev and production (unless model specified)
+    const isTestbed = context.subredditName === 'testbed';
+    const defaultModel = process.env.TEST_MODEL || (isTestbed ? 'gpt-5-nano' : 'gpt-5');
+    const selectedModel = model || defaultModel;
+    console.log(`Model selection: subreddit=${context.subredditName}, isTestbed=${isTestbed}, using=${selectedModel}`);
+
     // Create async job for background processing
     const result = await jobManager.createJob(
       postId,
       description,
       context.userId || 'anonymous',
-      { model }
+      { model: selectedModel }
     );
 
     console.log(`Created job ${result.jobId} for: ${description.substring(0, 50)}...`);
@@ -187,12 +192,17 @@ router.post("/api/game/edit", async (req, res) => {
       return;
     }
 
+    // Use gpt-5-nano for testbed, gpt-5 for dev and production
+    const isTestbed = context.subredditName === 'testbed';
+    const defaultModel = process.env.TEST_MODEL || (isTestbed ? 'gpt-5-nano' : 'gpt-5');
+    console.log(`Edit model selection: subreddit=${context.subredditName}, isTestbed=${isTestbed}, using=${defaultModel}`);
+
     // Create async job for editing (also background now)
     const result = await jobManager.createJob(
       postId,
       description,
       context.userId || 'anonymous',
-      { previousGame: JSON.stringify(previousGame) }
+      { previousGame: JSON.stringify(previousGame), model: defaultModel }
     );
 
     console.log(`Created edit job ${result.jobId} for: ${description.substring(0, 50)}...`);
@@ -569,6 +579,7 @@ router.post("/api/post/create", async (req, res) => {
     // Prepare splash screen configuration
     const splashConfig = {
       appDisplayName: "over9000games",
+      appIconUri: "icon.png",
       heading: title,
       description: message || `Play ${title} - AI generated retro game!`,
       buttonLabel: `Play ${title}`,
