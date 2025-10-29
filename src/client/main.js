@@ -1226,9 +1226,64 @@ function checkForceMobileFlag() {
   }
 }
 
+// Global ESC key handler to close/cancel modals
+function setupEscapeKeyHandler() {
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+
+    // Don't handle ESC if typing in an input/textarea (let user cancel their own typing)
+    const activeElement = document.activeElement;
+    if (activeElement && (
+      activeElement.tagName === 'INPUT' ||
+      activeElement.tagName === 'TEXTAREA'
+    )) {
+      // Just blur the input, don't close modal
+      activeElement.blur();
+      e.preventDefault();
+      return;
+    }
+
+    // Check which modal is open and close it (in priority order)
+    if (gameCreationElement && gameCreationElement.style.display !== 'none') {
+      // Cancel game creation/editing
+      const cancelButton = document.getElementById('btn-cancel-creation');
+      if (cancelButton && !cancelButton.disabled) {
+        cancelButton.click();
+        e.preventDefault();
+      }
+    } else if (gamePublishingElement && gamePublishingElement.style.display !== 'none') {
+      // Back from publishing
+      const backButton = document.getElementById('btn-back-to-game');
+      if (backButton && !backButton.disabled) {
+        backButton.click();
+        e.preventDefault();
+      }
+    } else if (highScoreCommentElement && highScoreCommentElement.style.display !== 'none') {
+      // Skip comment
+      const skipButton = document.getElementById('btn-skip-comment');
+      if (skipButton && !skipButton.disabled) {
+        skipButton.click();
+        e.preventDefault();
+      }
+    } else if (devMenuElement && devMenuElement.style.display !== 'none') {
+      // Close dev menu
+      hideAllModals();
+      e.preventDefault();
+    } else {
+      const newGameConfirmElement = document.getElementById('new-game-confirm');
+      if (newGameConfirmElement && newGameConfirmElement.style.display !== 'none') {
+        // Cancel new game confirmation
+        hideNewGameConfirmation();
+        e.preventDefault();
+      }
+    }
+  });
+}
+
 // Initialize everything
 checkForceMobileFlag();
 initializeConsole();
 fetchInitialData();
 setupMobileKeyboardHandling();
+setupEscapeKeyHandler();
 updateShareButtonState();
