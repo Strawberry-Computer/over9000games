@@ -514,12 +514,15 @@ function update(deltaTime, input) {
       bodySprite = gameState.player.walkFrame === 0 ? SPRITE_EXPLORER_BODY_WALK1 : SPRITE_EXPLORER_BODY_WALK2;
     }
 
+    const playerRenderX = Math.floor(gameState.player.x);
+    const playerRenderY = Math.floor(gameState.player.y);
+
     // Render head (unless dead)
     if (shouldRenderHead) {
       sprites.push({
         spriteId: SPRITE_EXPLORER_HEAD,
-        x: gameState.player.x,
-        y: gameState.player.y,
+        x: playerRenderX,
+        y: playerRenderY,
         flipH: facingLeft
       });
     }
@@ -527,8 +530,8 @@ function update(deltaTime, input) {
     // Render body
     sprites.push({
       spriteId: bodySprite,
-      x: gameState.player.x,
-      y: gameState.player.y + SPRITE_SIZE,
+      x: playerRenderX,
+      y: playerRenderY + SPRITE_SIZE,
       flipH: facingLeft
     });
 
@@ -536,33 +539,35 @@ function update(deltaTime, input) {
     for (const enemy of gameState.enemies) {
       if (enemy.health > 0) {
         const enemyFacingLeft = enemy.vx < 0;
+        const enemyRenderX = Math.floor(enemy.x);
+        const enemyRenderY = Math.floor(enemy.y);
 
         if (enemyFacingLeft) {
           // When facing left, swap sprite order and flip both
           sprites.push({
             spriteId: SPRITE_SCORPION_BACK,
-            x: enemy.x,
-            y: enemy.y,
+            x: enemyRenderX,
+            y: enemyRenderY,
             flipH: true
           });
           sprites.push({
             spriteId: SPRITE_SCORPION_FRONT,
-            x: enemy.x + SPRITE_SIZE,
-            y: enemy.y,
+            x: enemyRenderX + SPRITE_SIZE,
+            y: enemyRenderY,
             flipH: true
           });
         } else {
           // When facing right, normal order without flip
           sprites.push({
             spriteId: SPRITE_SCORPION_FRONT,
-            x: enemy.x,
-            y: enemy.y,
+            x: enemyRenderX,
+            y: enemyRenderY,
             flipH: false
           });
           sprites.push({
             spriteId: SPRITE_SCORPION_BACK,
-            x: enemy.x + SPRITE_SIZE,
-            y: enemy.y,
+            x: enemyRenderX + SPRITE_SIZE,
+            y: enemyRenderY,
             flipH: false
           });
         }
@@ -575,8 +580,8 @@ function update(deltaTime, input) {
         const batFacingLeft = bat.vx < 0;
         sprites.push({
           spriteId: SPRITE_BAT,
-          x: bat.x,
-          y: bat.y,
+          x: Math.floor(bat.x),
+          y: Math.floor(bat.y),
           flipH: batFacingLeft
         });
       }
@@ -1185,8 +1190,8 @@ function update(deltaTime, input) {
     if (!coin.collected) {
       sprites.push({
         spriteId: SPRITE_TREASURE,
-        x: coin.x,
-        y: coin.y
+        x: Math.floor(coin.x),
+        y: Math.floor(coin.y)
       });
     }
   }
@@ -1217,12 +1222,16 @@ function update(deltaTime, input) {
     bodySprite = gameState.player.walkFrame === 0 ? SPRITE_EXPLORER_BODY_WALK1 : SPRITE_EXPLORER_BODY_WALK2;
   }
 
+  // Round player position to integers for rendering
+  const playerRenderX = Math.floor(gameState.player.x);
+  const playerRenderY = Math.floor(gameState.player.y);
+
   // Render head (unless dead)
   if (shouldRenderHead && bodySprite !== null) {
     sprites.push({
       spriteId: SPRITE_EXPLORER_HEAD,
-      x: gameState.player.x,
-      y: gameState.player.y,
+      x: playerRenderX,
+      y: playerRenderY,
       flipH: facingLeft
     });
   }
@@ -1231,8 +1240,8 @@ function update(deltaTime, input) {
   if (bodySprite !== null) {
     sprites.push({
       spriteId: bodySprite,
-      x: gameState.player.x,
-      y: gameState.player.y + SPRITE_SIZE,
+      x: playerRenderX,
+      y: playerRenderY + SPRITE_SIZE,
       flipH: facingLeft
     });
   }
@@ -1241,33 +1250,35 @@ function update(deltaTime, input) {
   for (const enemy of gameState.enemies) {
     if (enemy.health > 0) {
       const enemyFacingLeft = enemy.vx < 0;
+      const enemyRenderX = Math.floor(enemy.x);
+      const enemyRenderY = Math.floor(enemy.y);
 
       if (enemyFacingLeft) {
         // When facing left, swap sprite order and flip both
         sprites.push({
           spriteId: SPRITE_SCORPION_BACK,
-          x: enemy.x,
-          y: enemy.y,
+          x: enemyRenderX,
+          y: enemyRenderY,
           flipH: true
         });
         sprites.push({
           spriteId: SPRITE_SCORPION_FRONT,
-          x: enemy.x + SPRITE_SIZE,
-          y: enemy.y,
+          x: enemyRenderX + SPRITE_SIZE,
+          y: enemyRenderY,
           flipH: true
         });
       } else {
         // When facing right, normal order without flip
         sprites.push({
           spriteId: SPRITE_SCORPION_FRONT,
-          x: enemy.x,
-          y: enemy.y,
+          x: enemyRenderX,
+          y: enemyRenderY,
           flipH: false
         });
         sprites.push({
           spriteId: SPRITE_SCORPION_BACK,
-          x: enemy.x + SPRITE_SIZE,
-          y: enemy.y,
+          x: enemyRenderX + SPRITE_SIZE,
+          y: enemyRenderY,
           flipH: false
         });
       }
@@ -1280,8 +1291,8 @@ function update(deltaTime, input) {
       const batFacingLeft = bat.vx < 0;
       sprites.push({
         spriteId: SPRITE_BAT,
-        x: bat.x,
-        y: bat.y,
+        x: Math.floor(bat.x),
+        y: Math.floor(bat.y),
         flipH: batFacingLeft
       });
     }
@@ -1291,17 +1302,8 @@ function update(deltaTime, input) {
   for (const proj of gameState.projectiles) {
     sprites.push({
       spriteId: SPRITE_TORCH,
-      x: proj.x,
-      y: proj.y
-    });
-  }
-
-  // Render health hearts (fixed position on screen, adjusted for camera scroll)
-  for (let i = 0; i < gameState.player.health; i++) {
-    sprites.push({
-      spriteId: SPRITE_HEART,
-      x: gameState.camera.x + 2 + (i * 10), // Position relative to camera
-      y: 2
+      x: Math.floor(proj.x),
+      y: Math.floor(proj.y)
     });
   }
 
@@ -1320,10 +1322,33 @@ function update(deltaTime, input) {
   // Clamp camera to world bounds
   gameState.camera.x = Math.max(0, Math.min(gameState.camera.x, WORLD_WIDTH - SCREEN_WIDTH));
 
+  // Round camera position to avoid subpixel jitter
+  const cameraScrollX = Math.round(gameState.camera.x);
+
+  // Render health hearts as sprites (add scroll offset to convert screen coords to world coords)
+  for (let i = 0; i < gameState.player.health; i++) {
+    sprites.push({
+      spriteId: SPRITE_HEART,
+      x: cameraScrollX + 2 + (i * 10),
+      y: 2
+    });
+  }
+
+  // Render score as sprites using font tile IDs (add scroll offset for HUD positioning)
+  const scoreText = gameState.score.toString();
+  const scoreStartX = cameraScrollX + SCREEN_WIDTH - 8 * scoreText.length - 2;
+  for (let i = 0; i < scoreText.length; i++) {
+    sprites.push({
+      spriteId: 0x100 + scoreText.charCodeAt(i), // Font tile ID as sprite
+      x: scoreStartX + (i * 8),
+      y: 2
+    });
+  }
+
   return {
     tiles,
     sprites,
-    scroll: { x: Math.round(gameState.camera.x), y: 0 },
+    scroll: { x: cameraScrollX, y: 0 },
     score: gameState.gameOver ? 0 : gameState.score,
     gameOver: gameState.gameOver || gameState.levelComplete,
     sounds: sounds
