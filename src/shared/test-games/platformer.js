@@ -1,11 +1,11 @@
 function metadata() {
   return {
-    title: "Multi-Color Platformer",
-    description: "A complex platformer with multi-sprite characters and enemies - use arrow keys to move and spacebar to jump",
+    title: "Tomb Explorer",
+    description: "Explore ancient ruins and collect treasure - use arrow keys to move and spacebar to jump",
     controls: [
-      {key: "left/right arrows", action: "move player"},
+      {key: "left/right arrows", action: "move explorer"},
       {key: "up arrow or B", action: "jump"},
-      {key: "A button", action: "attack"}
+      {key: "A button", action: "throw torch"}
     ]
   };
 }
@@ -14,163 +14,167 @@ function resources() {
   return {
     sprites: [
       // NOTE: Sprite slots 2 and 5 are AVAILABLE for new sprites
-      // Sprite 0: Wizard head with light gray face and cyan details
+      // Sprite 0: Explorer head - brown hat brim, tan face, clear features
       [
-        "00b66b00",
-        "0b6999b6",
-        "b698809b",
-        "69800086",
-        "b98000b6",
-        "0b9999b6",
-        "00b99b00",
-        "000bb000"
+        "09999990",
+        "9dd99dd9",
+        "dd0dd0dd",
+        "dd0dd0dd",
+        "0ddddddd",
+        "00d22d00",
+        "00d99d00",
+        "000dd000"
       ],
-      // Sprite 1: Wizard body in blue robes with red belt
+      // Sprite 1: Explorer body - tan shirt with brown vest and belt
       [
-        "00244200",
-        "02444420",
-        "24422442",
-        "44222244",
-        "42211224",
-        "24222442",
-        "02444420",
-        "00244200"
+        "00d99d00",
+        "0d9dd9d0",
+        "d99dd99d",
+        "d9dddd9d",
+        "0d9009d0",
+        "0dd00dd0",
+        "0dd00dd0",
+        "09d00d90"
       ],
-      // Sprite 2: AVAILABLE - Empty placeholder (unused legacy wizard legs)
+      // Sprite 2: Heart - red health indicator
       [
         "00000000",
+        "02200220",
+        "22222222",
+        "22222222",
+        "02222220",
+        "00222200",
+        "00022000",
+        "00000000"
+      ],
+      // Sprite 3: Scorpion front - claws and head connecting to body
+      [
+        "90000000",
+        "99000000",
+        "09900088",
+        "00998888",
+        "00988888",
+        "09900088",
+        "99000000",
+        "90000000"
+      ],
+      // Sprite 4: Scorpion back - body segments with tail curving upward
+      [
+        "00000009",
+        "00000990",
+        "88889800",
+        "88888000",
+        "88888000",
+        "88889000",
+        "88899000",
+        "88900000"
+      ],
+      // Sprite 5: Bat - wings spread, flying enemy
+      [
         "00000000",
-        "00000000",
-        "00000000",
-        "00000000",
-        "00000000",
+        "90000009",
+        "99800899",
+        "09988990",
+        "00988900",
+        "00088000",
         "00000000",
         "00000000"
       ],
-      // Sprite 3: Enemy head with gray face and dark red hair
+      // Sprite 6: Weathered stone platform with cracks and shadows
       [
-        "00722700",
-        "07288270",
-        "72888827",
-        "28821882",
-        "72822727",
-        "07288270",
-        "00722700",
-        "00077000"
+        "88017708",
+        "80777781",
+        "17888871",
+        "78811887",
+        "78811887",
+        "17888871",
+        "80777781",
+        "88888888"
       ],
-      // Sprite 4: Enemy body with gray torso and red clothing
+      // Sprite 7: Bright golden coin like Mario - shiny yellow with white highlights
       [
-        "00877800",
-        "08777780",
-        "87722778",
-        "77211277",
-        "72111127",
-        "77211277",
-        "08777780",
-        "00877800"
+        "00555500",
+        "05511550",
+        "51111115",
+        "51111115",
+        "51111115",
+        "51111115",
+        "05511550",
+        "00555500"
       ],
-      // Sprite 5: AVAILABLE - Empty placeholder (unused legacy enemy legs)
+      // Sprite 8: Flaming torch projectile with orange/red fire
+      [
+        "00055000",
+        "00e5e500",
+        "0e5e5e50",
+        "0e52225e",
+        "0e52225e",
+        "0e5555e0",
+        "00e55e00",
+        "0005e000"
+      ],
+      // Sprite 9: Weathered sandstone brick with dark mortar and cracks
+      [
+        "0cddddc0",
+        "ddd99ddd",
+        "dd9889dd",
+        "0cddddc0",
+        "dddd9ddd",
+        "dd9889dd",
+        "ddd99ddd",
+        "0cddddc0"
+      ],
+      // Sprite 10: Rusty metal platform with rivets and corrosion
+      [
+        "08888880",
+        "87771778",
+        "77999977",
+        "71999917",
+        "71999917",
+        "77999977",
+        "87771778",
+        "08888880"
+      ],
+      // Sprite 11: Rusty metal spikes with dark shadows
       [
         "00000000",
-        "00000000",
-        "00000000",
-        "00000000",
-        "00000000",
-        "00000000",
-        "00000000",
-        "00000000"
+        "00088000",
+        "00899800",
+        "08999980",
+        "89988998",
+        "88888888",
+        "88888888",
+        "88888888"
       ],
-      // Sprite 6: Gray stone platform tile with border details
+      // Sprite 12: Ancient wooden exit door with metal bands
       [
-        "81017108",
-        "12000021",
-        "71000017",
-        "01000010",
-        "71000017",
-        "12000021",
-        "81017108",
-        "77777777"
-      ],
-      // Sprite 7: Olive/yellow coin with light gray highlights
-      [
-        "00a55a00",
-        "0a5555a0",
-        "a555b55a",
-        "555bbb55",
-        "55bb5b55",
-        "a55555a0",
-        "0a5555a0",
-        "00a55a00"
-      ],
-      // Sprite 8: Cyan energy projectile with light aura
-      [
-        "0006b600",
-        "006bbb60",
-        "06b6b6b6",
-        "6bb6b6bb",
-        "6bb6b6bb",
-        "06b6b6b6",
-        "006bbb60",
-        "0006b600"
-      ],
-      // Sprite 9: Green/brown brick tile with white mortar
-      [
-        "01333310",
-        "13111131",
-        "31222213",
-        "12111121",
-        "12111121",
-        "31222213",
-        "13111131",
-        "01333310"
-      ],
-      // Sprite 10: Gray metal platform with black/white border
-      [
-        "10000001",
-        "77777777",
-        "77777777",
-        "77777777",
-        "77777777",
-        "77777777",
-        "77777777",
-        "10000001"
-      ],
-      // Sprite 11: Gray upward-pointing spike hazard tile
-      [
-        "00000000",
-        "00122100",
-        "01222210",
-        "12222221",
-        "77777777",
-        "77777777",
-        "77777777",
-        "77777777"
-      ],
-      // Sprite 12: Green exit door with cyan interior
-      [
-        "00133100",
-        "01366310",
-        "13888831",
-        "38111183",
-        "38111183",
-        "13888831",
-        "01366310",
-        "00133100"
+        "00999900",
+        "09d88d90",
+        "9d8dd8d9",
+        "d8dddd8d",
+        "d8dddd8d",
+        "9d8dd8d9",
+        "09d88d90",
+        "00999900"
       ]
     ],
     palette: [
       0x000000, // 0: Black
-      0xFFFFFF, // 1: White
-      0xFF0000, // 2: Red
-      0x00FF00, // 3: Green
-      0x0000FF, // 4: Blue
-      0xFFFF00, // 5: Yellow
-      0x00FFFF, // 7: Cyan
-      0x808080, // 8: Gray
-      0x800000, // 9: Dark red
-      0x008000, // 10: Dark green
-      0x808000, // 12: Olive
-      0xC0C0C0  // 15: Light gray
+      0xFFFFFF, // 1: Pure white (for coin highlights)
+      0xCC3300, // 2: Brick red
+      0x556B2F, // 3: Olive drab (unused but kept)
+      0x4A4A4A, // 4: Dark gray (unused but kept)
+      0xFFD700, // 5: Bright gold (Mario-style coin)
+      0x5C8A8A, // 6: Muted teal (unused but kept)
+      0x6B6B6B, // 7: Medium gray
+      0x4A4A4A, // 8: Dark gray/shadow
+      0x8B4513, // 9: Saddle brown
+      0x2F4F2F, // a: Dark olive (unused but kept)
+      0xDEB887, // b: Burlywood/light tan
+      0x696969, // c: Dim gray
+      0xD2B48C, // d: Tan
+      0xCD853F, // e: Peru/bronze
+      0xF5DEB3  // f: Wheat (unused but kept)
     ]
   };
 }
@@ -187,8 +191,8 @@ const TILES_Y = 16;
 // Character dimensions
 const PLAYER_WIDTH = SPRITE_SIZE;
 const PLAYER_HEIGHT = 16; // 2 sprites tall
-const ENEMY_WIDTH = SPRITE_SIZE;
-const ENEMY_HEIGHT = 16; // 2 sprites tall
+const SCORPION_WIDTH = 16; // 2 sprites wide
+const SCORPION_HEIGHT = SPRITE_SIZE;
 const COIN_SIZE = SPRITE_SIZE;
 const PROJECTILE_SIZE = SPRITE_SIZE;
 
@@ -229,14 +233,14 @@ const TILE_SPIKES = 11;
 const TILE_EXIT = 12;
 
 // Sprite IDs
-const SPRITE_WIZARD_HEAD = 0;
-const SPRITE_WIZARD_BODY = 1;
-const SPRITE_WIZARD_LEGS = 2;
-const SPRITE_ENEMY_HEAD = 3;
-const SPRITE_ENEMY_BODY = 4;
-const SPRITE_ENEMY_LEGS = 5;
-const SPRITE_COIN = 7;
-const SPRITE_PROJECTILE = 8;
+const SPRITE_EXPLORER_HEAD = 0;
+const SPRITE_EXPLORER_BODY = 1;
+const SPRITE_HEART = 2;
+const SPRITE_SCORPION_FRONT = 3;
+const SPRITE_SCORPION_BACK = 4;
+const SPRITE_BAT = 5;
+const SPRITE_TREASURE = 7;
+const SPRITE_TORCH = 8;
 
 // Background music - NES style two-channel adventure theme
 const MUSIC = {
@@ -287,13 +291,21 @@ function update(deltaTime, input) {
         onGround: true,
         walkFrame: 0,
         walkTimer: 0,
-        facing: 1 // 1 = right, -1 = left
+        facing: 1, // 1 = right, -1 = left
+        health: 3, // Start with 3 hearts
+        invincible: false,
+        invincibleTimer: 0
       },
       enemies: [
-        { x: 32, y: 56, vx: -ENEMY_SPEED_1, health: 2, walkFrame: 0, walkTimer: 0 },   // On row 9 platform (cols 3-5)
-        { x: 160, y: 96, vx: ENEMY_SPEED_2, health: 2, walkFrame: 0, walkTimer: 0 },   // On ground
-        { x: 216, y: 56, vx: -ENEMY_SPEED_1, health: 2, walkFrame: 0, walkTimer: 0 },  // On row 9 platform (cols 26-28)
-        { x: 368, y: 56, vx: ENEMY_SPEED_2, health: 2, walkFrame: 0, walkTimer: 0 }    // On row 9 platform (cols 45-47)
+        { x: 32, y: 56, vx: -ENEMY_SPEED_1, vy: 0, onGround: false, health: 1, type: 'scorpion', walkFrame: 0, walkTimer: 0 },   // Scorpion on row 9 platform
+        { x: 160, y: 96, vx: ENEMY_SPEED_2, vy: 0, onGround: false, health: 1, type: 'scorpion', walkFrame: 0, walkTimer: 0 },   // Scorpion on ground
+        { x: 216, y: 56, vx: -ENEMY_SPEED_1, vy: 0, onGround: false, health: 1, type: 'scorpion', walkFrame: 0, walkTimer: 0 },  // Scorpion on row 9 platform
+        { x: 368, y: 56, vx: ENEMY_SPEED_2, vy: 0, onGround: false, health: 1, type: 'scorpion', walkFrame: 0, walkTimer: 0 }    // Scorpion on row 9 platform
+      ],
+      bats: [
+        { x: 120, y: 40, vx: -30, vy: 0, health: 1, pattern: 'sine', phase: 0 },  // Flying bat with sine wave pattern
+        { x: 280, y: 32, vx: 35, vy: 0, health: 1, pattern: 'sine', phase: Math.PI },  // Flying bat
+        { x: 420, y: 48, vx: -30, vy: 0, health: 1, pattern: 'sine', phase: Math.PI/2 }   // Flying bat
       ],
       tilemap: [
         // 16 rows x 64 columns (512px wide world with scrolling) - 0=empty, 6=platform, 9=brick, 10=metal, 11=spikes, 12=exit
@@ -351,6 +363,15 @@ function update(deltaTime, input) {
   const dt = deltaTime; // Use deltaTime directly
   const sounds = [];
 
+  // Update invincibility timer
+  if (gameState.player.invincible) {
+    gameState.player.invincibleTimer -= dt;
+    if (gameState.player.invincibleTimer <= 0) {
+      gameState.player.invincible = false;
+      gameState.player.invincibleTimer = 0;
+    }
+  }
+
   // Check for game over or level complete
   if (gameState.gameOver || gameState.levelComplete) {
     // Stop game logic, just render current state
@@ -373,28 +394,39 @@ function update(deltaTime, input) {
 
     // Render player and enemies even when game over (frozen state)
     sprites.push({
-      spriteId: SPRITE_WIZARD_HEAD,
+      spriteId: SPRITE_EXPLORER_HEAD,
       x: gameState.player.x,
       y: gameState.player.y
     });
     sprites.push({
-      spriteId: SPRITE_WIZARD_BODY,
+      spriteId: SPRITE_EXPLORER_BODY,
       x: gameState.player.x,
       y: gameState.player.y + SPRITE_SIZE
     });
 
-    // Render enemies
+    // Render scorpions (2 sprites wide)
     for (const enemy of gameState.enemies) {
       if (enemy.health > 0) {
         sprites.push({
-          spriteId: SPRITE_ENEMY_HEAD,
+          spriteId: SPRITE_SCORPION_FRONT,
           x: enemy.x,
           y: enemy.y
         });
         sprites.push({
-          spriteId: SPRITE_ENEMY_BODY,
-          x: enemy.x,
-          y: enemy.y + SPRITE_SIZE
+          spriteId: SPRITE_SCORPION_BACK,
+          x: enemy.x + SPRITE_SIZE,
+          y: enemy.y
+        });
+      }
+    }
+
+    // Render bats
+    for (const bat of gameState.bats) {
+      if (bat.health > 0) {
+        sprites.push({
+          spriteId: SPRITE_BAT,
+          x: bat.x,
+          y: bat.y
         });
       }
     }
@@ -628,15 +660,61 @@ function update(deltaTime, input) {
     }
   }
 
-  // Check for enemy collision (instakill)
+  // Check for scorpion collision (damage with invincibility)
   for (const enemy of gameState.enemies) {
-    if (enemy.health > 0 &&
+    if (enemy.health > 0 && !gameState.player.invincible &&
         gameState.player.x + PLAYER_WIDTH > enemy.x &&
-        gameState.player.x < enemy.x + ENEMY_WIDTH &&
+        gameState.player.x < enemy.x + SCORPION_WIDTH &&
         gameState.player.y + PLAYER_HEIGHT > enemy.y &&
-        gameState.player.y < enemy.y + ENEMY_HEIGHT) {
-      gameState.gameOver = true;
-      return;
+        gameState.player.y < enemy.y + SCORPION_HEIGHT) {
+      gameState.player.health--;
+      gameState.player.invincible = true;
+      gameState.player.invincibleTimer = 1.5; // 1.5 seconds of invincibility
+
+      // Damage sound
+      sounds.push({
+        slotId: 6,
+        channel: 'noise',
+        mode: 'periodic',
+        frequency: 100,
+        duration: 0.2,
+        volume: 0.6,
+        envelope: 'fade'
+      });
+
+      if (gameState.player.health <= 0) {
+        gameState.gameOver = true;
+        return;
+      }
+    }
+  }
+
+  // Check for bat collision (damage with invincibility)
+  for (const bat of gameState.bats) {
+    if (bat.health > 0 && !gameState.player.invincible &&
+        gameState.player.x + PLAYER_WIDTH > bat.x &&
+        gameState.player.x < bat.x + SPRITE_SIZE &&
+        gameState.player.y + PLAYER_HEIGHT > bat.y &&
+        gameState.player.y < bat.y + SPRITE_SIZE) {
+      gameState.player.health--;
+      gameState.player.invincible = true;
+      gameState.player.invincibleTimer = 1.5;
+
+      // Damage sound
+      sounds.push({
+        slotId: 6,
+        channel: 'noise',
+        mode: 'periodic',
+        frequency: 100,
+        duration: 0.2,
+        volume: 0.6,
+        envelope: 'fade'
+      });
+
+      if (gameState.player.health <= 0) {
+        gameState.gameOver = true;
+        return;
+      }
     }
   }
 
@@ -649,11 +727,18 @@ function update(deltaTime, input) {
     gameState.player.vy = 0;
   }
 
-  // Update enemies with deltaTime
+  // Update scorpion enemies with deltaTime and gravity
   for (const enemy of gameState.enemies) {
     if (enemy.health <= 0) continue;
 
+    // Apply gravity
+    if (!enemy.onGround) {
+      enemy.vy += GRAVITY * dt;
+    }
+
+    // Update position
     enemy.x += enemy.vx * dt;
+    enemy.y += enemy.vy * dt;
 
     // Enemy walking animation
     enemy.walkTimer += dt;
@@ -662,22 +747,88 @@ function update(deltaTime, input) {
       enemy.walkTimer = 0;
     }
 
-    // Enemy AI: reverse direction at edges using tilemap
+    // Check if standing on ground
+    enemy.onGround = false;
+    const enemyBottom = enemy.y + SCORPION_HEIGHT;
+    const enemyLeft = enemy.x;
+    const enemyRight = enemy.x + SCORPION_WIDTH - 1;
+
+    // Check for ground beneath scorpion
+    for (let x = enemyLeft; x <= enemyRight; x += 4) {
+      const tileId = getTileAt(x, enemyBottom);
+      if (isSolidTile(tileId)) {
+        enemy.onGround = true;
+        break;
+      }
+    }
+
+    // Apply vertical collision if falling
+    if (enemy.vy > 0) {
+      let hitPlatform = false;
+      for (let x = enemyLeft; x <= enemyRight; x += 4) {
+        const tileId = getTileAt(x, enemyBottom);
+        if (isSolidTile(tileId)) {
+          const tileY = Math.floor(enemyBottom / TILE_SIZE);
+          enemy.y = tileY * TILE_SIZE - SCORPION_HEIGHT;
+          enemy.vy = 0;
+          enemy.onGround = true;
+          hitPlatform = true;
+          break;
+        }
+      }
+    }
+
+    // Enemy AI: reverse direction at edges or walls
+    const nextX = enemy.x + (enemy.vx > 0 ? SCORPION_WIDTH : 0);
+    const checkX = enemy.vx > 0 ? nextX : nextX - 1;
+    const checkTileX = Math.floor(checkX / TILE_SIZE);
+    const groundCheckTileX = Math.floor((enemy.x + (enemy.vx > 0 ? SCORPION_WIDTH : -1)) / TILE_SIZE);
+    const groundCheckY = Math.floor((enemy.y + SCORPION_HEIGHT + 1) / TILE_SIZE);
+
+    // Check for wall ahead
     let hitWall = false;
-    const enemyBottom = enemy.y + ENEMY_HEIGHT;
-    const enemyTileY = Math.floor(enemyBottom / TILE_SIZE);
+    for (let y = enemy.y; y < enemy.y + SCORPION_HEIGHT; y += 4) {
+      const tileId = getTileAt(checkX, y);
+      if (isSolidTile(tileId)) {
+        hitWall = true;
+        break;
+      }
+    }
 
-    // Check if enemy is at edge of platform
-    const nextX = enemy.x + (enemy.vx > 0 ? ENEMY_WIDTH : -ENEMY_WIDTH);
-    const nextTileX = Math.floor(nextX / TILE_SIZE);
+    // Check if there's no ground ahead (edge of platform)
+    let noGroundAhead = false;
+    if (enemy.onGround && groundCheckTileX >= 0 && groundCheckTileX < TILES_X && groundCheckY < TILES_Y) {
+      const groundTile = gameState.tilemap[groundCheckY][groundCheckTileX];
+      if (groundTile === TILE_EMPTY) {
+        noGroundAhead = true;
+      }
+    }
 
-    // Reverse if at world edge or no platform ahead
-    if (nextX <= 0 || nextX >= WORLD_WIDTH - ENEMY_WIDTH ||
-        nextTileX < 0 || nextTileX >= TILES_X ||
-        !gameState.tilemap[enemyTileY] ||
-        gameState.tilemap[enemyTileY][nextTileX] === TILE_EMPTY) {
+    // Reverse if hitting wall, edge, or world bounds
+    if (hitWall || noGroundAhead || enemy.x <= 0 || enemy.x >= WORLD_WIDTH - SCORPION_WIDTH) {
       enemy.vx *= -1;
     }
+  }
+
+  // Update bats with sine wave flight pattern
+  for (const bat of gameState.bats) {
+    if (bat.health <= 0) continue;
+
+    // Horizontal movement
+    bat.x += bat.vx * dt;
+
+    // Sine wave vertical movement
+    bat.phase += dt * 3; // Control wave speed
+    bat.y = bat.y + Math.sin(bat.phase) * 0.5; // Subtle up/down oscillation
+
+    // Reverse direction at world bounds
+    if (bat.x <= 0 || bat.x >= WORLD_WIDTH - SPRITE_SIZE) {
+      bat.vx *= -1;
+    }
+
+    // Keep bats in vertical bounds
+    if (bat.y < 16) bat.y = 16;
+    if (bat.y > 80) bat.y = 80;
   }
 
   // Update projectiles with deltaTime
@@ -688,11 +839,11 @@ function update(deltaTime, input) {
     // Remove if out of bounds or expired
     if (proj.x < 0 || proj.x > WORLD_WIDTH || proj.life <= 0) return false;
 
-    // Check collision with enemies
+    // Check collision with scorpions
     for (const enemy of gameState.enemies) {
       if (enemy.health > 0 &&
-          proj.x + PROJECTILE_SIZE > enemy.x && proj.x < enemy.x + ENEMY_WIDTH &&
-          proj.y + PROJECTILE_SIZE > enemy.y && proj.y < enemy.y + ENEMY_HEIGHT) {
+          proj.x + PROJECTILE_SIZE > enemy.x && proj.x < enemy.x + SCORPION_WIDTH &&
+          proj.y + PROJECTILE_SIZE > enemy.y && proj.y < enemy.y + SCORPION_HEIGHT) {
         enemy.health--;
         if (enemy.health <= 0) {
           gameState.score += ENEMY_KILL_SCORE;
@@ -715,6 +866,28 @@ function update(deltaTime, input) {
             duration: 0.1,
             volume: 0.4,
             envelope: 'sharp'
+          });
+        }
+        return false;
+      }
+    }
+
+    // Check collision with bats
+    for (const bat of gameState.bats) {
+      if (bat.health > 0 &&
+          proj.x + PROJECTILE_SIZE > bat.x && proj.x < bat.x + SPRITE_SIZE &&
+          proj.y + PROJECTILE_SIZE > bat.y && proj.y < bat.y + SPRITE_SIZE) {
+        bat.health--;
+        if (bat.health <= 0) {
+          gameState.score += ENEMY_KILL_SCORE;
+          // Bat death sound
+          sounds.push({
+            slotId: 2,
+            channel: 'noise',
+            mode: 'random',
+            duration: 0.3,
+            volume: 0.5,
+            envelope: 'fade'
           });
         }
         return false;
@@ -799,51 +972,71 @@ function update(deltaTime, input) {
     }
   }
 
-  // Render coins
+  // Render treasure
   for (const coin of gameState.coins) {
     if (!coin.collected) {
       sprites.push({
-        spriteId: SPRITE_COIN,
+        spriteId: SPRITE_TREASURE,
         x: coin.x,
         y: coin.y
       });
     }
   }
 
-  // Render wizard (2-sprite character)
+  // Render explorer (2-sprite character)
   sprites.push({
-    spriteId: SPRITE_WIZARD_HEAD,
+    spriteId: SPRITE_EXPLORER_HEAD,
     x: gameState.player.x,
     y: gameState.player.y
   });
   sprites.push({
-    spriteId: SPRITE_WIZARD_BODY,
+    spriteId: SPRITE_EXPLORER_BODY,
     x: gameState.player.x,
     y: gameState.player.y + SPRITE_SIZE
   });
 
-  // Render enemies (2-sprite characters)
+  // Render scorpions (2 sprites wide)
   for (const enemy of gameState.enemies) {
     if (enemy.health > 0) {
       sprites.push({
-        spriteId: SPRITE_ENEMY_HEAD,
+        spriteId: SPRITE_SCORPION_FRONT,
         x: enemy.x,
         y: enemy.y
       });
       sprites.push({
-        spriteId: SPRITE_ENEMY_BODY,
-        x: enemy.x,
-        y: enemy.y + SPRITE_SIZE
+        spriteId: SPRITE_SCORPION_BACK,
+        x: enemy.x + SPRITE_SIZE,
+        y: enemy.y
       });
     }
   }
 
-  // Render projectiles
+  // Render bats (single sprite)
+  for (const bat of gameState.bats) {
+    if (bat.health > 0) {
+      sprites.push({
+        spriteId: SPRITE_BAT,
+        x: bat.x,
+        y: bat.y
+      });
+    }
+  }
+
+  // Render torches
   for (const proj of gameState.projectiles) {
     sprites.push({
-      spriteId: SPRITE_PROJECTILE,
+      spriteId: SPRITE_TORCH,
       x: proj.x,
       y: proj.y
+    });
+  }
+
+  // Render health hearts (fixed position on screen, adjusted for camera scroll)
+  for (let i = 0; i < gameState.player.health; i++) {
+    sprites.push({
+      spriteId: SPRITE_HEART,
+      x: gameState.camera.x + 2 + (i * 10), // Position relative to camera
+      y: 2
     });
   }
 
