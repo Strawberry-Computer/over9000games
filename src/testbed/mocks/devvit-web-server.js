@@ -130,10 +130,11 @@ export function createServer(app) {
       for (const postIdObj of postIds) {
         const postId = typeof postIdObj === 'object' ? postIdObj.value : postIdObj;
 
-        const [title, created, creator] = await Promise.all([
+        const [title, created, creator, screenshot] = await Promise.all([
           client.get(`post:${postId}:title`),
           client.get(`post:${postId}:created`),
-          client.get(`post:${postId}:creator`)
+          client.get(`post:${postId}:creator`),
+          client.get(`post:${postId}:screenshot`)
         ]);
 
         // Get comment count for this post
@@ -146,6 +147,7 @@ export function createServer(app) {
             created,
             creator,
             commentCount,
+            screenshot,
             url: `/r/testbed/comments/${postId}`,
             isTestGame: false
           });
@@ -521,6 +523,32 @@ function generateSubredditHTML(games) {
       display: flex;
       gap: 12px;
     }
+    .post-thumbnail {
+      width: 120px;
+      height: 120px;
+      flex-shrink: 0;
+      background: #000;
+      border: 2px solid #343536;
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .post-thumbnail img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      image-rendering: pixelated;
+    }
+    .post-thumbnail.placeholder {
+      background: linear-gradient(135deg, #1a1a1b 25%, #262626 25%, #262626 50%, #1a1a1b 50%, #1a1a1b 75%, #262626 75%);
+      background-size: 20px 20px;
+      color: #818384;
+      font-size: 12px;
+      font-weight: 600;
+    }
     .post-title {
       font-size: 18px;
       font-weight: 600;
@@ -590,6 +618,15 @@ function generateSubredditHTML(games) {
         <div class="post ${game.isTestGame ? 'test-game' : ''}">
           <a href="${game.url}" style="text-decoration: none; color: inherit;">
             <div class="post-content">
+              ${game.screenshot ? `
+                <div class="post-thumbnail">
+                  <img src="${game.screenshot}" alt="${escapeHtml(game.title)}" />
+                </div>
+              ` : `
+                <div class="post-thumbnail placeholder">
+                  ${game.isTestGame ? 'TEST' : 'NO IMAGE'}
+                </div>
+              `}
               <div style="flex: 1;">
                 <div class="post-title">
                   ${game.isTestGame ? '<span class="test-badge">TEST</span>' : ''}
@@ -909,14 +946,22 @@ export const reddit = {
       const now = new Date().toISOString();
       const creator = context.userId || 'testuser';
 
-      // Store post metadata
-      await Promise.all([
+      // Store post metadata including screenshot from splash
+      const promises = [
         client.set(`post:${postId}:title`, title),
         client.set(`post:${postId}:created`, now),
         client.set(`post:${postId}:creator`, creator),
         // Add to sorted set for feed listing (score = timestamp for reverse chronological order)
         redis.zAdd(`testbed:posts`, { score: Date.now(), member: postId })
-      ]);
+      ];
+
+      // Store screenshot if provided in splash
+      if (splash?.backgroundUri) {
+        promises.push(client.set(`post:${postId}:screenshot`, splash.backgroundUri));
+        console.log('[TESTBED] Storing screenshot for post:', postId, 'size:', splash.backgroundUri.length);
+      }
+
+      await Promise.all(promises);
       console.log('[TESTBED] Stored post metadata for:', postId);
     } catch (err) {
       console.error('[TESTBED] Error storing post metadata:', err);
