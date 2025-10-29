@@ -355,6 +355,12 @@ function hideAllModals() {
     commentButton.classList.remove("disabled");
   }
 
+  const skipButton = document.getElementById("btn-skip-comment");
+  if (skipButton) {
+    skipButton.disabled = false;
+    skipButton.classList.remove("disabled");
+  }
+
   // Hide status messages
   generationStatusElement.style.display = "none";
   publishingStatusElement.style.display = "none";
@@ -907,7 +913,6 @@ async function postHighScoreComment() {
 
 // Event Listeners
 document.getElementById("btn-new-game")?.addEventListener("click", () => {
-  resetGameState();
   showGameCreation();
 });
 
