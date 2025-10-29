@@ -277,48 +277,33 @@ const SPRITE_HEART = 13;
 const SPRITE_EXPLORER_BODY_HURT = 14;   // Damage recoil pose
 const SPRITE_EXPLORER_BODY_DEATH = 15;  // Death/collapsed pose
 
-// Death melody - sad descending notes played when player dies
-const DEATH_MELODY = [
-  {note: 'C4', duration: 0.4},
-  {note: 'B3', duration: 0.4},
-  {note: 'A3', duration: 0.4},
-  {note: 'G3', duration: 0.6},
-  {note: 'F3', duration: 0.8}
-];
+// Helper function to parse concise melody strings
+// Format: "NOTE:DURATION NOTE:DURATION ..." where - or r = rest (silence)
+// Example: "C4:0.5 -:0.25 E4:0.5 G4:0.25" = C note, rest, E note, G note
+function parseMelody(str) {
+  return str.split(' ').map(token => {
+    const [noteStr, durStr] = token.split(':');
+    const duration = parseFloat(durStr) || 0.25;
+
+    // Check for rest (pause/silence)
+    if (noteStr === '-' || noteStr === 'r') {
+      return { note: null, duration }; // null note = rest
+    }
+
+    return { note: noteStr, duration };
+  });
+}
+
+// Death melody - sad descending notes with pauses
+const DEATH_MELODY = parseMelody("C4:0.4 -:0.1 B3:0.4 -:0.1 A3:0.4 -:0.1 G3:0.6 -:0.1 F3:0.8");
 
 // Background music - NES style two-channel adventure theme
 const MUSIC = {
-  bass: [ // Triangle channel - walking bass line with chord progression
-    {note: 'C2', duration: 0.4}, {note: 'C2', duration: 0.4}, {note: 'E2', duration: 0.4},
-    {note: 'G2', duration: 0.4}, {note: 'G2', duration: 0.4}, {note: 'B2', duration: 0.4},
-    {note: 'A2', duration: 0.4}, {note: 'A2', duration: 0.4}, {note: 'C3', duration: 0.4},
-    {note: 'F2', duration: 0.4}, {note: 'F2', duration: 0.4}, {note: 'A2', duration: 0.4},
-    {note: 'E2', duration: 0.4}, {note: 'E2', duration: 0.4}, {note: 'G2', duration: 0.4},
-    {note: 'D2', duration: 0.4}, {note: 'D2', duration: 0.4}, {note: 'F2', duration: 0.4},
-    {note: 'C2', duration: 0.4}, {note: 'C2', duration: 0.4}, {note: 'E2', duration: 0.4},
-    {note: 'G2', duration: 0.6}, {note: 'F2', duration: 0.6}, {note: 'E2', duration: 0.6}
-  ],
-  melody: [ // Pulse channel - epic adventure melody with variation
-    // Phrase 1: Opening motif
-    {note: 'E4', duration: 0.2}, {note: 'E4', duration: 0.2}, {note: 'E4', duration: 0.4},
-    {note: 'G4', duration: 0.2}, {note: 'E4', duration: 0.2}, {note: 'C4', duration: 0.4},
-    {note: 'E4', duration: 0.2}, {note: 'G4', duration: 0.2}, {note: 'C5', duration: 0.6},
+  // Triangle channel - walking bass line with chord progression and rests
+  bass: parseMelody("C2:0.4 -:0.05 C2:0.4 E2:0.4 G2:0.4 -:0.05 G2:0.4 B2:0.4 A2:0.4 -:0.05 A2:0.4 C3:0.4 F2:0.4 -:0.05 F2:0.4 A2:0.4 E2:0.4 -:0.05 E2:0.4 G2:0.4 D2:0.4 -:0.05 D2:0.4 F2:0.4 C2:0.4 -:0.05 C2:0.4 E2:0.4 G2:0.6 -:0.1 F2:0.6 -:0.1 E2:0.6"),
 
-    // Phrase 2: Development
-    {note: 'B4', duration: 0.2}, {note: 'B4', duration: 0.2}, {note: 'B4', duration: 0.4},
-    {note: 'A4', duration: 0.2}, {note: 'G4', duration: 0.2}, {note: 'E4', duration: 0.4},
-    {note: 'G4', duration: 0.2}, {note: 'A4', duration: 0.2}, {note: 'B4', duration: 0.6},
-
-    // Phrase 3: Climax
-    {note: 'C5', duration: 0.2}, {note: 'D5', duration: 0.2}, {note: 'E5', duration: 0.4},
-    {note: 'D5', duration: 0.2}, {note: 'C5', duration: 0.2}, {note: 'B4', duration: 0.4},
-    {note: 'A4', duration: 0.2}, {note: 'B4', duration: 0.2}, {note: 'C5', duration: 0.6},
-
-    // Phrase 4: Resolution
-    {note: 'G4', duration: 0.2}, {note: 'E4', duration: 0.2}, {note: 'D4', duration: 0.4},
-    {note: 'E4', duration: 0.2}, {note: 'F4', duration: 0.2}, {note: 'G4', duration: 0.4},
-    {note: 'E4', duration: 0.4}, {note: 'C4', duration: 0.8}
-  ]
+  // Pulse channel - epic adventure melody with rests for phrasing
+  melody: parseMelody("E4:0.2 E4:0.2 E4:0.4 -:0.1 G4:0.2 E4:0.2 C4:0.4 -:0.1 E4:0.2 G4:0.2 C5:0.6 -:0.2 B4:0.2 B4:0.2 B4:0.4 -:0.1 A4:0.2 G4:0.2 E4:0.4 -:0.1 G4:0.2 A4:0.2 B4:0.6 -:0.2 C5:0.2 D5:0.2 E5:0.4 -:0.1 D5:0.2 C5:0.2 B4:0.4 -:0.1 A4:0.2 B4:0.2 C5:0.6 -:0.2 G4:0.2 E4:0.2 D4:0.4 -:0.1 E4:0.2 F4:0.2 G4:0.4 -:0.1 E4:0.4 C4:0.8")
 };
 
 let gameState;
@@ -426,16 +411,18 @@ function update(deltaTime, input) {
         gameState.player.deathMusicIndex++;
         gameState.player.deathMusicTimer = 0;
       }
-      // Play current note
-      sounds.push({
-        slotId: 4,
-        soundId: `death_${gameState.player.deathMusicIndex}`,
-        channel: 'pulse1',
-        note: currentNote.note,
-        duration: currentNote.duration,
-        volume: 0.4,
-        envelope: 'soft'
-      });
+      // Play current note (only if not a rest)
+      if (currentNote.note !== null) {
+        sounds.push({
+          slotId: 4,
+          soundId: `death_${gameState.player.deathMusicIndex}`,
+          channel: 'pulse1',
+          note: currentNote.note,
+          duration: currentNote.duration,
+          volume: 0.4,
+          envelope: 'soft'
+        });
+      }
     }
 
     // During death animation, apply gravity but check for ground collision
@@ -1146,25 +1133,30 @@ function update(deltaTime, input) {
     }
 
     // Add music to sounds (slots 4-5 reserved for music)
-    sounds.push({
-      slotId: 4,
-      soundId: `bass_${gameState.music.bass.index}`,
-      channel: 'triangle',
-      note: bassNote.note,
-      duration: bassNote.duration,
-      volume: 0.2,
-      envelope: 'sustain'
-    });
+    // Only play notes that aren't rests (null)
+    if (bassNote.note !== null) {
+      sounds.push({
+        slotId: 4,
+        soundId: `bass_${gameState.music.bass.index}`,
+        channel: 'triangle',
+        note: bassNote.note,
+        duration: bassNote.duration,
+        volume: 0.2,
+        envelope: 'sustain'
+      });
+    }
 
-    sounds.push({
-      slotId: 5,
-      soundId: `melody_${gameState.music.melody.index}`,
-      channel: 'pulse1',
-      note: melodyNote.note,
-      duration: melodyNote.duration,
-      volume: 0.25,
-      envelope: 'soft'
-    });
+    if (melodyNote.note !== null) {
+      sounds.push({
+        slotId: 5,
+        soundId: `melody_${gameState.music.melody.index}`,
+        channel: 'pulse1',
+        note: melodyNote.note,
+        duration: melodyNote.duration,
+        volume: 0.25,
+        envelope: 'soft'
+      });
+    }
   }
 
   // Build render commands (new grouped format)
