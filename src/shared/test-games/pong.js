@@ -200,6 +200,22 @@ function update(deltaTime, input) {
     gameState.gameOver = true;
   }
 
+  // Helper function to convert text to font tiles
+  function textToTiles(text, startX, y) {
+    return text.split('').map((char, i) => ({
+      x: startX + i,
+      y: y,
+      tileId: 0x100 + char.charCodeAt(0)
+    }));
+  }
+
+  // Create HUD tiles with score display
+  const scoreText = gameState.score.toString();
+  const tiles = [
+    ...textToTiles("SCORE:", 1, 0),
+    ...textToTiles(scoreText, 8, 0)
+  ];
+
   // Return grouped commands
   return {
     sprites: [
@@ -252,6 +268,7 @@ function update(deltaTime, input) {
         y: gameState.ball.y
       }
     ],
+    tiles: tiles,
     score: gameState.score,
     gameOver: gameState.gameOver,
     sounds: sounds

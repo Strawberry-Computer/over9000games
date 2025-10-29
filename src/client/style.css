@@ -775,3 +775,104 @@ body.force-mobile .keyboard-bindings {
   outline: 2px solid var(--nes-yellow);
   outline-offset: 2px;
 }
+
+/* Testbed Homepage Styles */
+.testbed-homepage {
+  width: 100%;
+  min-height: 400px;
+  padding: 20px;
+  background: var(--nes-black);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.homepage-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.homepage-header h1 {
+  font-size: 16px;
+  color: var(--nes-yellow);
+  margin-bottom: 15px;
+  text-shadow: 2px 2px 0 var(--nes-red);
+}
+
+.homepage-header p {
+  font-size: 8px;
+  color: var(--nes-cyan);
+}
+
+.test-game-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  width: 100%;
+  max-width: 800px;
+}
+
+.test-game-card {
+  background: var(--nes-dark-gray);
+  border: 3px solid var(--nes-white);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.1s ease;
+}
+
+.test-game-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--nes-yellow);
+  box-shadow: 0 4px 0 var(--nes-shadow);
+}
+
+.test-game-card h3 {
+  font-size: 10px;
+  color: var(--nes-green);
+  margin-bottom: 10px;
+}
+
+.test-game-card p {
+  font-size: 7px;
+  color: var(--nes-light-gray);
+  line-height: 1.6;
+  flex-grow: 1;
+  color: #ccc;
+}
+
+.test-game-card .play-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--nes-red);
+  border: 2px solid var(--nes-white);
+  color: var(--nes-white);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.test-game-card .play-btn:hover {
+  background: var(--nes-yellow);
+  color: var(--nes-black);
+  transform: scale(1.05);
+}
+
+.test-game-card .play-btn:active {
+  transform: scale(0.98);
+  box-shadow: inset 2px 2px 0 rgba(0,0,0,0.3);
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+  .test-game-gallery {
+    grid-template-columns: 1fr;
+  }
+
+  .homepage-header h1 {
+    font-size: 12px;
+  }
+}

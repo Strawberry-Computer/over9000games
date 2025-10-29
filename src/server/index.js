@@ -31,11 +31,57 @@ const router = express.Router();
 router.get("/api/init", async (_req, res) => {
   const { postId } = context;
 
-  if (!postId) {
-    console.error("API Init Error: postId not found in devvit context");
-    res.status(400).json({
-      status: "error",
-      message: "postId is required but missing from context",
+  // Handle test game postIds (e.g., test_pong)
+  if (postId && postId.startsWith('test_')) {
+    const gameName = postId.replace('test_', '');
+    console.log(`Loading test game: ${gameName}`);
+
+    try {
+      const gameCode = getTestGameCode(gameName);
+      const username = await reddit.getCurrentUsername();
+
+      res.json({
+        type: "init",
+        postId: postId,
+        username: username ?? "anonymous",
+        gameDefinition: {
+          gameCode,
+          isPublished: false // Test games are not published
+        }
+      });
+      return;
+    } catch (error) {
+      console.error(`Error loading test game ${gameName}:`, error);
+      res.status(400).json({
+        status: "error",
+        message: `Test game not found: ${gameName}`
+      });
+      return;
+    }
+  }
+
+  // Testbed/homepage mode - return test game gallery (legacy, not used anymore)
+  if (!postId || postId === "testbed" || postId === "homepage") {
+    console.log("Testbed mode detected - returning test game gallery");
+
+    // Get available test games dynamically
+    const availableGames = getAvailableTestGames();
+    const testGames = availableGames.map(name => {
+      // Get game code to extract metadata
+      const gameCode = getTestGameCode(name);
+
+      // Parse metadata from game code (look for metadata() function)
+      const metadataMatch = gameCode.match(/return\s*{[\s\S]*?title:\s*["']([^"']+)["'][\s\S]*?description:\s*["']([^"']+)["']/);
+
+      const title = metadataMatch ? metadataMatch[1] : name.charAt(0).toUpperCase() + name.slice(1);
+      const description = metadataMatch ? metadataMatch[2] : `Test game: ${name}`;
+
+      return { name, title, description };
+    });
+
+    res.json({
+      type: "homepage",
+      testGames
     });
     return;
   }

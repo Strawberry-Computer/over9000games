@@ -1,6 +1,6 @@
 import { getQuickJS } from "quickjs-emscripten";
 import { validateGameSchema, sanitizeGameDefinition } from "../shared/game-schema.js";
-import { renderBitmapText, renderCenteredBitmapText } from "./bitmap-font.js";
+import { renderBitmapText, renderCenteredBitmapText, generateFontTileSprites } from "./bitmap-font.js";
 import { AudioManager } from "./audio/audio-manager.js";
 
 // Unified game state enum
@@ -411,14 +411,28 @@ function doUpdate(deltaTime, input) {
   preRenderSprites() {
     if (!this.gameDefinition) return;
 
+    // Sprite sheet is 128×256 (supports IDs 0-511)
     this.spriteCtx.fillStyle = '#000000';
-    this.spriteCtx.fillRect(0, 0, 128, 128);
+    this.spriteCtx.fillRect(0, 0, 128, 256);
 
+    // Render game sprites (typically IDs 0-63)
     if (Array.isArray(this.gameDefinition.sprites)) {
       this.gameDefinition.sprites.forEach((sprite, index) => {
         this.renderSpriteToSheet(sprite, index);
       });
     }
+
+    // Pre-render font tiles (IDs 0x100+)
+    this.preRenderFontTiles();
+  }
+
+  preRenderFontTiles() {
+    // Generate font sprites using palette color 1 (typically white)
+    const fontTiles = generateFontTileSprites(1);
+
+    fontTiles.forEach(({tileId, sprite}) => {
+      this.renderSpriteToSheet(sprite, tileId);
+    });
   }
 
   renderSpriteToSheet(sprite, index) {

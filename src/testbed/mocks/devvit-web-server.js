@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
 import { context } from './express-wrapper.js';
+import { getTestGameCode, getAvailableTestGames } from '../../shared/test-games/server-loader.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientPath = path.resolve(__dirname, '../../../dist/client');
@@ -101,10 +102,31 @@ export function createServer(app) {
     try {
       const client = await getRedisClient();
 
-      // Get all posts sorted by creation time (newest first)
+      // Get test games from server-loader
+      const testGameNames = getAvailableTestGames();
+      const testGames = testGameNames.map(name => {
+        const gameCode = getTestGameCode(name);
+        // Parse metadata from game code
+        const metadataMatch = gameCode.match(/return\s*{[\s\S]*?title:\s*["']([^"']+)["'][\s\S]*?description:\s*["']([^"']+)["']/);
+        const title = metadataMatch ? metadataMatch[1] : name.charAt(0).toUpperCase() + name.slice(1);
+        const description = metadataMatch ? metadataMatch[2] : `Test game: ${name}`;
+
+        return {
+          postId: `test_${name}`,
+          title: `[TEST] ${title}`,
+          description,
+          created: new Date().toISOString(),
+          creator: 'system',
+          commentCount: 0,
+          url: `/r/testbed/comments/test_${name}`,
+          isTestGame: true
+        };
+      });
+
+      // Get all user posts sorted by creation time (newest first)
       const postIds = await client.zRange('testbed:posts', 0, -1, { REV: true });
 
-      const games = [];
+      const userGames = [];
       for (const postIdObj of postIds) {
         const postId = typeof postIdObj === 'object' ? postIdObj.value : postIdObj;
 
@@ -118,18 +140,22 @@ export function createServer(app) {
         const commentCount = await redis.zCard(`comments:${postId}:ids`) || 0;
 
         if (title) {
-          games.push({
+          userGames.push({
             postId,
             title,
             created,
             creator,
             commentCount,
-            url: `/r/testbed/comments/${postId}`
+            url: `/r/testbed/comments/${postId}`,
+            isTestGame: false
           });
         }
       }
 
-      const html = generateSubredditHTML(games);
+      // Combine test games (pinned at top) with user games
+      const allGames = [...testGames, ...userGames];
+
+      const html = generateSubredditHTML(allGames);
       res.setHeader('Content-Type', 'text/html');
       res.send(html);
 
@@ -143,8 +169,21 @@ export function createServer(app) {
   app.get('/r/:subreddit/comments/:postId', (req, res) => {
     const { postId } = req.params;
     console.log(`[TESTBED] Loading game: ${postId}`);
-    // Set context for this specific request
-    context.postId = postId;
+
+    // Handle test game postIds (e.g., test_pong)
+    if (postId.startsWith('test_')) {
+      const gameName = postId.replace('test_', '');
+      console.log(`[TESTBED] Test game detected: ${gameName}`);
+      // Set context but mark as test game
+      context.postId = postId;
+      context.isTestGame = true;
+      context.testGameName = gameName;
+    } else {
+      // Regular user game
+      context.postId = postId;
+      context.isTestGame = false;
+    }
+
     serveClient(res);
   });
 
@@ -458,6 +497,25 @@ function generateSubredditHTML(games) {
       border-color: #818384;
       background: #262626;
     }
+    .post.test-game {
+      background: #1a2a1b;
+      border: 2px solid #00ff00;
+      box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+    }
+    .post.test-game:hover {
+      background: #223326;
+      border-color: #00ff00;
+    }
+    .test-badge {
+      display: inline-block;
+      background: #00ff00;
+      color: #000;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
     .post-content {
       padding: 12px 16px;
       display: flex;
@@ -529,11 +587,15 @@ function generateSubredditHTML(games) {
           <p>Create and publish your first game!</p>
         </div>
       ` : games.map(game => `
-        <div class="post">
+        <div class="post ${game.isTestGame ? 'test-game' : ''}">
           <a href="${game.url}" style="text-decoration: none; color: inherit;">
             <div class="post-content">
               <div style="flex: 1;">
-                <div class="post-title">${escapeHtml(game.title)}</div>
+                <div class="post-title">
+                  ${game.isTestGame ? '<span class="test-badge">TEST</span>' : ''}
+                  ${escapeHtml(game.title)}
+                </div>
+                ${game.description ? `<div style="font-size: 12px; color: #818384; margin-bottom: 8px;">${escapeHtml(game.description)}</div>` : ''}
                 <div class="post-meta">
                   Posted by <strong>u/${escapeHtml(game.creator)}</strong> • ${formatTime(game.created)}
                 </div>

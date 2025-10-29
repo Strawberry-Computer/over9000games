@@ -61,7 +61,11 @@ async function fetchInitialData() {
     }
     const data = await response.json();
 
-    if (data.type === "init") {
+    if (data.type === "homepage") {
+      // Testbed mode - render test game gallery
+      console.log("Testbed mode - rendering game gallery");
+      renderHomepage(data.testGames);
+    } else if (data.type === "init") {
       currentPostId = data.postId;
       currentUsername = data.username;
       currentHighScores = data.highScores;
@@ -88,6 +92,55 @@ async function fetchInitialData() {
     console.error("Error fetching initial data:", error);
     gameRunner.showMessage("Connection error", "ERROR");
   }
+}
+
+function renderHomepage(testGames) {
+  // Hide action buttons (not needed in homepage mode)
+  document.querySelector(".action-bar").style.display = "none";
+
+  // Create homepage UI
+  const consoleScreen = document.getElementById("console-screen");
+  consoleScreen.innerHTML = `
+    <div class="testbed-homepage">
+      <div class="homepage-header">
+        <h1>RES-9000 TEST GAMES</h1>
+        <p>Select a game to test font tile rendering</p>
+      </div>
+      <div class="test-game-gallery">
+        ${testGames.map(game => `
+          <div class="test-game-card" data-game="${game.name}">
+            <h3>${game.title}</h3>
+            <p>${game.description}</p>
+            <button class="play-btn">PLAY</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  // Add click handlers for play buttons
+  document.querySelectorAll('.test-game-card').forEach(card => {
+    card.querySelector('.play-btn').addEventListener('click', () => {
+      const gameName = card.dataset.game;
+      loadTestGameFromHomepage(gameName);
+    });
+  });
+}
+
+async function loadTestGameFromHomepage(gameName) {
+  // Restore normal UI
+  const consoleScreen = document.getElementById("console-screen");
+  consoleScreen.innerHTML = `
+    <canvas id="console-canvas" width="128" height="128"></canvas>
+    <canvas id="sprite-canvas" width="128" height="256" style="display: none;"></canvas>
+  `;
+  document.querySelector(".action-bar").style.display = "flex";
+
+  // Reinitialize game runner with new canvases
+  gameRunner = getGameRunner("console-canvas", "sprite-canvas");
+
+  // Load the test game
+  await loadTestGame(gameName);
 }
 
 

@@ -30,7 +30,15 @@ function getRequirementsSection() {
 - **Sprite format**: \`["row0", "row1", ..., "row7"]\` where each row is an 8-character hex string
 - **Hex format**: Each character (0-F) represents the palette index for that pixel
 - **Color options**: Use palette indices 0-15, where 0 is typically transparent/background
-- **update() returns**: Command object: \`{sprites: [{spriteId: 0, x: 10, y: 20}], score: 100, gameOver: true, sounds: [...]}\`
+- **update() returns**: Command object: \`{sprites: [{spriteId: 0, x: 10, y: 20}], tiles: [{x: 1, y: 0, tileId: 0x141}], score: 100, gameOver: true, sounds: [...]}\`
+- **Font Tiles (for text display)**: Built-in font characters available as tiles
+  - Formula: tileId = 0x100 + ASCII code of character
+  - Letters: 'A' = 0x141, 'B' = 0x142, ..., 'Z' = 0x15A
+  - Numbers: '0' = 0x130, '1' = 0x131, ..., '9' = 0x139
+  - Space/punctuation: ' ' = 0x120, '!' = 0x121, ':' = 0x13A, '-' = 0x12D, etc.
+  - Example HUD: \`tiles: [{x: 1, y: 0, tileId: 0x123}, {x: 2, y: 0, tileId: 0x10C}]\` renders "SC" at top-left
+  - Helper to convert text: \`text.split('').map((c, i) => ({x: startX + i, y: 0, tileId: 0x100 + c.charCodeAt(0)}))\`
+  - Use for: score display, lives counter, level indicators, game over text
 - **Scoring**: Always include a score system - return current score as a number in update()
 - **Game Over**: Include win/lose conditions - return gameOver: true when game ends
 - **Module-level gameState**: Use \`let gameState;\` not globalThis
