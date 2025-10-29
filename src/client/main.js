@@ -887,10 +887,22 @@ const handleRestart = async () => {
 };
 document.getElementById("btn-restart-game")?.addEventListener("click", handleRestart);
 
-// Pause button handler
+// START button handler - handles pause/resume and restart from game over
 document.getElementById("btn-pause")?.addEventListener("click", () => {
-  if (gameRunner) {
-    gameRunner.togglePause();
+  if (!gameRunner) return;
+
+  if (gameRunner.state.gameOver) {
+    // Restart game when game is over
+    gameRunner.restartGame();
+  } else if (gameRunner.state.showLeaderboard || gameRunner.state.gamePaused) {
+    // Resume game if paused or showing leaderboard
+    gameRunner.resumeGame();
+  } else {
+    // Pause game and show leaderboard
+    gameRunner.pauseGame();
+    if (window.loadLeaderboard) {
+      window.loadLeaderboard();
+    }
   }
 });
 

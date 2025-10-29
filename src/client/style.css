@@ -266,14 +266,11 @@ body {
 }
 
 .start-container {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  justify-content: center;
+  gap: 4px;
 }
 
 .start-label {
@@ -286,20 +283,20 @@ body {
 
 .pause-btn {
   background: var(--nes-dark-gray);
-  width: 40px !important;
-  height: 16px !important;
-  border-radius: 8px;
-  border-top: 2px solid var(--nes-light-gray);
-  border-left: 2px solid var(--nes-light-gray);
-  border-right: 2px solid var(--nes-shadow);
-  border-bottom: 2px solid var(--nes-shadow);
+  width: 60px !important;
+  height: 28px !important;
+  border-radius: 14px;
+  border-top: 3px solid var(--nes-light-gray);
+  border-left: 3px solid var(--nes-light-gray);
+  border-right: 3px solid var(--nes-shadow);
+  border-bottom: 3px solid var(--nes-shadow);
 }
 
 .pause-btn:active {
-  border-top: 2px solid var(--nes-shadow);
-  border-left: 2px solid var(--nes-shadow);
-  border-right: 2px solid var(--nes-light-gray);
-  border-bottom: 2px solid var(--nes-light-gray);
+  border-top: 3px solid var(--nes-shadow);
+  border-left: 3px solid var(--nes-shadow);
+  border-right: 3px solid var(--nes-light-gray);
+  border-bottom: 3px solid var(--nes-light-gray);
   transform: translate(1px, 1px);
 }
 
@@ -618,8 +615,8 @@ body {
   }
 
   .pause-btn {
-    width: 36px !important;
-    height: 14px !important;
+    width: 52px !important;
+    height: 24px !important;
   }
 
   .game-btn {
@@ -670,8 +667,8 @@ body {
   }
 
   .pause-btn {
-    width: 32px !important;
-    height: 12px !important;
+    width: 48px !important;
+    height: 20px !important;
   }
 
   .game-btn {
