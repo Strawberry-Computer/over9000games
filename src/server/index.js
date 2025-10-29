@@ -581,10 +581,14 @@ router.post("/api/post/create", async (req, res) => {
       appDisplayName: "over9000games",
       appIconUri: "icon.png",
       heading: title,
-      description: message || `Play ${title} - AI generated retro game!`,
       buttonLabel: `Play ${title}`,
       height: 'tall'
     };
+
+    // Add description only if message is provided
+    if (message) {
+      splashConfig.description = message;
+    }
 
     // Upload screenshot to Reddit if provided
     if (screenshot) {

@@ -12,7 +12,6 @@ const devMenuElement = document.getElementById("dev-menu");
 
 const gameDescriptionElement = document.getElementById("game-description");
 const publishTitleElement = document.getElementById("publish-title");
-const publishMessageElement = document.getElementById("publish-message");
 const highScoreCommentElement = document.getElementById("high-score-comment");
 const commentMessageElement = document.getElementById("comment-message");
 
@@ -330,13 +329,11 @@ function hideAllModals() {
   // Clear forms
   gameDescriptionElement.value = "";
   publishTitleElement.value = "";
-  publishMessageElement.value = "";
   commentMessageElement.value = "";
 
   // Re-enable form elements
   gameDescriptionElement.disabled = false;
   publishTitleElement.disabled = false;
-  publishMessageElement.disabled = false;
   commentMessageElement.disabled = false;
 
   const generateButton = document.getElementById("btn-generate-game");
@@ -760,7 +757,6 @@ async function captureGameScreenshot() {
 
 async function publishGameToReddit() {
   const title = publishTitleElement.value.trim();
-  const message = publishMessageElement.value.trim();
 
   if (!title) {
     showPublishingStatus("Please give your game a title!", "error");
@@ -771,7 +767,6 @@ async function publishGameToReddit() {
   const publishButton = document.getElementById("btn-post-to-reddit");
 
   publishTitleElement.disabled = true;
-  publishMessageElement.disabled = true;
   publishButton.disabled = true;
   publishButton.classList.add("disabled");
 
@@ -790,7 +785,6 @@ async function publishGameToReddit() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title,
-        message: message || `Just created "${title}"! Try to beat my high score!`,
         gameDescription: currentGameData.description,
         gameCode: currentGameData.gameCode,
         screenshot: screenshot // Include screenshot data URI
@@ -820,7 +814,6 @@ async function publishGameToReddit() {
 
     // Re-enable form on error
     publishTitleElement.disabled = false;
-    publishMessageElement.disabled = false;
     publishButton.disabled = false;
     publishButton.classList.remove("disabled");
   }
@@ -1171,7 +1164,7 @@ function setupMobileKeyboardHandling() {
         if (generateButton && !generateButton.disabled) {
           generateButton.click();
         }
-      } else if (input === publishTitleElement || input === publishMessageElement) {
+      } else if (input === publishTitleElement) {
         const publishButton = document.getElementById('btn-post-to-reddit');
         if (publishButton && !publishButton.disabled) {
           publishButton.click();
