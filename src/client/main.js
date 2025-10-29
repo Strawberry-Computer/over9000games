@@ -82,7 +82,7 @@ async function fetchInitialData() {
         console.log("Game loaded and started successfully");
       } else {
         console.log("No game definition in init response");
-        gameRunner.showMessage("Generate a new game\nto start playing!", "NO GAME");
+        gameRunner.showMessage("Create a game\nto start!", "NO GAME");
       }
     } else {
       console.error("Invalid response type from /api/init", data);
@@ -394,7 +394,7 @@ function confirmNewGame() {
   // Stop the current game and show "NO GAME" message
   if (gameRunner) {
     gameRunner.stopGame({
-      message: "Generate a new game\nto start playing!",
+      message: "Create a game\nto start!",
       title: "NO GAME"
     });
   }
@@ -447,7 +447,7 @@ async function generateGame() {
     const endpoint = isEditMode ? "/api/game/edit" : "/api/game/generate";
     const requestBody = isEditMode
       ? { description, previousGame: currentGameData }
-      : { description, model: "gpt-5" }; // Default to GPT-5 for better quality
+      : { description }; // Server will select model based on subreddit
 
     showGenerationStatus("Starting generation...", "loading");
 
@@ -563,9 +563,6 @@ function startJobPolling(jobId) {
 async function handleGenerationComplete(gameDefinition) {
   try {
     if (isEditMode) {
-      // Save current version to history before updating
-      saveToEditHistory(currentGameData);
-
       // Store the edited game with the edit description
       currentGameData = {
         ...gameDefinition,
@@ -1100,13 +1097,6 @@ document.getElementById("btn-love-it")?.addEventListener("click", showGamePublis
 
 // Game modification event listeners (removed - buttons don't exist in current UI)
 
-// Game publishing event listeners
-document.getElementById("btn-post-to-reddit")?.addEventListener("click", publishGameToReddit);
-document.getElementById("btn-back-to-game")?.addEventListener("click", () => {
-  gamePublishingElement.style.display = "none";
-  document.body.classList.remove("game-publishing-active");
-});
-
 // High score comment event listeners
 document.getElementById("btn-post-comment")?.addEventListener("click", postHighScoreComment);
 document.getElementById("btn-skip-comment")?.addEventListener("click", hideAllModals);
@@ -1247,8 +1237,9 @@ function undoEdit() {
     updateEditButtons();
     localStorage.setItem('editHistory', JSON.stringify(editHistory));
 
-    // Restore the description in the textarea
-    gameDescriptionElement.value = currentGameData.description || "";
+    // Show the prompt that will take you to the NEXT version (not the prompt that created current version)
+    const nextVersion = editHistory.versions[editHistory.currentIndex + 1];
+    gameDescriptionElement.value = nextVersion?.description || currentGameData.description || "";
 
     // Reload the game with previous version (keep modal open)
     reloadGameInPlace();
@@ -1262,7 +1253,7 @@ function redoEdit() {
     updateEditButtons();
     localStorage.setItem('editHistory', JSON.stringify(editHistory));
 
-    // Restore the description in the textarea
+    // Show the prompt that created this version (the one we just redid to)
     gameDescriptionElement.value = currentGameData.description || "";
 
     // Reload the game with next version (keep modal open)
