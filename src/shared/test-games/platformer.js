@@ -13,6 +13,7 @@ function metadata() {
 function resources() {
   return {
     sprites: [
+      // NOTE: Sprite slots 2 and 5 are AVAILABLE for new sprites
       // Sprite 0: Wizard head with light gray face and cyan details
       [
         "00b66b00",
@@ -35,16 +36,16 @@ function resources() {
         "02444420",
         "00244200"
       ],
-      // Sprite 2: Wizard legs in green pants with blue boots
+      // Sprite 2: AVAILABLE - Empty placeholder (unused legacy wizard legs)
       [
-        "00133100",
-        "01333310",
-        "13311331",
-        "33111133",
-        "31144113",
-        "13311331",
-        "01333310",
-        "00133100"
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000"
       ],
       // Sprite 3: Enemy head with gray face and dark red hair
       [
@@ -68,16 +69,16 @@ function resources() {
         "08777780",
         "00877800"
       ],
-      // Sprite 5: Enemy legs with red pants and yellow accents
+      // Sprite 5: AVAILABLE - Empty placeholder (unused legacy enemy legs)
       [
-        "00922900",
-        "09222290",
-        "92255229",
-        "22555522",
-        "25511552",
-        "22555522",
-        "02222220",
-        "00922900"
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000"
       ],
       // Sprite 6: Gray stone platform tile with border details
       [
@@ -204,6 +205,10 @@ const PROJECTILE_LIFETIME = 1.0; // seconds
 const PLAYER_WALK_INTERVAL = 0.2; // seconds
 const ENEMY_WALK_INTERVAL = 0.3; // seconds
 
+// Camera dead zone (horizontal range where player can move without camera following)
+const CAMERA_DEAD_ZONE_LEFT = 40;  // Pixels from left edge of screen before camera moves left
+const CAMERA_DEAD_ZONE_RIGHT = 40; // Pixels from right edge of screen before camera moves right
+
 // Game limits
 const MAX_PROJECTILES = 3;
 
@@ -329,11 +334,18 @@ function update(deltaTime, input) {
       score: 0,
       gameOver: false,
       levelComplete: false,
+      camera: {
+        x: 0,  // Current camera position
+        targetX: 0  // Target camera position (where we want to be)
+      },
       music: {
         bass: {index: 0, timer: 0},
         melody: {index: 0, timer: 0}
       }
     };
+    // Initialize camera to player's starting position
+    gameState.camera.x = Math.max(0, Math.min(gameState.player.x - 64, WORLD_WIDTH - SCREEN_WIDTH));
+    gameState.camera.targetX = gameState.camera.x;
   }
 
   const dt = deltaTime; // Use deltaTime directly
@@ -835,13 +847,25 @@ function update(deltaTime, input) {
     });
   }
 
-  // Calculate scroll position (camera follows player, clamped to world bounds)
-  const scrollX = Math.max(0, Math.min(gameState.player.x - 64, WORLD_WIDTH - SCREEN_WIDTH));
+  // Camera dead zone logic - only move camera when player approaches screen edges
+  const playerScreenX = gameState.player.x - gameState.camera.x; // Player position relative to camera
+
+  // Check if player is outside the dead zone
+  if (playerScreenX < CAMERA_DEAD_ZONE_LEFT) {
+    // Player too far left, move camera left to keep them in dead zone
+    gameState.camera.x = gameState.player.x - CAMERA_DEAD_ZONE_LEFT;
+  } else if (playerScreenX + PLAYER_WIDTH > SCREEN_WIDTH - CAMERA_DEAD_ZONE_RIGHT) {
+    // Player too far right, move camera right to keep them in dead zone
+    gameState.camera.x = gameState.player.x + PLAYER_WIDTH - (SCREEN_WIDTH - CAMERA_DEAD_ZONE_RIGHT);
+  }
+
+  // Clamp camera to world bounds
+  gameState.camera.x = Math.max(0, Math.min(gameState.camera.x, WORLD_WIDTH - SCREEN_WIDTH));
 
   return {
     tiles,
     sprites,
-    scroll: { x: scrollX, y: 0 },
+    scroll: { x: Math.round(gameState.camera.x), y: 0 },
     score: gameState.gameOver ? 0 : gameState.score,
     gameOver: gameState.gameOver || gameState.levelComplete,
     sounds: sounds
