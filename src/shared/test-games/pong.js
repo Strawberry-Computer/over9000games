@@ -149,13 +149,35 @@ function update(deltaTime, input) {
   const player1Bottom = gameState.player1.y + PADDLE_HEIGHT;
   const player2Bottom = gameState.player2.y + PADDLE_HEIGHT;
 
-  if ((gameState.ball.x <= player1Right &&
-       ballBottom >= gameState.player1.y &&
-       gameState.ball.y <= player1Bottom) ||
-      (ballRight >= gameState.player2.x &&
-       ballBottom >= gameState.player2.y &&
-       gameState.ball.y <= player2Bottom)) {
-    gameState.ball.dx *= -1;
+  // Check collision with player 1 paddle (left side)
+  if (gameState.ball.dx < 0 && // Ball moving left
+      gameState.ball.x <= player1Right &&
+      ballRight >= gameState.player1.x &&
+      ballBottom >= gameState.player1.y &&
+      gameState.ball.y <= player1Bottom) {
+    gameState.ball.dx = Math.abs(gameState.ball.dx); // Always bounce right
+    gameState.ball.x = player1Right; // Move ball outside paddle
+    gameState.score += HIT_SCORE;
+    // Paddle hit sound
+    sounds.push({
+      slotId: 1,
+      soundId: 'hit',
+      channel: 'pulse1',
+      frequency: 400,
+      duration: 0.08,
+      volume: 0.5,
+      envelope: 'sharp'
+    });
+  }
+
+  // Check collision with player 2 paddle (right side)
+  if (gameState.ball.dx > 0 && // Ball moving right
+      ballRight >= gameState.player2.x &&
+      gameState.ball.x <= gameState.player2.x + PADDLE_WIDTH &&
+      ballBottom >= gameState.player2.y &&
+      gameState.ball.y <= player2Bottom) {
+    gameState.ball.dx = -Math.abs(gameState.ball.dx); // Always bounce left
+    gameState.ball.x = gameState.player2.x - BALL_SIZE; // Move ball outside paddle
     gameState.score += HIT_SCORE;
     // Paddle hit sound
     sounds.push({
