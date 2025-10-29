@@ -3,6 +3,14 @@ import { validateGameSchema, sanitizeGameDefinition } from "../shared/game-schem
 import { renderBitmapText, renderCenteredBitmapText } from "./bitmap-font.js";
 import { AudioManager } from "./audio/audio-manager.js";
 
+// Unified game state enum
+const GameState = {
+  STOPPED: 'stopped',    // No game loaded or game stopped
+  RUNNING: 'running',    // Game actively playing
+  PAUSED: 'paused',      // Game paused (shows leaderboard)
+  GAME_OVER: 'game_over' // Game ended (shows leaderboard with final score)
+};
+
 export class GameRunner {
   constructor(canvasId, spriteCanvasId) {
     this.canvas = document.getElementById(canvasId);
@@ -27,9 +35,9 @@ export class GameRunner {
       tiles: Array(MAX_TILES_Y).fill(null).map(() => Array(MAX_TILES_X).fill(-1)),
       backgroundColor: 0,
       palette: this.getDefaultPalette(),
-      gameRunning: false,
-      gamePaused: false,
+      gameState: GameState.STOPPED, // Unified state machine
       score: 0,
+      finalScore: 0,
       scroll: { x: 0, y: 0 }
     };
 
@@ -513,15 +521,13 @@ function doUpdate(deltaTime, input) {
     }
 
     // Start the game immediately
-    console.log("Starting game loop, gameRunning set to true");
-    this.state.gameRunning = true;
-    this.state.gamePaused = false;
+    console.log("Starting game loop, state set to RUNNING");
+    this.state.gameState = GameState.RUNNING;
     this.gameLoop();
   }
 
   stopGame(options = {}) {
-    this.state.gameRunning = false;
-    this.state.gamePaused = false;
+    this.state.gameState = GameState.STOPPED;
     this.hideLeaderboard();
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
@@ -535,19 +541,16 @@ function doUpdate(deltaTime, input) {
   }
 
   pauseGame(showLeaderboard = true) {
-    this.state.gamePaused = true;
+    this.state.gameState = GameState.PAUSED;
     if (showLeaderboard) {
       this.showLeaderboardLoading();
     }
   }
 
-  unpauseGame() {
-    this.state.gamePaused = false;
-  }
-
   resumeGame() {
+    this.state.gameState = GameState.RUNNING;
     this.hideLeaderboard();
-    this.startGame();
+    // Game loop should already be running when paused, so no need to restart it
   }
 
   restartGame() {
@@ -556,15 +559,12 @@ function doUpdate(deltaTime, input) {
   }
 
   togglePause() {
-    if (this.state.gameOver) return; // Can't pause when game is over
+    if (this.state.gameState === GameState.GAME_OVER) return; // Can't pause when game is over
 
-    if (this.state.gamePaused) {
-      this.unpauseGame();
-      this.hideLeaderboard();
+    if (this.state.gameState === GameState.PAUSED) {
+      this.resumeGame();
     } else {
       this.pauseGame();
-      // Show loading state while fetching leaderboard
-      this.showLeaderboardLoading();
       // Always refresh leaderboard when pausing
       if (window.loadLeaderboard) {
         window.loadLeaderboard();
@@ -585,7 +585,7 @@ function doUpdate(deltaTime, input) {
 
     this.state.score = 0;
     this.state.backgroundColor = 0;
-    this.state.gamePaused = false;
+    this.state.gameState = GameState.STOPPED;
     this.state.scroll = { x: 0, y: 0 };
 
     if (this.gameDefinition && this.gameDefinition.initialState) {
@@ -595,9 +595,7 @@ function doUpdate(deltaTime, input) {
     this.lastFrameTime = 0;
     this.frameCount = 0;
     this.firstFrameExecuted = false;
-    this.state.gameOver = false;
     this.state.finalScore = 0;
-    this.state.showLeaderboard = false;
     this.leaderboardData = [];
   }
 
@@ -609,23 +607,21 @@ function doUpdate(deltaTime, input) {
   showLeaderboard(leaderboardData) {
     console.log("showLeaderboard called with:", leaderboardData, "length:", leaderboardData?.length);
     this.leaderboardData = leaderboardData || [];
-    this.state.showLeaderboard = true;
     this.leaderboardLoading = false;
     console.log("showLeaderboard: set this.leaderboardData to:", this.leaderboardData, "length:", this.leaderboardData.length);
 
-    // Force a render when game is not running (e.g., game over state)
-    if (!this.state.gameRunning) {
+    // Force a render when not in running state (e.g., game over state)
+    if (this.state.gameState !== GameState.RUNNING) {
       this.render();
     }
   }
 
   showLeaderboardLoading() {
-    this.state.showLeaderboard = true;
     this.leaderboardLoading = true;
     this.leaderboardData = [];
 
-    // Force a render when game is not running (e.g., game over state)
-    if (!this.state.gameRunning) {
+    // Force a render when not in running state (e.g., game over state)
+    if (this.state.gameState !== GameState.RUNNING) {
       this.render();
     }
   }
@@ -635,7 +631,6 @@ function doUpdate(deltaTime, input) {
   }
 
   hideLeaderboard() {
-    this.state.showLeaderboard = false;
     this.leaderboardData = [];
     this.highScoreMessage = null;
   }
@@ -648,8 +643,7 @@ function doUpdate(deltaTime, input) {
   }
 
   handleGameOver() {
-    this.state.gameOver = true;
-    this.state.gameRunning = false;
+    this.state.gameState = GameState.GAME_OVER;
     this.state.finalScore = this.state.score;
 
     console.log(`Game Over! Final Score: ${this.state.finalScore}`);
@@ -684,10 +678,11 @@ function doUpdate(deltaTime, input) {
 
 
   gameLoop = () => {
-    if (!this.state.gameRunning) return;
+    // Only continue loop if game is running or paused (stops completely when stopped or game over without loop)
+    if (this.state.gameState === GameState.STOPPED) return;
 
-    // Only update game logic if not paused
-    if (!this.state.gamePaused) {
+    // Only update game logic when running
+    if (this.state.gameState === GameState.RUNNING) {
       try {
         const commands = this.executeGameUpdate();
         this.processCommands(commands);
@@ -707,13 +702,18 @@ function doUpdate(deltaTime, input) {
           }
         }, 50);
       }
+
+      // Update input state AFTER game update to preserve justPressed detection
+      this.updateInput();
     }
 
-    // Update input state AFTER game update to preserve justPressed detection
-    this.updateInput();
-
+    // Always render (shows game, paused overlay, or game over overlay)
     this.render();
-    this.animationId = requestAnimationFrame(this.gameLoop);
+
+    // Continue loop unless stopped
+    if (this.state.gameState !== GameState.STOPPED) {
+      this.animationId = requestAnimationFrame(this.gameLoop);
+    }
   };
 
   updateInput() {
@@ -876,7 +876,7 @@ function doUpdate(deltaTime, input) {
     this.ctx.fillRect(0, 0, 128, 128);
 
     // If there's a message to display, show it instead of game
-    if (this.displayMessage && !this.state.gameRunning) {
+    if (this.displayMessage && this.state.gameState === GameState.STOPPED) {
       this.renderMessageOverlay();
       return;
     }
@@ -884,8 +884,9 @@ function doUpdate(deltaTime, input) {
     this.renderTiles();
     this.renderSprites();
 
-    // Render overlays
-    if (this.state.showLeaderboard) {
+    // Render leaderboard overlay when paused or game over
+    if (this.state.gameState === GameState.PAUSED ||
+        this.state.gameState === GameState.GAME_OVER) {
       this.renderLeaderboardOverlay();
     }
   }
@@ -1011,7 +1012,7 @@ function doUpdate(deltaTime, input) {
     const centerX = 64;
 
     // Title - show "GAME OVER" if game over, otherwise "HIGH SCORES"
-    if (this.state.gameOver) {
+    if (this.state.gameState === GameState.GAME_OVER) {
       renderCenteredBitmapText(this.ctx, 'GAME OVER', centerX, 24, '#ff0000', 1);
       renderCenteredBitmapText(this.ctx, `SCORE: ${this.state.finalScore}`, centerX, 33, '#ffff00', 1);
     } else {
@@ -1020,29 +1021,21 @@ function doUpdate(deltaTime, input) {
 
     // High score message if available
     if (this.highScoreMessage) {
-      const yPos = this.state.gameOver ? 42 : 33;
+      const yPos = this.state.gameState === GameState.GAME_OVER ? 42 : 33;
       renderCenteredBitmapText(this.ctx, this.highScoreMessage, centerX, yPos, '#00ff00', 1);
     }
 
     // Render scores
-    let startY = this.state.gameOver ? 50 : 38;
+    let startY = this.state.gameState === GameState.GAME_OVER ? 50 : 38;
     if (this.highScoreMessage) {
       startY += 15;
     }
 
-    console.log("renderLeaderboardOverlay: this.leaderboardData.length =", this.leaderboardData.length);
-    console.log("renderLeaderboardOverlay: this.state.gameOver =", this.state.gameOver);
-    console.log("renderLeaderboardOverlay: this.leaderboardLoading =", this.leaderboardLoading);
-    console.log("renderLeaderboardOverlay: startY =", startY);
-
     // Check if this is an unpublished game (leaderboard disabled)
     if (this.isPublished === false) {
-      console.log("renderLeaderboardOverlay: showing unpublished game message");
       renderCenteredBitmapText(this.ctx, 'GAME', centerX, startY + 8, '#ffff00', 1);
       renderCenteredBitmapText(this.ctx, 'NOT SHARED', centerX, startY + 16, '#ffffff', 1);
     } else if (this.leaderboardLoading) {
-      console.log("renderLeaderboardOverlay: showing 'LOADING...'");
-
       // Animate ellipsis every 20 frames (roughly 1/3 second at 60fps)
       this.loadingAnimationFrame = (this.loadingAnimationFrame + 1) % 80;
       const ellipsisCount = Math.floor(this.loadingAnimationFrame / 20);
@@ -1050,11 +1043,9 @@ function doUpdate(deltaTime, input) {
 
       renderCenteredBitmapText(this.ctx, `LOADING${dots}`, centerX, startY + 15, '#ffff00', 1);
     } else if (this.leaderboardData.length === 0) {
-      console.log("renderLeaderboardOverlay: showing 'NO SCORES YET'");
       renderCenteredBitmapText(this.ctx, 'NO SCORES YET', centerX, startY + 15, '#ffffff', 1);
       renderCenteredBitmapText(this.ctx, 'BE THE FIRST!', centerX, startY + 25, '#ffffff', 1);
     } else {
-      console.log("renderLeaderboardOverlay: rendering", this.leaderboardData.length, "scores");
       let yPos = startY;
       for (let i = 0; i < Math.min(this.leaderboardData.length, 10); i++) {
         const score = this.leaderboardData[i];
@@ -1079,8 +1070,8 @@ function doUpdate(deltaTime, input) {
       }
     }
 
-    // Draw RESUME button if not game over
-    if (!this.state.gameOver) {
+    // Draw RESUME button if paused (not game over)
+    if (this.state.gameState === GameState.PAUSED) {
       this.renderResumeButton();
     }
 

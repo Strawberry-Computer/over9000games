@@ -203,12 +203,9 @@ async function loadLeaderboard() {
   }
 }
 
-// Expose functions globally for game runner access
-window.loadLeaderboard = loadLeaderboard;
-window.submitScore = submitScore;
-window.restartCurrentGame = restartCurrentGame;
-
-async function restartCurrentGame() {
+// Shared restart logic - reloads game code to reset QuickJS VM
+// Used by: RESTART button, Enter key, START button (when game over), canvas tap (when game over)
+async function restartGame() {
   if (gameRunner && currentGameData?.gameCode) {
     // Reload the game code to completely reset the VM state
     await gameRunner.loadCode(currentGameData.gameCode, {
@@ -218,6 +215,11 @@ async function restartCurrentGame() {
     });
   }
 }
+
+// Expose functions globally for game runner access
+window.loadLeaderboard = loadLeaderboard;
+window.submitScore = submitScore;
+window.restartCurrentGame = restartGame;  // Expose shared restart function
 
 function showGameCreation() {
   // Set modal title based on mode
@@ -239,9 +241,10 @@ function showGameCreation() {
 }
 
 function showDevMenu() {
-  // If leaderboard is showing, close it instead of opening dev menu
-  if (gameRunner && gameRunner.state && gameRunner.state.showLeaderboard) {
-    gameRunner.hideLeaderboard();
+  // If leaderboard is showing (paused or game over), close it instead of opening dev menu
+  if (gameRunner && gameRunner.state &&
+      (gameRunner.state.gameState === 'paused' || gameRunner.state.gameState === 'game_over')) {
+    gameRunner.resumeGame();
     return;
   }
 
@@ -873,36 +876,29 @@ document.getElementById("btn-new-game")?.addEventListener("click", () => {
   showGameCreation();
 });
 
-// Handle restart button
-const handleRestart = async () => {
-  if (gameRunner && currentGameData?.gameCode) {
-    // Reload the game code to completely reset the VM state
-    // loadCode now auto-hides leaderboard and auto-starts
-    await gameRunner.loadCode(currentGameData.gameCode, {
-      autoStart: true,
-      isPublished: currentGameData.isPublished,
-      isGenerated: gameRunner.isGeneratedGame
-    });
+// RESTART button uses shared restart logic
+document.getElementById("btn-restart-game")?.addEventListener("click", async (e) => {
+  const button = e.currentTarget;
+  if (button.disabled) return;
+
+  button.disabled = true;
+  try {
+    await restartGame();
+  } finally {
+    button.disabled = false;
   }
-};
-document.getElementById("btn-restart-game")?.addEventListener("click", handleRestart);
+});
 
-// START button handler - handles pause/resume and restart from game over
-document.getElementById("btn-pause")?.addEventListener("click", () => {
-  if (!gameRunner) return;
+// START button handler - uses shared pause/resume logic
+document.getElementById("btn-pause")?.addEventListener("click", async (e) => {
+  const button = e.currentTarget;
+  if (button.disabled) return;
 
-  if (gameRunner.state.gameOver) {
-    // Restart game when game is over
-    gameRunner.restartGame();
-  } else if (gameRunner.state.showLeaderboard || gameRunner.state.gamePaused) {
-    // Resume game if paused or showing leaderboard
-    gameRunner.resumeGame();
-  } else {
-    // Pause game and show leaderboard
-    gameRunner.pauseGame();
-    if (window.loadLeaderboard) {
-      window.loadLeaderboard();
-    }
+  button.disabled = true;
+  try {
+    await handlePauseResume();
+  } finally {
+    button.disabled = false;
   }
 });
 
@@ -940,50 +936,50 @@ function isClickOnControlButton(target) {
   );
 }
 
-// Helper function to resume game (hide leaderboard and start)
-async function resumeGame() {
-  if (!gameRunner || gameRunner.state.gameOver) return;
+// Shared pause/resume/restart logic for START button and canvas tap
+async function handlePauseResume() {
+  if (!gameRunner) return;
 
-  if (gameRunner.state.showLeaderboard) {
+  console.log('[handlePauseResume] State:', {
+    gameState: gameRunner.state.gameState
+  });
+
+  // Restart game if it's over (uses shared restart logic)
+  if (gameRunner.state.gameState === 'game_over') {
+    console.log('[handlePauseResume] Restarting game (game over)');
+    await restartGame();
+    return;
+  }
+
+  // Resume if paused
+  if (gameRunner.state.gameState === 'paused') {
+    console.log('[handlePauseResume] Resuming game (paused)');
     gameRunner.resumeGame();
+  } else {
+    // Pause and show leaderboard
+    console.log('[handlePauseResume] Pausing game');
+    gameRunner.pauseGame();
+
+    // Use existing loadLeaderboard function to fetch and display
+    await loadLeaderboard();
   }
 }
 
 // Console screen tap to pause/resume and show leaderboard
 const consoleScreen = document.getElementById("console-screen");
 consoleScreen?.addEventListener("click", async (e) => {
-  if (!gameRunner || gameRunner.state.gameOver) return;
-
   // Check if click is on control buttons - don't handle if clicking those
   if (isClickOnControlButton(e.target)) {
     return; // Let button handlers take over
   }
 
-  // Any tap on screen area pauses or resumes
-  if (gameRunner.state.showLeaderboard) {
-    gameRunner.resumeGame();
-  } else {
-    // Pause and show leaderboard (pauseGame now auto-shows leaderboard)
-    gameRunner.pauseGame();
-
-    // Fetch and display fresh leaderboard data
-    try {
-      const response = await fetch("/api/leaderboard");
-      if (response.ok) {
-        const data = await response.json();
-        gameRunner.showLeaderboard(data.highScores);
-        currentHighScores = data.highScores;
-      }
-    } catch (error) {
-      console.error("Error fetching leaderboard:", error);
-      gameRunner.showLeaderboard(currentHighScores);
-    }
-  }
+  // Use shared pause/resume logic
+  await handlePauseResume();
 });
 
 // Document-wide tap outside console also resumes (except control buttons)
 document.addEventListener("click", (e) => {
-  if (!gameRunner || gameRunner.state.gameOver) return;
+  if (!gameRunner || gameRunner.state.gameState === 'game_over') return;
 
   // Don't handle if already handled by console-screen
   if (consoleScreen?.contains(e.target)) {
@@ -1003,8 +999,10 @@ document.addEventListener("click", (e) => {
     return;
   }
 
-  // Only resume if leaderboard is showing (tapping outside to dismiss it)
-  resumeGame();
+  // Only resume if paused (tapping outside to dismiss leaderboard)
+  if (gameRunner.state.gameState === 'paused') {
+    gameRunner.resumeGame();
+  }
 }, true); // Use capture phase to catch clicks early
 
 document.getElementById("btn-menu")?.addEventListener("click", showDevMenu);
