@@ -391,21 +391,8 @@ function confirmNewGame() {
   // Close the edit modal
   hideAllModals();
 
-  // Reset game state and history
-  resetGameState();
-
-  // Clear localStorage edit history
-  localStorage.removeItem('editHistory');
-
-  // Stop the current game and show "NO GAME" message
-  if (gameRunner) {
-    gameRunner.stopGame({
-      message: "Create a game\nto start!",
-      title: "NO GAME"
-    });
-  }
-
-  // Show game creation modal
+  // Just open creation modal - history clearing happens when new game successfully generates
+  // (keeps old game playable if user cancels or generation fails)
   showGameCreation();
 }
 

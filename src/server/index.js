@@ -607,7 +607,7 @@ router.post("/api/post/create", async (req, res) => {
     const post = await reddit.submitCustomPost({
       splash: splashConfig,
       subredditName: context.subredditName,
-      title: `${title} - AI Generated Game`,
+      title: title,
     });
 
     if (!post?.id) {
