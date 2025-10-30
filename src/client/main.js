@@ -79,9 +79,11 @@ async function fetchInitialData() {
           isPublished: data.gameDefinition.isPublished
         });
         console.log("Game loaded and started successfully");
+        updateEditButtonState(true); // Game exists, show "EDIT"
       } else {
         console.log("No game definition in init response");
         gameRunner.showMessage("Create a game\nto start!", "NO GAME");
+        updateEditButtonState(false); // Show "CREATE" button
       }
     } else {
       console.error("Invalid response type from /api/init", data);
@@ -174,6 +176,7 @@ async function loadTestGame(gameName) {
         isPublished: currentGameData.isPublished,
         isGenerated: false
       });
+      updateEditButtonState(true); // Test game loaded, show "EDIT"
     }
   } catch (error) {
     console.error(`Error loading test game "${gameName}":`, error);
@@ -593,6 +596,7 @@ async function handleGenerationComplete(gameDefinition) {
     // Load and show the game
     await showGeneratedGame();
     updateShareButtonState();
+    updateEditButtonState(true); // Game now exists, show "EDIT"
 
   } catch (error) {
     console.error("Error handling completed generation:", error);
@@ -942,6 +946,14 @@ document.getElementById("btn-pause")?.addEventListener("click", async (e) => {
   }
 });
 
+// Update edit button text based on whether game exists
+function updateEditButtonState(hasGame) {
+  const btn = document.getElementById("btn-edit-game");
+  if (btn) {
+    btn.textContent = hasGame ? "EDIT" : "CREATE";
+  }
+}
+
 // Update share button disabled state
 function updateShareButtonState() {
   // Only generated games can be shared
@@ -1112,6 +1124,12 @@ document.getElementById("btn-skip-comment")?.addEventListener("click", async () 
 
 // Edit control event listeners
 const handleEdit = () => {
+  // If no game exists, show creation modal instead of edit mode
+  if (!currentGameData) {
+    showGameCreation();
+    return;
+  }
+
   if (gameRunner) {
     // pauseGame now auto-shows leaderboard by default
     gameRunner.pauseGame();

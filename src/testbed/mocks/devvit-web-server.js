@@ -154,8 +154,20 @@ export function createServer(app) {
         }
       }
 
-      // Combine test games (pinned at top) with user games
-      const allGames = [...testGames, ...userGames];
+      // Add a special "empty post" for testing new game creation flow
+      const emptyPost = {
+        postId: 'empty_new_game',
+        title: '[EMPTY] Test New Game Creation',
+        description: 'Test post with no game - perfect for testing CREATE button flow',
+        created: new Date().toISOString(),
+        creator: 'system',
+        commentCount: 0,
+        url: '/r/testbed/comments/empty_new_game',
+        isTestGame: true
+      };
+
+      // Combine empty post + test games (pinned at top) + user games
+      const allGames = [emptyPost, ...testGames, ...userGames];
 
       const html = generateSubredditHTML(allGames);
       res.setHeader('Content-Type', 'text/html');

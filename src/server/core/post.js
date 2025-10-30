@@ -10,6 +10,7 @@ export const createPost = async () => {
     splash: {
       appDisplayName: "over9000games",
       appIconUri: "icon.png",
+      backgroundUri: "post-background.jpeg",
     },
     subredditName: subredditName,
     title: "over9000games",
