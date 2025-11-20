@@ -60,8 +60,6 @@ export class GameRunner {
     this.isInitialized = false;
     this.frameCount = 0;
     this.lastFrameTime = 0;
-    this.firstFrameCallback = null;
-    this.firstFrameExecuted = false;
     this.isGeneratedGame = false;
 
     // Audio system
@@ -300,8 +298,7 @@ export class GameRunner {
     const {
       autoStart = true,
       isPublished = false,
-      isGenerated = false,
-      firstFrameCallback = null
+      isGenerated = false
     } = options;
 
     if (!this.isInitialized) {
@@ -390,10 +387,6 @@ function doUpdate(deltaTime, input) {
     // Apply options
     this.isPublished = isPublished;
     this.isGeneratedGame = isGenerated;
-
-    if (firstFrameCallback) {
-      this.setFirstFrameCallback(firstFrameCallback);
-    }
 
     if (autoStart) {
       this.startGame();
@@ -614,14 +607,8 @@ function doUpdate(deltaTime, input) {
 
     this.lastFrameTime = 0;
     this.frameCount = 0;
-    this.firstFrameExecuted = false;
     this.state.finalScore = 0;
     this.leaderboardData = [];
-  }
-
-  setFirstFrameCallback(callback) {
-    this.firstFrameCallback = callback;
-    this.firstFrameExecuted = false;
   }
 
   showLeaderboard(leaderboardData) {
@@ -711,17 +698,6 @@ function doUpdate(deltaTime, input) {
       }
 
       this.frameCount++;
-
-      // Execute first frame callback after first frame is rendered
-      if (this.frameCount === 1 && !this.firstFrameExecuted && this.firstFrameCallback) {
-        this.firstFrameExecuted = true;
-        // Use setTimeout to ensure render is complete
-        setTimeout(() => {
-          if (this.firstFrameCallback) {
-            this.firstFrameCallback();
-          }
-        }, 50);
-      }
 
       // Update input state AFTER game update to preserve justPressed detection
       this.updateInput();

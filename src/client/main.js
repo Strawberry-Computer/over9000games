@@ -560,7 +560,6 @@ async function handleGenerationComplete(gameDefinition) {
       currentGameData = {
         ...gameDefinition,
         description: gameDescriptionElement.value.trim()
-        // autoScreenshot will be regenerated via firstFrameCallback (game may look different)
       };
 
       // Save new version to history
@@ -572,7 +571,6 @@ async function handleGenerationComplete(gameDefinition) {
       currentGameData = {
         ...gameDefinition,
         description: gameDescriptionElement.value.trim()
-        // autoScreenshot will be generated via firstFrameCallback
       };
 
       editHistory = { versions: [], currentIndex: -1 };
@@ -652,18 +650,7 @@ async function showGeneratedGame() {
     await gameRunner.loadCode(currentGameData.gameCode, {
       autoStart: true,
       isPublished: currentGameData.isPublished,
-      isGenerated: true,
-      firstFrameCallback: async () => {
-        try {
-          const screenshot = await captureGameScreenshot();
-          if (screenshot) {
-            currentGameData.autoScreenshot = screenshot;
-            console.log("Auto-screenshot generated after first frame");
-          }
-        } catch (error) {
-          console.error("Error generating auto-screenshot:", error);
-        }
-      }
+      isGenerated: true
     });
 
     // Hide the creation modal and return to main view
@@ -699,59 +686,6 @@ function showGamePublishingFromMain() {
   showGamePublishing();
 }
 
-// Enhanced screenshot capture function with 4x resolution and landscape formatting
-async function captureGameScreenshot() {
-  try {
-    // Capture the current frame immediately (no waiting)
-    if (gameRunner && gameRunner.isGeneratedGame) {
-      // Get the main console canvas
-      const sourceCanvas = document.getElementById("console-canvas");
-      if (!sourceCanvas) return null;
-
-      // Create high-resolution capture canvas (4x resolution)
-      const captureCanvas = document.createElement('canvas');
-      const captureCtx = captureCanvas.getContext('2d');
-
-      // Set up 4x scaled canvas (128×128 → 512×512)
-      captureCanvas.width = 512;
-      captureCanvas.height = 512;
-      captureCtx.imageSmoothingEnabled = false; // Maintain pixel art crispness
-
-      // Scale the source canvas 4x
-      captureCtx.drawImage(sourceCanvas, 0, 0, 128, 128, 0, 0, 512, 512);
-
-      // Create landscape format canvas for Reddit posts (16:9 aspect ratio)
-      const landscapeCanvas = document.createElement('canvas');
-      const landscapeCtx = landscapeCanvas.getContext('2d');
-
-      // Landscape dimensions: 1820×1024 (16:9) with 1024 height as agreed
-      landscapeCanvas.width = 1820;
-      landscapeCanvas.height = 1024;
-
-      // Fill background with solid dark color for better PNG compression
-      landscapeCtx.fillStyle = '#1a1a2e';
-      landscapeCtx.fillRect(0, 0, 1820, 1024);
-
-      // Center the game canvas (1024×1024 fits perfectly to height)
-      const gameSize = 1024; // Perfect fit to landscape height
-      const gameX = (1820 - gameSize) / 2; // Center horizontally (398px padding each side)
-      const gameY = 0; // Top aligned
-
-      landscapeCtx.imageSmoothingEnabled = false;
-      landscapeCtx.drawImage(captureCanvas, 0, 0, 512, 512, gameX, gameY, gameSize, gameSize);
-
-
-      // Skip scanlines effect to reduce PNG file size
-
-      return landscapeCanvas.toDataURL('image/png');
-    }
-    return null;
-  } catch (error) {
-    console.error("Error capturing screenshot:", error);
-    return null;
-  }
-}
-
 async function publishGameToReddit() {
   const title = publishTitleElement.value.trim();
 
@@ -768,13 +702,6 @@ async function publishGameToReddit() {
   publishButton.classList.add("disabled");
 
   try {
-    // Use auto-generated screenshot (captured after first frame)
-    const screenshot = currentGameData.autoScreenshot;
-
-    if (!screenshot) {
-      throw new Error("Screenshot not available. Please restart the game and try again.");
-    }
-
     showPublishingStatus("Creating Reddit post", "loading");
 
     const response = await fetch("/api/post/create", {
@@ -783,8 +710,7 @@ async function publishGameToReddit() {
       body: JSON.stringify({
         title,
         gameDescription: currentGameData.description,
-        gameCode: currentGameData.gameCode,
-        screenshot: screenshot // Include screenshot data URI
+        gameCode: currentGameData.gameCode
       }),
     });
 

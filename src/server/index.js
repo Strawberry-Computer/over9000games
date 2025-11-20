@@ -591,7 +591,7 @@ router.post("/api/comment/post", async (req, res) => {
 
 router.post("/api/post/create", async (req, res) => {
   try {
-    const { title, message, gameCode, gameDescription, screenshot } = req.body;
+    const { title, message, gameCode, gameDescription } = req.body;
 
     if (!title || !gameCode) {
       return res.status(400).json({
@@ -600,24 +600,40 @@ router.post("/api/post/create", async (req, res) => {
       });
     }
 
-    // Upload screenshot to Reddit if provided
+    // Generate screenshot server-side
     let screenshotUrl = null;
-    if (screenshot) {
-      try {
-        console.log("Uploading screenshot to Reddit...");
-        const uploadResult = await media.upload({
-          url: screenshot, // Data URI from canvas
-          type: 'png'
-        });
+    try {
+      console.log("Generating screenshot server-side...");
+      const screenshotDataUri = await generateScreenshot(gameCode, 60);
 
-        if (uploadResult?.mediaUrl) {
-          screenshotUrl = uploadResult.mediaUrl;
-          console.log("Screenshot uploaded successfully:", uploadResult.mediaUrl);
+      // Upload to Reddit media with retries for transient errors
+      let uploadResult = null;
+      let lastError = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          uploadResult = await media.upload({
+            url: screenshotDataUri,
+            type: 'png'
+          });
+          if (uploadResult?.mediaUrl) break;
+        } catch (uploadError) {
+          lastError = uploadError;
+          if (attempt < 3 && uploadError.message?.includes('Service Unavailable')) {
+            console.log(`Upload attempt ${attempt} failed, retrying in ${attempt * 2}s...`);
+            await new Promise(r => setTimeout(r, attempt * 2000));
+          } else {
+            throw uploadError;
+          }
         }
-      } catch (uploadError) {
-        console.error("Failed to upload screenshot:", uploadError);
-        // Continue without screenshot rather than failing the entire post
       }
+
+      if (uploadResult?.mediaUrl) {
+        screenshotUrl = uploadResult.mediaUrl;
+        console.log("Screenshot uploaded successfully:", uploadResult.mediaUrl);
+      }
+    } catch (screenshotError) {
+      console.error("Failed to generate/upload screenshot:", screenshotError);
+      // Continue without screenshot rather than failing the entire post
     }
 
     // Create the post (splash screen is now handled by splash.html entry point)
