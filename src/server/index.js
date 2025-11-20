@@ -87,11 +87,10 @@ router.get("/api/init", async (_req, res) => {
   }
 
   try {
-    const [gameCode, metadataStr, username, post] = await Promise.all([
+    const [gameCode, metadataStr, username] = await Promise.all([
       redis.get(`game:${postId}:code`),
       redis.get(`game:${postId}:metadata`),
       reddit.getCurrentUsername(),
-      reddit.getPostById(postId),
     ]);
 
     let gameDefinition;
@@ -109,11 +108,8 @@ router.get("/api/init", async (_req, res) => {
       }
     }
 
-    // Get screenshot URL: prefer stored metadata, fallback to post thumbnail
-    let screenshotUrl = metadata?.screenshotUrl || null;
-    if (!screenshotUrl && post?.thumbnail?.url) {
-      screenshotUrl = post.thumbnail.url;
-    }
+    // Get screenshot URL from metadata
+    const screenshotUrl = metadata?.screenshotUrl || null;
 
     res.json({
       type: "init",

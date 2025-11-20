@@ -7,6 +7,10 @@ import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
 import { context } from './express-wrapper.js';
 import { getTestGameCode, getAvailableTestGames } from '../../shared/test-games/server-loader.js';
+import { media } from './devvit-media.js';
+
+// Re-export media for @devvit/web/server consumers
+export { media };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientPath = path.resolve(__dirname, '../../../dist/client');
