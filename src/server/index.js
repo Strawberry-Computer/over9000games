@@ -3,14 +3,15 @@ import {
   createServer,
   context,
   getServerPort,
+  media,
   reddit,
   redis,
   settings,
 } from "@devvit/web/server";
-import { media } from "@devvit/media";
 import { createPost } from "./core/post.js";
 import { JobManager } from "./job-manager.js";
 import { getTestGameCode, getAvailableTestGames } from "../shared/test-games/server-loader.js";
+import { generateScreenshot } from "./screenshot-renderer.js";
 
 const app = express();
 
@@ -86,9 +87,11 @@ router.get("/api/init", async (_req, res) => {
   }
 
   try {
-    const [gameCode, username] = await Promise.all([
+    const [gameCode, metadataStr, username, post] = await Promise.all([
       redis.get(`game:${postId}:code`),
+      redis.get(`game:${postId}:metadata`),
       reddit.getCurrentUsername(),
+      reddit.getPostById(postId),
     ]);
 
     let gameDefinition;
@@ -96,11 +99,32 @@ router.get("/api/init", async (_req, res) => {
       gameDefinition = { gameCode, isPublished: true };
     }
 
+    // Parse stored metadata if available
+    let metadata = null;
+    if (metadataStr) {
+      try {
+        metadata = JSON.parse(metadataStr);
+      } catch (e) {
+        console.error("Failed to parse metadata:", e);
+      }
+    }
+
+    // Get screenshot URL: prefer stored metadata, fallback to post thumbnail
+    let screenshotUrl = metadata?.screenshotUrl || null;
+    if (!screenshotUrl && post?.thumbnail?.url) {
+      screenshotUrl = post.thumbnail.url;
+    }
+
     res.json({
       type: "init",
       postId: postId,
       username: username ?? "anonymous",
       gameDefinition,
+      metadata: {
+        ...metadata,
+        screenshotUrl,
+        title: metadata?.title || post?.title || "over9000games",
+      },
     });
   } catch (error) {
     console.error(`API Init Error for post ${postId}:`, error);
@@ -576,15 +600,8 @@ router.post("/api/post/create", async (req, res) => {
       });
     }
 
-    // Prepare splash screen configuration
-    const splashConfig = {
-      appDisplayName: "over9000games",
-      appIconUri: "icon.png",
-      buttonLabel: `Play ${title}`,
-      height: 'tall'
-    };
-
     // Upload screenshot to Reddit if provided
+    let screenshotUrl = null;
     if (screenshot) {
       try {
         console.log("Uploading screenshot to Reddit...");
@@ -594,7 +611,7 @@ router.post("/api/post/create", async (req, res) => {
         });
 
         if (uploadResult?.mediaUrl) {
-          splashConfig.backgroundUri = uploadResult.mediaUrl;
+          screenshotUrl = uploadResult.mediaUrl;
           console.log("Screenshot uploaded successfully:", uploadResult.mediaUrl);
         }
       } catch (uploadError) {
@@ -603,9 +620,8 @@ router.post("/api/post/create", async (req, res) => {
       }
     }
 
-    // Create the post with enhanced splash screen
+    // Create the post (splash screen is now handled by splash.html entry point)
     const post = await reddit.submitCustomPost({
-      splash: splashConfig,
       subredditName: context.subredditName,
       title: title,
     });
@@ -620,6 +636,7 @@ router.post("/api/post/create", async (req, res) => {
       title,
       message,
       gameDescription,
+      screenshotUrl,
       createdAt: new Date().toISOString(),
       creator: await reddit.getCurrentUsername()
     }));
@@ -672,6 +689,250 @@ router.post("/internal/menu/post-create", async (_req, res) => {
     res.status(400).json({
       status: "error",
       message: "Failed to create post",
+    });
+  }
+});
+
+router.post("/internal/menu/migrate-screenshots", async (_req, res) => {
+  try {
+    console.log("Starting screenshot migration from menu...");
+
+    // Get posts from the subreddit using Reddit API
+    const posts = await reddit.getNewPosts({
+      subredditName: context.subredditName,
+      limit: 100
+    }).all();
+
+    // Filter to posts that have game code in Redis
+    const gamePostIds = [];
+    for (const post of posts) {
+      const gameCode = await redis.get(`game:${post.id}:code`);
+      if (gameCode) {
+        gamePostIds.push(post.id);
+      }
+    }
+
+    console.log(`Found ${gamePostIds.length} posts with game code`);
+
+    let updated = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (const postId of gamePostIds) {
+      try {
+        // Get metadata to check if screenshot exists
+        const metadataStr = await redis.get(`game:${postId}:metadata`);
+        let metadata = null;
+
+        if (metadataStr) {
+          try {
+            metadata = JSON.parse(metadataStr);
+          } catch (e) {
+            // Invalid JSON
+          }
+        }
+
+        // Skip if screenshot already exists
+        if (metadata?.screenshotUrl) {
+          console.log(`Skipping post ${postId} - screenshot already exists`);
+          skipped++;
+          continue;
+        }
+
+        // Get game code
+        const gameCode = await redis.get(`game:${postId}:code`);
+        if (!gameCode) {
+          errors++;
+          continue;
+        }
+
+        // Generate screenshot
+        console.log(`Generating screenshot for post ${postId}...`);
+        const screenshotDataUri = await generateScreenshot(gameCode, 60);
+
+        // Upload to Reddit media
+        const uploadResult = await media.upload({
+          url: screenshotDataUri,
+          type: 'png'
+        });
+
+        if (!uploadResult?.mediaUrl) {
+          throw new Error("Upload failed");
+        }
+
+        // Update metadata
+        const updatedMetadata = {
+          ...metadata,
+          screenshotUrl: uploadResult.mediaUrl,
+          screenshotGeneratedAt: new Date().toISOString()
+        };
+
+        await redis.set(`game:${postId}:metadata`, JSON.stringify(updatedMetadata));
+        updated++;
+
+        console.log(`Screenshot generated for post ${postId}`);
+
+      } catch (error) {
+        errors++;
+        console.error(`Error processing post ${postId}:`, error);
+      }
+    }
+
+    const message = `Migration complete: ${updated} updated, ${skipped} skipped, ${errors} errors`;
+    console.log(message);
+
+    res.json({
+      success: true,
+      message
+    });
+
+  } catch (error) {
+    console.error("Migration error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Migration failed"
+    });
+  }
+});
+
+// Also update the API endpoint to use the same approach
+router.post("/api/admin/migrate-screenshots", async (req, res) => {
+  try {
+    const { limit = 10, dryRun = false } = req.body;
+
+    console.log(`Starting screenshot migration (limit: ${limit}, dryRun: ${dryRun})`);
+
+    // Get posts from the subreddit using Reddit API
+    const posts = await reddit.getNewPosts({
+      subredditName: context.subredditName,
+      limit: 100
+    }).all();
+
+    // Filter to posts that have game code in Redis
+    const gamePostIds = [];
+    for (const post of posts) {
+      const gameCode = await redis.get(`game:${post.id}:code`);
+      if (gameCode) {
+        gamePostIds.push(post.id);
+      }
+    }
+
+    console.log(`Found ${gamePostIds.length} posts with game code`);
+
+    const results = {
+      total: gamePostIds.length,
+      processed: 0,
+      updated: 0,
+      skipped: 0,
+      errors: [],
+      details: []
+    };
+
+    let processedCount = 0;
+
+    for (const postId of gamePostIds) {
+      if (processedCount >= limit) break;
+
+      try {
+        // Get metadata to check if screenshot exists
+        const metadataStr = await redis.get(`game:${postId}:metadata`);
+        let metadata = null;
+
+        if (metadataStr) {
+          try {
+            metadata = JSON.parse(metadataStr);
+          } catch (e) {
+            // Invalid JSON, will regenerate
+          }
+        }
+
+        // Skip if screenshot already exists
+        if (metadata?.screenshotUrl) {
+          results.skipped++;
+          results.details.push({
+            postId,
+            status: "skipped",
+            reason: "Screenshot already exists"
+          });
+          continue;
+        }
+
+        // Get game code
+        const gameCode = await redis.get(`game:${postId}:code`);
+        if (!gameCode) {
+          results.errors.push({ postId, error: "No game code found" });
+          continue;
+        }
+
+        processedCount++;
+
+        if (dryRun) {
+          results.details.push({
+            postId,
+            status: "dry-run",
+            title: metadata?.title || "Unknown"
+          });
+          results.processed++;
+          continue;
+        }
+
+        // Generate screenshot
+        console.log(`Generating screenshot for post ${postId}...`);
+        const screenshotDataUri = await generateScreenshot(gameCode, 60);
+
+        // Upload to Reddit media
+        console.log(`Uploading screenshot for post ${postId}...`);
+        const uploadResult = await media.upload({
+          url: screenshotDataUri,
+          type: 'png'
+        });
+
+        if (!uploadResult?.mediaUrl) {
+          throw new Error("Upload failed - no media URL returned");
+        }
+
+        // Update metadata with screenshot URL
+        const updatedMetadata = {
+          ...metadata,
+          screenshotUrl: uploadResult.mediaUrl,
+          screenshotGeneratedAt: new Date().toISOString()
+        };
+
+        await redis.set(`game:${postId}:metadata`, JSON.stringify(updatedMetadata));
+
+        results.updated++;
+        results.processed++;
+        results.details.push({
+          postId,
+          status: "success",
+          title: metadata?.title || "Unknown",
+          screenshotUrl: uploadResult.mediaUrl
+        });
+
+        console.log(`Screenshot generated for post ${postId}: ${uploadResult.mediaUrl}`);
+
+      } catch (error) {
+        results.errors.push({
+          postId,
+          error: error.message || "Unknown error"
+        });
+        results.processed++;
+        console.error(`Error processing post ${postId}:`, error);
+      }
+    }
+
+    console.log(`Migration complete: ${results.updated} updated, ${results.skipped} skipped, ${results.errors.length} errors`);
+
+    res.json({
+      success: true,
+      results
+    });
+
+  } catch (error) {
+    console.error("Migration error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Migration failed"
     });
   }
 });
