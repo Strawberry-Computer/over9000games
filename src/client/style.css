@@ -145,6 +145,16 @@ body {
   min-height: 0;
   max-height: 100%;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvas-wrapper {
+  aspect-ratio: 1 / 1;
+  height: 100%;
+  max-width: 100%;
+  position: relative;
 }
 
 #console-canvas {
@@ -155,7 +165,6 @@ body {
   image-rendering: crisp-edges;
   border: none;
   background: var(--nes-black);
-  object-fit: contain;
   display: block;
 }
 
@@ -168,11 +177,12 @@ body {
   height: 100%;
   background: repeating-linear-gradient(
     0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.15) 2px,
-    rgba(0, 0, 0, 0.15) 4px
+    transparent 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.15) 50%,
+    rgba(0, 0, 0, 0.15) 100%
   );
+  background-size: 100% calc(100% / 128);
   pointer-events: none;
   z-index: 10;
 }

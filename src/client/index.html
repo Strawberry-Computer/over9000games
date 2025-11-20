@@ -24,10 +24,12 @@
       </div>
 
       <div class="console-screen" id="console-screen">
-        <canvas id="console-canvas" width="128" height="128"></canvas>
+        <div class="canvas-wrapper">
+          <canvas id="console-canvas" width="128" height="128"></canvas>
+          <div class="crt-scanlines"></div>
+          <div class="crt-vignette"></div>
+        </div>
         <canvas id="sprite-canvas" width="128" height="256" style="display: none;"></canvas>
-        <div class="crt-scanlines"></div>
-        <div class="crt-vignette"></div>
       </div>
 
       <!-- Touch controls (mobile/tablet) -->
