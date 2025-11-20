@@ -750,14 +750,29 @@ router.post("/internal/menu/migrate-screenshots", async (_req, res) => {
         console.log(`Generating screenshot for post ${postId}...`);
         const screenshotDataUri = await generateScreenshot(gameCode, 60);
 
-        // Upload to Reddit media
-        const uploadResult = await media.upload({
-          url: screenshotDataUri,
-          type: 'png'
-        });
+        // Upload to Reddit media with retries for transient errors
+        let uploadResult = null;
+        let lastError = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            uploadResult = await media.upload({
+              url: screenshotDataUri,
+              type: 'png'
+            });
+            if (uploadResult?.mediaUrl) break;
+          } catch (uploadError) {
+            lastError = uploadError;
+            if (attempt < 3 && uploadError.message?.includes('Service Unavailable')) {
+              console.log(`Upload attempt ${attempt} failed, retrying in ${attempt * 2}s...`);
+              await new Promise(r => setTimeout(r, attempt * 2000));
+            } else {
+              throw uploadError;
+            }
+          }
+        }
 
         if (!uploadResult?.mediaUrl) {
-          throw new Error("Upload failed");
+          throw lastError || new Error("Upload failed");
         }
 
         // Update metadata
@@ -781,17 +796,14 @@ router.post("/internal/menu/migrate-screenshots", async (_req, res) => {
     const message = `Migration complete: ${updated} updated, ${skipped} skipped, ${errors} errors`;
     console.log(message);
 
-    res.json({
-      success: true,
-      message
-    });
+    // Menu endpoints must return valid UiResponse (only navigateTo is supported, or empty object)
+    // Results are logged to console - check devvit logs for details
+    res.json({});
 
   } catch (error) {
     console.error("Migration error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Migration failed"
-    });
+    // Return empty response since toast is not a valid UiResponse key
+    res.json({});
   }
 });
 
