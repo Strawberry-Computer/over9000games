@@ -668,13 +668,10 @@ function showGamePublishing() {
   document.body.classList.add("game-publishing-active");
   publishTitleElement.focus();
 
-  // Auto-suggest a title based on the game description
-  if (!publishTitleElement.value && currentGameData?.description) {
-    const words = currentGameData.description.split(' ').slice(0, 3);
-    const suggestedTitle = words.map(word =>
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-    publishTitleElement.value = suggestedTitle;
+  // Use game metadata title as default (editable)
+  if (!publishTitleElement.value) {
+    const metadataTitle = gameRunner?.gameDefinition?.metadata?.title;
+    publishTitleElement.value = metadataTitle || 'New Game';
   }
 }
 
@@ -704,12 +701,15 @@ async function publishGameToReddit() {
   try {
     showPublishingStatus("Creating Reddit post", "loading");
 
+    // Use metadata description (AI-generated game description) for post content
+    const metadataDescription = gameRunner?.gameDefinition?.metadata?.description || '';
+
     const response = await fetch("/api/post/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title,
-        gameDescription: currentGameData.description,
+        gameDescription: metadataDescription,
         gameCode: currentGameData.gameCode
       }),
     });
