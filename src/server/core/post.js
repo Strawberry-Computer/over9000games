@@ -7,11 +7,6 @@ export const createPost = async () => {
   }
 
   return await reddit.submitCustomPost({
-    splash: {
-      appDisplayName: "over9000games",
-      appIconUri: "icon.png",
-      backgroundUri: "post-background.jpeg",
-    },
     subredditName: subredditName,
     title: "over9000games",
   });

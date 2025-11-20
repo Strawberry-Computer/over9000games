@@ -6,7 +6,13 @@
     "dir": "dist/client",
     "entrypoints": {
       "default": {
-        "entry": "index.html"
+        "entry": "splash.html",
+        "height": "regular",
+        "inline": true
+      },
+      "game": {
+        "entry": "index.html",
+        "height": "tall"
       }
     }
   },
@@ -25,6 +31,13 @@
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/post-create"
+      },
+      {
+        "label": "Migrate screenshots",
+        "description": "Generate screenshots for old posts",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/migrate-screenshots"
       }
     ]
   },
