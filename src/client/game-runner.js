@@ -1038,22 +1038,22 @@ function doUpdate(deltaTime, input) {
 
     // Title - show "GAME OVER" if game over, otherwise "HIGH SCORES"
     if (this.state.gameState === GameState.GAME_OVER) {
-      renderCenteredBitmapText(this.ctx, 'GAME OVER', centerX, 24, '#ff0000', 1);
-      renderCenteredBitmapText(this.ctx, `SCORE: ${this.state.finalScore}`, centerX, 33, '#ffff00', 1);
+      renderCenteredBitmapText(this.ctx, 'GAME OVER', centerX, 10, '#ff0000', 1);
+      renderCenteredBitmapText(this.ctx, `SCORE: ${this.state.finalScore}`, centerX, 19, '#ffff00', 1);
     } else {
-      renderCenteredBitmapText(this.ctx, 'HIGH SCORES', centerX, 24, '#ffff00', 1);
+      renderCenteredBitmapText(this.ctx, 'HIGH SCORES', centerX, 10, '#ffff00', 1);
     }
 
     // High score message if available
     if (this.highScoreMessage) {
-      const yPos = this.state.gameState === GameState.GAME_OVER ? 42 : 33;
+      const yPos = this.state.gameState === GameState.GAME_OVER ? 28 : 19;
       renderCenteredBitmapText(this.ctx, this.highScoreMessage, centerX, yPos, '#00ff00', 1);
     }
 
     // Render scores
-    let startY = this.state.gameState === GameState.GAME_OVER ? 50 : 38;
+    let startY = this.state.gameState === GameState.GAME_OVER ? 36 : 24;
     if (this.highScoreMessage) {
-      startY += 15;
+      startY += 10;
     }
 
     // Check if this is an unpublished game (leaderboard disabled)
@@ -1072,7 +1072,8 @@ function doUpdate(deltaTime, input) {
       renderCenteredBitmapText(this.ctx, 'BE THE FIRST!', centerX, startY + 25, '#ffffff', 1);
     } else {
       let yPos = startY;
-      for (let i = 0; i < Math.min(this.leaderboardData.length, 10); i++) {
+      // Limit to 8 scores to fit within screen with TAP TO RESUME at bottom
+      for (let i = 0; i < Math.min(this.leaderboardData.length, 8); i++) {
         const score = this.leaderboardData[i];
         const rank = i + 1;
         const medal = rank.toString();
@@ -1086,12 +1087,15 @@ function doUpdate(deltaTime, input) {
           score.username.substring(0, maxUsernameLength) : score.username;
         renderBitmapText(this.ctx, username, 24, yPos, '#ffffff', 1);
 
-        // Score (right-aligned)
-        const scoreText = score.score.toString();
+        // Score (right-aligned, max 5 digits)
+        let scoreText = score.score.toString();
+        if (scoreText.length > 5) {
+          scoreText = '99999';
+        }
         const scoreWidth = scoreText.length * 8;
         renderBitmapText(this.ctx, scoreText, 122 - scoreWidth, yPos, '#00ff00', 1);
 
-        yPos += 12;
+        yPos += 10;
       }
     }
 
