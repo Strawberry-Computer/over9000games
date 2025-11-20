@@ -134,12 +134,25 @@ export function createServer(app) {
       for (const postIdObj of postIds) {
         const postId = typeof postIdObj === 'object' ? postIdObj.value : postIdObj;
 
-        const [title, created, creator, screenshot] = await Promise.all([
+        const [title, created, creator, metadataStr] = await Promise.all([
           client.get(`post:${postId}:title`),
           client.get(`post:${postId}:created`),
           client.get(`post:${postId}:creator`),
-          client.get(`post:${postId}:screenshot`)
+          client.get(`game:${postId}:metadata`)
         ]);
+
+        // Parse metadata to get screenshot and description
+        let screenshot = null;
+        let description = null;
+        if (metadataStr) {
+          try {
+            const metadata = JSON.parse(metadataStr);
+            screenshot = metadata.screenshotUrl;
+            description = metadata.gameDescription;
+          } catch (e) {
+            console.error('[TESTBED] Failed to parse metadata for post:', postId, e);
+          }
+        }
 
         // Get comment count for this post
         const commentCount = await redis.zCard(`comments:${postId}:ids`) || 0;
@@ -148,6 +161,7 @@ export function createServer(app) {
           userGames.push({
             postId,
             title,
+            description,
             created,
             creator,
             commentCount,
