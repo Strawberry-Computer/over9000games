@@ -1,4 +1,5 @@
 import { PNG } from "pngjs";
+import { getSpritePosition } from "../shared/game-runner-common.js";
 
 const SCREEN_WIDTH = 128;
 const SCREEN_HEIGHT = 128;
@@ -51,7 +52,7 @@ export class ScreenshotRenderer {
     sprites.forEach((sprite, index) => {
       if (!Array.isArray(sprite) || sprite.length !== 8) return;
 
-      const pos = this.getSpritePosition(index);
+      const pos = getSpritePosition(index);
 
       for (let y = 0; y < 8; y++) {
         const row = sprite[y] || "00000000";
@@ -67,12 +68,6 @@ export class ScreenshotRenderer {
         }
       }
     });
-  }
-
-  getSpritePosition(spriteId) {
-    const x = ((spriteId | 0) % 16) * 8;
-    const y = Math.floor((spriteId | 0) / 16) * 8;
-    return { x, y };
   }
 
   clearScreen(color) {
@@ -137,7 +132,7 @@ export class ScreenshotRenderer {
   }
 
   drawSprite(spriteId, screenX, screenY, flipH, flipV) {
-    const srcPos = this.getSpritePosition(spriteId);
+    const srcPos = getSpritePosition(spriteId);
 
     for (let sy = 0; sy < 8; sy++) {
       for (let sx = 0; sx < 8; sx++) {

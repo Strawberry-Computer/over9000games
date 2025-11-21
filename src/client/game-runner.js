@@ -2,6 +2,13 @@ import { getQuickJS } from "quickjs-emscripten";
 import { validateGameSchema, sanitizeGameDefinition } from "../shared/game-schema.js";
 import { renderBitmapText, renderCenteredBitmapText, generateFontTileSprites } from "./bitmap-font.js";
 import { AudioManager } from "./audio/audio-manager.js";
+import {
+  QuickJSGameExecutor,
+  getSpritePosition,
+  getDefaultPalette,
+  MAX_TILES_X,
+  MAX_TILES_Y
+} from "../shared/game-runner-common.js";
 
 // Unified game state enum
 const GameState = {
@@ -27,14 +34,11 @@ export class GameRunner {
     this.spriteCtx.imageSmoothingEnabled = false;
 
     // Support larger worlds for scrolling: 128 tiles wide × 16 tall (1024px × 128px)
-    const MAX_TILES_X = 128;
-    const MAX_TILES_Y = 16;
-
     this.state = {
       sprites: Array(64).fill(null).map(() => ({ spriteId: -1, x: 0, y: 0, flipH: false, flipV: false })),
       tiles: Array(MAX_TILES_Y).fill(null).map(() => Array(MAX_TILES_X).fill(-1)),
       backgroundColor: 0,
-      palette: this.getDefaultPalette(),
+      palette: getDefaultPalette(),
       gameState: GameState.STOPPED, // Unified state machine
       score: 0,
       finalScore: 0,
@@ -56,6 +60,7 @@ export class GameRunner {
     this.vm = null;
     this.QuickJS = null;
     this.runtime = null;
+    this.executor = null;
     this.updateFunction = null;
     this.isInitialized = false;
     this.frameCount = 0;
@@ -83,6 +88,7 @@ export class GameRunner {
       });
 
       this.vm = this.runtime.newContext();
+      this.executor = new QuickJSGameExecutor(this.vm, this.QuickJS);
 
       this.isInitialized = true;
       console.log("QuickJS game runner initialized successfully");
@@ -90,14 +96,6 @@ export class GameRunner {
       console.error("Failed to initialize QuickJS game runner:", error);
       throw error;
     }
-  }
-
-  getDefaultPalette() {
-    return [
-      0x000000, 0x666666, 0x888888, 0xAAAAAA, 0xCCCCCC, 0xFFFFFF,
-      0xFF0000, 0x00FF00, 0x0000FF, 0xFFFF00, 0xFF00FF, 0x00FFFF,
-      0x800000, 0x008000, 0x000080, 0x808080
-    ];
   }
 
   setupInputHandlers() {
@@ -315,66 +313,13 @@ export class GameRunner {
     this.displayTitle = null;
 
     this.vm = this.runtime.newContext();
+    this.executor = new QuickJSGameExecutor(this.vm, this.QuickJS);
 
     console.log("Loading game code into QuickJS VM...");
 
-    // Wrap the user's update function with error handling
-    const wrappedGameCode = `
-${gameCode}
-
-function doUpdate(deltaTime, input) {
-  try {
-    return update(deltaTime, input);
-  } catch (error) {
-    return {
-      sprites: [],
-      score: 0,
-      gameOver: true,
-      error: {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      }
-    };
-  }
-}
-`;
-
-    const result = this.vm.evalCode(wrappedGameCode, "game.js");
-    if (result.error) {
-      const errorMsg = this.vm.dump(this.vm.unwrapResult(result.error));
-      result.dispose();
-      throw new Error(`Failed to load game code: ${errorMsg}`);
-    }
-    result.dispose();
-
-    const metadataHandle = this.vm.getProp(this.vm.global, "metadata");
-    const resourcesHandle = this.vm.getProp(this.vm.global, "resources");
-    const updateHandle = this.vm.getProp(this.vm.global, "doUpdate");
-
-    if (!metadataHandle || !resourcesHandle || !updateHandle) {
-      throw new Error("Game code must define metadata, resources, and update functions");
-    }
-
-    const metadataResult = this.vm.callFunction(metadataHandle, this.vm.undefined);
-    const resourcesResult = this.vm.callFunction(resourcesHandle, this.vm.undefined);
-
-    if (metadataResult.error || resourcesResult.error) {
-      const errorMsg = metadataResult.error ? this.vm.dump(this.vm.unwrapResult(metadataResult)) : this.vm.dump(this.vm.unwrapResult(resourcesResult));
-      metadataResult.dispose();
-      resourcesResult.dispose();
-      throw new Error(`Failed to call game functions: ${errorMsg}`);
-    }
-
-    const metadata = this.vm.dump(this.vm.unwrapResult(metadataResult));
-    const resources = this.vm.dump(this.vm.unwrapResult(resourcesResult));
-
+    // Use shared executor to load game code
+    const { metadata, resources, updateHandle } = this.executor.loadGameCode(gameCode);
     this.updateFunction = updateHandle;
-
-    metadataResult.dispose();
-    resourcesResult.dispose();
-    metadataHandle.dispose();
-    resourcesHandle.dispose();
 
     this.loadGame({
       metadata,
@@ -399,12 +344,6 @@ function doUpdate(deltaTime, input) {
     this.preRenderSprites();
     this.state.score = 0;
     this.resetGame();
-  }
-
-  getSpritePosition(spriteId) {
-    const x = ((spriteId | 0) % 16) * 8;  // 16 sprites per row (128px ÷ 8px)
-    const y = Math.floor((spriteId | 0) / 16) * 8;
-    return { x, y, width: 8, height: 8 };
   }
 
   preRenderSprites() {
@@ -452,7 +391,7 @@ function doUpdate(deltaTime, input) {
       }
     }
 
-    const position = this.getSpritePosition(index);
+    const position = getSpritePosition(index);
     this.spriteCtx.putImageData(imageData, position.x, position.y);
   }
 
@@ -719,7 +658,7 @@ function doUpdate(deltaTime, input) {
   }
 
   executeGameUpdate() {
-    if (!this.vm || !this.updateFunction) return [];
+    if (!this.executor || !this.updateFunction) return [];
 
     try {
       const currentTime = performance.now();
@@ -728,35 +667,8 @@ function doUpdate(deltaTime, input) {
 
       const inputState = this.getInputState();
 
-      const deltaTimeHandle = this.vm.newNumber(deltaTime);
-      const inputStateHandle = this.vm.newObject();
-
-      Object.entries(inputState).forEach(([key, value]) => {
-        const keyHandle = this.vm.newString(key);
-        const valueHandle = this.vm.newNumber(value ? 1 : 0);
-        this.vm.setProp(inputStateHandle, keyHandle, valueHandle);
-        keyHandle.dispose();
-        valueHandle.dispose();
-      });
-
-      const result = this.vm.callFunction(this.updateFunction, this.vm.undefined, deltaTimeHandle, inputStateHandle);
-
-      deltaTimeHandle.dispose();
-      inputStateHandle.dispose();
-
-      if (result.error) {
-        const errorMsg = this.vm.dump(this.vm.unwrapResult(result));
-        result.dispose();
-        throw new Error(`Update function error: ${errorMsg}`);
-      }
-
-      const commands = this.vm.dump(this.vm.unwrapResult(result));
-      result.dispose();
-
-      // Check if JS-side try-catch caught an error
-      if (commands && commands.error) {
-        throw new Error(`Game runtime error: ${commands.error.message}\nStack: ${commands.error.stack}`);
-      }
+      // Use shared executor's callUpdate method
+      const commands = this.executor.callUpdate(this.updateFunction, deltaTime, inputState);
 
       return commands;
 
@@ -767,20 +679,25 @@ function doUpdate(deltaTime, input) {
   }
 
   getInputState() {
-    return {
+    const buttonStates = {
       up: this.isPressed('up'),
       down: this.isPressed('down'),
       left: this.isPressed('left'),
       right: this.isPressed('right'),
       a: this.isPressed('a'),
-      b: this.isPressed('b'),
-      upPressed: this.justPressed('up'),
-      downPressed: this.justPressed('down'),
-      leftPressed: this.justPressed('left'),
-      rightPressed: this.justPressed('right'),
-      aPressed: this.justPressed('a'),
-      bPressed: this.justPressed('b')
+      b: this.isPressed('b')
     };
+
+    const prevButtonStates = {
+      up: this.prevInputState['up'],
+      down: this.prevInputState['down'],
+      left: this.prevInputState['left'],
+      right: this.prevInputState['right'],
+      a: this.prevInputState['a'],
+      b: this.prevInputState['b']
+    };
+
+    return QuickJSGameExecutor.createInputState(buttonStates, prevButtonStates);
   }
 
   processCommands(commands) {
@@ -951,7 +868,7 @@ function doUpdate(deltaTime, input) {
             continue;
           }
 
-          const position = this.getSpritePosition(tileId);
+          const position = getSpritePosition(tileId);
           this.ctx.drawImage(
             this.spriteCanvas,
             position.x, position.y, position.width, position.height,
@@ -978,7 +895,7 @@ function doUpdate(deltaTime, input) {
           continue;
         }
 
-        const position = this.getSpritePosition(sprite.spriteId);
+        const position = getSpritePosition(sprite.spriteId);
 
         // Apply sprite flipping if needed
         if (sprite.flipH || sprite.flipV) {
