@@ -128,11 +128,24 @@ function update(deltaTime, input) {
 5. `npm run dev` - Start development server
 
 ### Commands
-- `npm run dev`: Live development on Reddit
+
+#### Development
+- `npm run dev`: Live development on Reddit (concurrent client/server watch + playtest)
+- `npm run dev:client`: Client-only watch mode
+- `npm run dev:server`: Server-only watch mode
+- `npm run dev:devvit`: Devvit playtest mode only
+- `npm run testbed`: Build and run local testbed server for testing without Devvit
+- `npm run testbed:dev`: Testbed development mode with watch
+
+#### Building & Deployment
 - `npm run build`: Build client and server
+- `npm run build:client`: Build client only
+- `npm run build:server`: Build server only
+- `npm run build:client:testbed`: Build testbed client
 - `npm run deploy`: Upload to Reddit (staging)
 - `npm run launch`: Publish for review
 - `npm run type-check`: TypeScript validation
+- `npm run login`: Authenticate with Reddit
 
 ### AI Game Generation Testing
 - `node scripts/test-generation.js --model "openai/gpt-4o-mini" --prompt "snake game"`: Test single model
@@ -272,11 +285,26 @@ const generatedGame = {
 
 #### Post Management
 • `POST /api/post/create` - Create shareable game post with screenshot
+• `POST /api/comment/post` - Post a comment on a Reddit post
 • `GET /api/init` - Initialize application state and user context
 
 #### App Integration
 • `POST /internal/on-app-install` - App installation handler
 • `POST /internal/menu/post-create` - Create new game post from subreddit menu
+• `POST /internal/menu/migrate-screenshots` - Generate screenshots for old posts (moderator only)
+• `POST /api/admin/migrate-screenshots` - Admin endpoint for screenshot migration
+
+### Local Testing with Testbed
+
+The testbed provides a local development environment for testing games without requiring the full Devvit infrastructure:
+
+- **Standalone Server**: Express server with Devvit API mocks (`src/testbed/server.js`)
+- **Fast Iteration**: No upload/deploy cycle needed for testing
+- **Mocked APIs**: Simulates Reddit context, media uploads, and Redis storage
+- **Commands**:
+  - `npm run testbed`: Build and run testbed server
+  - `npm run testbed:dev`: Development mode with hot reload
+- **Access**: Open `http://localhost:3000` after starting testbed
 
 ### Security & Sandboxing
 
@@ -432,3 +460,42 @@ return {
   ]
 };
 ```
+
+## Project Structure
+
+### Key Files and Directories
+
+#### Client (`src/client/`)
+- **main.js**: Main game console client with NES rendering engine
+- **splash-main.js**: Game creation/selection splash screen
+- **game-runner.js**: Client-side QuickJS sandbox for game execution
+- **audio/audio-manager.js**: NES-style 4-channel audio system
+- **bitmap-font.js**: Pre-rendered font sprite generation
+
+#### Server (`src/server/`)
+- **index.js**: Express server with API routes and Devvit integration
+- **job-manager.js**: Redis-based async job queue for game generation
+- **responses-api.js**: OpenAI Responses API integration
+- **headless-game-runner.js**: Server-side game runner for screenshots
+- **screenshot-renderer.js**: PNG screenshot generation
+- **core/post.js**: Reddit post creation and management
+
+#### Shared (`src/shared/`)
+- **game-schema.js**: Game validation and schema definitions
+- **game-prompt.js**: LLM response parsing (markdown → JSON + JavaScript)
+- **game-prompt-common.js**: Common prompt utilities
+- **game-runner-common.js**: Shared game execution logic
+- **test-games/**: Manual test games (pong.js, platformer.js)
+
+#### Testbed (`src/testbed/`)
+- **server.js**: Local testing server with Devvit API mocks
+- **loader.js**: Module loader for testbed environment
+- **mocks/**: Devvit API mocks for local development
+
+#### Scripts
+- **test-generation.js**: AI model testing script for game generation
+
+#### Configuration
+- **devvit.json**: Devvit app configuration (entry points, menu items, settings)
+- **package.json**: NPM scripts and dependencies
+- **tsconfig.json**: TypeScript configuration for ES modules

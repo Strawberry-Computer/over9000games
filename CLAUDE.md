@@ -25,8 +25,12 @@ This is a Devvit web application that implements a retro NES-style game console 
 ### Build System
 - Uses Vite for both client and server builds with WebAssembly support
 - Client builds to `dist/client/` (includes QuickJS WASM)
+  - `splash.html`: Game creation/selection interface (default entry point)
+  - `index.html`: Main game console interface (game entry point)
 - Server builds to `dist/server/index.cjs` (Node.js bundle)
-- Devvit configuration defines entry points and API key settings
+- Devvit configuration (`devvit.json`) defines entry points and API key settings
+  - Default entry: `splash.html` (regular height, inline)
+  - Game entry: `index.html` (tall height)
 
 ## Essential Commands
 
@@ -35,9 +39,15 @@ This is a Devvit web application that implements a retro NES-style game console 
 - `npm run dev:client`: Client-only watch mode
 - `npm run dev:server`: Server-only watch mode
 - `npm run dev:devvit`: Devvit playtest mode only
+- `npm run testbed`: Build and run local testbed server for testing without Devvit
+- `npm run testbed:dev`: Testbed development mode with watch mode
+- `npm run dev:client:testbed`: Build testbed client in watch mode
 
 ### Building & Deployment
 - `npm run build`: Build both client and server for production
+- `npm run build:client`: Build client only
+- `npm run build:server`: Build server only
+- `npm run build:client:testbed`: Build testbed client
 - `npm run deploy`: Build and upload to Reddit (does not publish)
 - `npm run launch`: Full pipeline - build, deploy, and publish for review
 - `npm run type-check`: TypeScript compilation check
@@ -113,11 +123,14 @@ App registers subreddit menu for moderators (`/internal/menu/post-create`) and a
 
 ### Post Management
 - `POST /api/post/create`: Create shareable game post with screenshot
+- `POST /api/comment/post`: Post a comment on a Reddit post
 - `GET /api/init`: Initialize application state and user context
 
 ### App Integration
 - `POST /internal/on-app-install`: App installation handler
 - `POST /internal/menu/post-create`: Create new game post from subreddit menu
+- `POST /internal/menu/migrate-screenshots`: Generate screenshots for old posts (moderator only)
+- `POST /api/admin/migrate-screenshots`: Admin endpoint for screenshot migration
 
 ## Development Notes
 
@@ -129,6 +142,7 @@ App registers subreddit menu for moderators (`/internal/menu/post-create`) and a
 ### Local Testing
 - `npm run dev`: Full development mode with live reload and playtest
 - Uses development subreddit `over9000games_dev` for testing
+- `npm run testbed`: Local testbed server for testing without Devvit environment
 - QuickJS games run in sandboxed environment with memory/execution limits
 
 ### Game Development Workflow
@@ -147,11 +161,22 @@ App registers subreddit menu for moderators (`/internal/menu/post-create`) and a
 Project uses ES modules (`"type": "module"`) with separate tsconfig for client/server/shared. Vite handles WASM integration for QuickJS in client build.
 
 ### Key File Locations
-- **Game Generation Logic**: `src/server/game-generator.js` - OpenAI/Gemini API integration
+- **Server Entry**: `src/server/index.js` - Express server with API routes and Devvit integration
+- **Client Entry**: `src/client/main.js` - Main game console client
+- **Splash Entry**: `src/client/splash-main.js` - Game creation/selection splash screen
+- **Job Management**: `src/server/job-manager.js` - Redis-based async job queue
+- **Responses API**: `src/server/responses-api.js` - OpenAI Responses API integration
 - **Game Schema Validation**: `src/shared/game-schema.js` - Validates sprites, metadata, and game structure
-- **QuickJS Game Runner**: `src/client/game-runner.js` - Sandboxed game execution and rendering
+- **QuickJS Game Runner**: `src/client/game-runner.js` - Client-side sandboxed game execution
+- **Headless Game Runner**: `src/server/headless-game-runner.js` - Server-side game runner for screenshots
+- **Screenshot Renderer**: `src/server/screenshot-renderer.js` - PNG screenshot generation
 - **Game Parsing**: `src/shared/game-prompt.js` - Parses LLM markdown responses
-- **Test Games**: `src/shared/test-games/` - Manual test games for development
+- **Game Runner Common**: `src/shared/game-runner-common.js` - Shared game execution logic
+- **Audio Manager**: `src/client/audio/audio-manager.js` - NES-style audio system
+- **Bitmap Font**: `src/client/bitmap-font.js` - Pre-rendered font sprite generation
+- **Post Management**: `src/server/core/post.js` - Reddit post creation and management
+- **Test Games**: `src/shared/test-games/` - Manual test games for development (pong.js, platformer.js)
+- **Testbed**: `src/testbed/` - Local testing environment with Devvit mocks
 - **Generation Testing**: `scripts/test-generation.js` - AI model testing script
 
 ### Game Development Constraints
