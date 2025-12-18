@@ -26,6 +26,10 @@ const gameCreationSubtitleElement = document.getElementById("game-creation-subti
 const undoEditButton = document.getElementById("btn-undo-edit");
 const redoEditButton = document.getElementById("btn-redo-edit");
 
+// Draft list elements
+const draftListModal = document.getElementById("draft-list-modal");
+const draftListElement = document.getElementById("draft-list");
+
 // Current game state
 let currentGameData = null;
 let isTestGame = false;
@@ -37,6 +41,10 @@ let editHistory = {
 };
 let isEditMode = false;
 
+// Draft state management
+let currentDraftId = null;
+let draftSyncTimer = null;
+const DRAFT_SYNC_DELAY = 2000; // Debounce draft saves by 2 seconds
 
 let currentPostId = null;
 let currentUsername = null;
@@ -313,6 +321,9 @@ function hideAllModals() {
   gamePublishingElement.style.display = "none";
   devMenuElement.style.display = "none";
   highScoreCommentElement.style.display = "none";
+  if (draftListModal) {
+    draftListModal.style.display = "none";
+  }
   const newGameConfirmElement = document.getElementById("new-game-confirm");
   if (newGameConfirmElement) {
     newGameConfirmElement.style.display = "none";
@@ -562,7 +573,7 @@ async function handleGenerationComplete(gameDefinition) {
         description: gameDescriptionElement.value.trim()
       };
 
-      // Save new version to history
+      // Save new version to history (will trigger draft sync)
       saveToEditHistory(currentGameData);
       updateEditButtons();
 
@@ -573,7 +584,14 @@ async function handleGenerationComplete(gameDefinition) {
         description: gameDescriptionElement.value.trim()
       };
 
+      // Reset edit history and create new draft
       editHistory = { versions: [], currentIndex: -1 };
+      currentDraftId = null;
+
+      // Create draft on server first
+      await createDraft(currentGameData);
+
+      // Then save to local history (will trigger sync)
       saveToEditHistory(currentGameData);
       updateEditButtons();
     }
@@ -1036,10 +1054,15 @@ document.getElementById("btn-skip-comment")?.addEventListener("click", async () 
 });
 
 // Edit control event listeners
-const handleEdit = () => {
-  // If no game exists, show creation modal instead of edit mode
+const handleEdit = async () => {
+  // If no game exists, check for drafts first
   if (!currentGameData) {
-    showGameCreation();
+    const drafts = await fetchDraftList();
+    if (drafts.length > 0) {
+      await showDraftList();
+    } else {
+      showGameCreation();
+    }
     return;
   }
 
@@ -1058,6 +1081,12 @@ document.getElementById("btn-new-game-edit")?.addEventListener("click", showNewG
 document.getElementById("btn-confirm-new-game")?.addEventListener("click", confirmNewGame);
 document.getElementById("btn-cancel-new-game")?.addEventListener("click", hideNewGameConfirmation);
 
+// Draft list listeners
+document.getElementById("btn-close-drafts")?.addEventListener("click", hideDraftList);
+document.getElementById("btn-new-draft")?.addEventListener("click", () => {
+  hideDraftList();
+  showGameCreation();
+});
 
 // Custom game event for score submission
 document.addEventListener("gameOver", (event) => {
@@ -1152,8 +1181,9 @@ function saveToEditHistory(gameData) {
     editHistory.currentIndex--;
   }
 
-  // Save to localStorage
+  // Save to localStorage (backup) and schedule server sync
   localStorage.setItem('editHistory', JSON.stringify(editHistory));
+  scheduleDraftSync();
 }
 
 function updateEditButtons() {
@@ -1176,6 +1206,7 @@ function undoEdit() {
     currentGameData = JSON.parse(JSON.stringify(editHistory.versions[editHistory.currentIndex]));
     updateEditButtons();
     localStorage.setItem('editHistory', JSON.stringify(editHistory));
+    scheduleDraftSync();
 
     // Show the prompt that will take you to the NEXT version (not the prompt that created current version)
     const nextVersion = editHistory.versions[editHistory.currentIndex + 1];
@@ -1192,6 +1223,7 @@ function redoEdit() {
     currentGameData = JSON.parse(JSON.stringify(editHistory.versions[editHistory.currentIndex]));
     updateEditButtons();
     localStorage.setItem('editHistory', JSON.stringify(editHistory));
+    scheduleDraftSync();
 
     // Show the prompt that created this version (the one we just redid to)
     gameDescriptionElement.value = currentGameData.description || "";
@@ -1215,6 +1247,247 @@ function startEditMode() {
 
   updateEditButtons();
   showGameCreation();
+}
+
+// ============================================================
+// Draft Management
+// ============================================================
+
+/**
+ * Create a new draft on the server after game generation
+ */
+async function createDraft(gameData) {
+  const response = await fetch('/api/drafts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: gameData.metadata?.title || 'Untitled Game',
+      description: gameData.description || '',
+      gameData: {
+        gameCode: gameData.gameCode,
+        description: gameData.description,
+        metadata: gameData.metadata
+      }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to create draft: ${response.status}`);
+  }
+
+  const result = await response.json();
+  currentDraftId = result.draftId;
+  console.log(`Created draft: ${currentDraftId}`);
+  return result;
+}
+
+/**
+ * Sync edit history to server (debounced)
+ */
+function scheduleDraftSync() {
+  if (!currentDraftId) return;
+
+  if (draftSyncTimer) {
+    clearTimeout(draftSyncTimer);
+  }
+
+  draftSyncTimer = setTimeout(syncDraftToServer, DRAFT_SYNC_DELAY);
+}
+
+/**
+ * Immediately sync draft to server
+ */
+async function syncDraftToServer() {
+  if (!currentDraftId || editHistory.versions.length === 0) return;
+
+  const response = await fetch(`/api/drafts/${currentDraftId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      versions: editHistory.versions,
+      currentIndex: editHistory.currentIndex
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to sync draft: ${response.status}`);
+  }
+
+  console.log(`Draft synced: ${currentDraftId}`);
+}
+
+/**
+ * Load a draft from the server
+ */
+async function loadDraft(draftId) {
+  const response = await fetch(`/api/drafts/${draftId}`);
+  if (!response.ok) {
+    throw new Error(`Failed to load draft: ${response.status}`);
+  }
+
+  const draft = await response.json();
+  currentDraftId = draft.id;
+
+  // Restore edit history
+  editHistory.versions = draft.versions;
+  editHistory.currentIndex = draft.currentIndex;
+
+  // Set current game data from current version
+  if (editHistory.versions.length > 0 && editHistory.currentIndex >= 0) {
+    currentGameData = JSON.parse(JSON.stringify(
+      editHistory.versions[editHistory.currentIndex]
+    ));
+  }
+
+  console.log(`Loaded draft: ${draftId} with ${draft.versions.length} versions`);
+  return draft;
+}
+
+/**
+ * Fetch list of user's drafts
+ */
+async function fetchDraftList() {
+  const response = await fetch('/api/drafts');
+  if (!response.ok) {
+    throw new Error(`Failed to fetch drafts: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.drafts || [];
+}
+
+/**
+ * Delete a draft
+ */
+async function deleteDraft(draftId) {
+  const response = await fetch(`/api/drafts/${draftId}`, {
+    method: 'DELETE'
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to delete draft: ${response.status}`);
+  }
+
+  if (currentDraftId === draftId) {
+    currentDraftId = null;
+  }
+
+  console.log(`Deleted draft: ${draftId}`);
+}
+
+/**
+ * Mark current draft as published
+ */
+async function markDraftPublished(postId) {
+  if (!currentDraftId) return;
+
+  const response = await fetch(`/api/drafts/${currentDraftId}/publish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ postId })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to mark draft as published: ${response.status}`);
+  }
+
+  console.log(`Draft ${currentDraftId} marked as published`);
+}
+
+/**
+ * Show the draft list modal
+ */
+async function showDraftList() {
+  const drafts = await fetchDraftList();
+  renderDraftList(drafts);
+  draftListModal.style.display = "block";
+}
+
+/**
+ * Hide the draft list modal
+ */
+function hideDraftList() {
+  draftListModal.style.display = "none";
+}
+
+/**
+ * Render drafts in the list
+ */
+function renderDraftList(drafts) {
+  if (!drafts.length) {
+    draftListElement.innerHTML = '<div class="draft-empty">No drafts yet</div>';
+    return;
+  }
+
+  draftListElement.innerHTML = drafts.map(draft => `
+    <div class="draft-item" data-draft-id="${draft.id}">
+      <div class="draft-item-info">
+        <div class="draft-item-title">${escapeHtml(draft.title)}</div>
+        <div class="draft-item-meta">${formatTimeAgo(draft.updatedAt)}</div>
+      </div>
+      <button class="draft-item-delete" data-draft-id="${draft.id}">X</button>
+    </div>
+  `).join('');
+
+  // Add click handlers
+  draftListElement.querySelectorAll('.draft-item').forEach(item => {
+    item.addEventListener('click', async (e) => {
+      if (e.target.classList.contains('draft-item-delete')) return;
+      const draftId = item.dataset.draftId;
+      await selectDraft(draftId);
+    });
+  });
+
+  draftListElement.querySelectorAll('.draft-item-delete').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const draftId = btn.dataset.draftId;
+      await deleteDraft(draftId);
+      await showDraftList(); // Refresh list
+    });
+  });
+}
+
+/**
+ * Select and load a draft
+ */
+async function selectDraft(draftId) {
+  const draft = await loadDraft(draftId);
+  if (!draft) return;
+
+  hideDraftList();
+
+  // Load the game
+  if (currentGameData?.gameCode) {
+    await gameRunner.loadCode(currentGameData.gameCode, {
+      isPublished: false
+    });
+    updateEditButtons();
+    updateEditButtonState(true);
+    updateShareButtonState();
+  }
+}
+
+/**
+ * Format timestamp as relative time
+ */
+function formatTimeAgo(timestamp) {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+
+  if (seconds < 60) return 'just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+  return new Date(timestamp).toLocaleDateString();
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // Check for force_mobile URL parameter to show touch controls on desktop

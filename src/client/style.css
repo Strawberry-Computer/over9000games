@@ -919,3 +919,67 @@ body.force-mobile .keyboard-bindings {
     font-size: 12px;
   }
 }
+
+/* Draft List Styles */
+.draft-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 10px 0;
+}
+
+.draft-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  margin: 4px 0;
+  background: var(--nes-dark-gray);
+  border: 2px solid var(--nes-light-gray);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.draft-item:hover {
+  background: var(--nes-light-gray);
+}
+
+.draft-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.draft-item-title {
+  font-size: 8px;
+  color: var(--nes-yellow);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.draft-item-meta {
+  font-size: 6px;
+  color: #888;
+  margin-top: 2px;
+}
+
+.draft-item-delete {
+  background: var(--nes-red);
+  color: white;
+  border: none;
+  padding: 4px 6px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.draft-item-delete:hover {
+  background: #ff4444;
+}
+
+.draft-empty {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-size: 8px;
+}

@@ -10,6 +10,7 @@ import {
 } from "@devvit/web/server";
 import { createPost } from "./core/post.js";
 import { JobManager } from "./job-manager.js";
+import { DraftManager } from "./draft-manager.js";
 import { getTestGameCode, getAvailableTestGames } from "../shared/test-games/server-loader.js";
 import { generateScreenshot } from "./screenshot-renderer.js";
 
@@ -17,6 +18,9 @@ const app = express();
 
 // Initialize job manager
 const jobManager = new JobManager(redis);
+
+// Initialize draft manager
+const draftManager = new DraftManager(redis);
 
 
 // Middleware for JSON body parsing
@@ -961,7 +965,98 @@ router.post("/api/admin/migrate-screenshots", async (req, res) => {
   }
 });
 
+// ============================================================
+// Draft Management API
+// ============================================================
+
+// Helper to wrap async routes and pass errors to middleware
+const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
+// Helper for auth check
+const requireAuth = () => {
+  const userId = context.userId;
+  if (!userId) {
+    const err = new Error("Not authenticated");
+    err.status = 401;
+    throw err;
+  }
+  return userId;
+};
+
+// List all drafts for current user
+router.get("/api/drafts", asyncHandler(async (_req, res) => {
+  const userId = requireAuth();
+  const drafts = await draftManager.listDrafts(userId);
+  res.json({ drafts });
+}));
+
+// Create a new draft
+router.post("/api/drafts", asyncHandler(async (req, res) => {
+  const userId = requireAuth();
+  const { title, description, gameData } = req.body;
+
+  if (!gameData?.gameCode) {
+    return res.status(400).json({ error: "gameData.gameCode is required" });
+  }
+
+  const result = await draftManager.createDraft(userId, { title, description, gameData });
+  res.json(result);
+}));
+
+// Get a specific draft
+router.get("/api/drafts/:draftId", asyncHandler(async (req, res) => {
+  const userId = requireAuth();
+  const draft = await draftManager.getDraft(userId, req.params.draftId);
+
+  if (!draft) {
+    return res.status(404).json({ error: "Draft not found" });
+  }
+  res.json(draft);
+}));
+
+// Update a draft (save version history)
+router.put("/api/drafts/:draftId", asyncHandler(async (req, res) => {
+  const userId = requireAuth();
+  const { versions, currentIndex, title } = req.body;
+
+  if (!Array.isArray(versions) || typeof currentIndex !== 'number') {
+    return res.status(400).json({ error: "versions array and currentIndex required" });
+  }
+
+  const result = await draftManager.updateDraft(userId, req.params.draftId, {
+    versions, currentIndex, title
+  });
+  res.json(result);
+}));
+
+// Delete a draft
+router.delete("/api/drafts/:draftId", asyncHandler(async (req, res) => {
+  const userId = requireAuth();
+  await draftManager.deleteDraft(userId, req.params.draftId);
+  res.json({ deleted: true });
+}));
+
+// Mark draft as published
+router.post("/api/drafts/:draftId/publish", asyncHandler(async (req, res) => {
+  const userId = requireAuth();
+  const { postId } = req.body;
+
+  if (!postId) {
+    return res.status(400).json({ error: "postId is required" });
+  }
+
+  await draftManager.markPublished(userId, req.params.draftId, postId);
+  res.json({ published: true, postId });
+}));
+
 app.use(router);
+
+// Default error handling middleware
+app.use((err, _req, res, _next) => {
+  console.error("Unhandled error:", err);
+  const status = err.status || 500;
+  res.status(status).json({ error: err.message || "Internal server error" });
+});
 
 const server = createServer(app);
 server.on("error", (err) => console.error(`server error; ${err.stack}`));
