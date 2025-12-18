@@ -96,11 +96,6 @@ export function createServer(app) {
     res.redirect('/r/testbed');
   });
 
-  // New game submission page - serve client for game creation
-  app.get('/r/testbed/submit', (req, res) => {
-    serveClient(res);
-  });
-
   // Subreddit feed
   app.get('/r/testbed', async (req, res) => {
     try {
@@ -634,7 +629,7 @@ function generateSubredditHTML(games) {
     <div class="header">
       <div class="header-top">
         <div class="subreddit-title">r/testbed</div>
-        <a href="/r/testbed/submit" class="new-btn">+ New Game</a>
+        <a href="/r/testbed/comments/empty_new_game" class="new-btn">+ New Game</a>
       </div>
     </div>
 
