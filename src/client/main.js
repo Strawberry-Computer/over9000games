@@ -1464,7 +1464,8 @@ async function selectDraft(draftId) {
   // Load the game
   if (currentGameData?.gameCode) {
     await gameRunner.loadCode(currentGameData.gameCode, {
-      isPublished: false
+      isPublished: false,
+      isGenerated: true  // Drafts are generated games, allow posting
     });
     updateEditButtons();
     updateEditButtonState(true);

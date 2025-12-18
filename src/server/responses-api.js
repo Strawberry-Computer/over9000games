@@ -1,9 +1,11 @@
 import { createGameGenerationPrompt, parseMarkdownResponse } from '../shared/game-prompt.js';
+import { HeadlessGameRunner } from './headless-game-runner.js';
 
 export class ResponsesAPI {
   constructor(apiKey) {
     this.apiKey = apiKey;
     this.baseURL = 'https://api.openai.com/v1/responses';
+    this.gameRunner = new HeadlessGameRunner();
   }
 
   async createResponse(description, model = 'gpt-5', previousGame = null) {
@@ -72,25 +74,18 @@ export class ResponsesAPI {
       const outputText = messageItem?.content?.[0]?.text;
 
       if (outputText && typeof outputText === 'string') {
-        try {
-          const gameDefinition = parseMarkdownResponse(outputText);
-          console.log(`Successfully parsed game definition for response ${responseId}`);
+        const gameDefinition = parseMarkdownResponse(outputText);
+        console.log(`Successfully parsed game definition for response ${responseId}`);
 
-          return {
-            status: 'completed',
-            gameDefinition
-          };
-        } catch (parseError) {
-          console.error(`Failed to parse OpenAI response ${responseId}:`, parseError);
-          console.error('Response output type:', typeof outputText);
-          console.error('Response output length:', outputText?.length);
-          console.error('Response start:', outputText?.substring(0, 500));
+        // Extract metadata by running game code in QuickJS
+        const metadata = await this.gameRunner.extractMetadata(gameDefinition.gameCode);
+        gameDefinition.metadata = metadata;
+        console.log(`Extracted metadata for response ${responseId}:`, metadata?.title);
 
-          return {
-            status: 'failed',
-            error: `Failed to parse response: ${parseError.message}`
-          };
-        }
+        return {
+          status: 'completed',
+          gameDefinition
+        };
       } else {
         console.error(`Response ${responseId} marked complete but no text at output[0].content[0].text`);
         console.error('Response structure:', JSON.stringify(data, null, 2).substring(0, 1000));

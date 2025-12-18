@@ -48,7 +48,7 @@ export class HeadlessGameRunner {
 
     try {
       // Load and evaluate game code using shared executor
-      const { resources, updateHandle } = this.executor.loadGameCode(gameCode);
+      const { metadata, resources, updateHandle } = this.executor.loadGameCode(gameCode);
 
       // Run update() for specified frames to let game initialize
       const deltaTime = 1000 / 60; // ~16.67ms per frame
@@ -67,6 +67,7 @@ export class HeadlessGameRunner {
       updateHandle.dispose();
 
       return {
+        metadata: metadata || {},
         sprites: resources.sprites || [],
         palette: resources.palette || getDefaultPalette(),
         tiles: lastState?.tiles || [],
@@ -76,6 +77,31 @@ export class HeadlessGameRunner {
       };
     } catch (error) {
       console.error("HeadlessGameRunner error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Extract metadata from game code without running frames
+   * @param {string} gameCode - The game JavaScript code
+   * @returns {Object} - { title, description, controls }
+   */
+  async extractMetadata(gameCode) {
+    await this.initialize();
+
+    // Reset VM for clean state
+    if (this.vm) {
+      this.vm.dispose();
+    }
+    this.vm = this.runtime.newContext();
+    this.executor = new QuickJSGameExecutor(this.vm, this.QuickJS);
+
+    try {
+      const { metadata, updateHandle } = this.executor.loadGameCode(gameCode);
+      updateHandle.dispose();
+      return metadata || {};
+    } catch (error) {
+      console.error("HeadlessGameRunner extractMetadata error:", error);
       throw error;
     }
   }
