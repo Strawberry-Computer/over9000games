@@ -303,6 +303,13 @@ export class GameRunner {
       await this.initialize();
     }
 
+    // Stop any running game loop before disposing VM
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+    this.state.gameState = GameState.STOPPED;
+
     if (this.vm) {
       this.vm.dispose();
       this.vm = null;
@@ -634,6 +641,8 @@ export class GameRunner {
         this.processCommands(commands);
       } catch (error) {
         console.error("Game update error:", error);
+        this.stopGame({ message: "Game crashed: " + error.message, title: "Error" });
+        return;
       }
 
       this.frameCount++;
