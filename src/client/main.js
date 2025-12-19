@@ -746,6 +746,16 @@ async function publishGameToReddit() {
     if (postData.success) {
       showPublishingStatus(`Game posted successfully! Redirecting to post`, "success");
 
+      // Delete the draft since it's now published
+      if (currentDraftId) {
+        try {
+          await deleteDraft(currentDraftId);
+          console.log(`Deleted draft ${currentDraftId} after publishing`);
+        } catch (err) {
+          console.error('Failed to delete draft after publishing:', err);
+        }
+      }
+
       // Redirect to the new post after 2 seconds
       setTimeout(() => {
         navigateTo(postData.postUrl);

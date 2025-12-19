@@ -196,3 +196,8 @@ Project uses ES modules (`"type": "module"`) with separate tsconfig for client/s
 - Check console logs for game generation and parsing errors
 - Generated games saved to `./generated-games/` for inspection
 - Game validation errors show specific sprite/palette issues
+
+### Git Commit Guidelines
+- **NEVER use `git add -A` or `git add .`** - always add specific files explicitly
+- Review staged files before committing to avoid adding debug/temp files
+- Untracked files like `gemini-*.txt`, `*.md` debug notes should not be committed
