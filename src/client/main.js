@@ -92,6 +92,9 @@ async function fetchInitialData() {
         console.log("No game definition in init response");
         gameRunner.showMessage("Create a game\nto start!", "NO GAME");
         updateEditButtonState(false); // Show "CREATE" button
+
+        // Check if there are any generating drafts that need recovery
+        await recoverGeneratingDrafts();
       }
     } else {
       console.error("Invalid response type from /api/init", data);
@@ -450,7 +453,7 @@ async function generateGame() {
   try {
     const endpoint = isEditMode ? "/api/game/edit" : "/api/game/generate";
     const requestBody = isEditMode
-      ? { description, previousGame: currentGameData }
+      ? { description, previousGame: currentGameData, draftId: currentDraftId }
       : { description }; // Server will select model based on subreddit
 
     showGenerationStatus("Starting generation...", "loading");
@@ -470,6 +473,12 @@ async function generateGame() {
     if (data.type === "generate_async") {
       // Handle async job
       currentJobId = data.jobId;
+
+      // Store draftId from server (draft created with 'generating' status)
+      if (data.draftId) {
+        currentDraftId = data.draftId;
+        console.log(`Generation started, draft created: ${currentDraftId}`);
+      }
 
       showGenerationStatus(
         `Queued for generation (${data.model}) • Est. ${data.estimatedTime}s`,
@@ -584,14 +593,10 @@ async function handleGenerationComplete(gameDefinition) {
         description: gameDescriptionElement.value.trim()
       };
 
-      // Reset edit history and create new draft
+      // Reset edit history (draft already created on server with 'generating' status)
       editHistory = { versions: [], currentIndex: -1 };
-      currentDraftId = null;
 
-      // Create draft on server first
-      await createDraft(currentGameData);
-
-      // Then save to local history (will trigger sync)
+      // Save to local history and sync (this updates draft status to 'draft')
       saveToEditHistory(currentGameData);
       updateEditButtons();
     }
@@ -1304,12 +1309,18 @@ function scheduleDraftSync() {
 async function syncDraftToServer() {
   if (!currentDraftId || editHistory.versions.length === 0) return;
 
+  // Get title from current version's metadata
+  const currentVersion = editHistory.versions[editHistory.currentIndex];
+  const title = currentVersion?.metadata?.title;
+
   const response = await fetch(`/api/drafts/${currentDraftId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       versions: editHistory.versions,
-      currentIndex: editHistory.currentIndex
+      currentIndex: editHistory.currentIndex,
+      title,
+      status: 'draft' // Mark as 'draft' (clears 'generating' status)
     })
   });
 
@@ -1399,6 +1410,86 @@ async function markDraftPublished(postId) {
 }
 
 /**
+ * Check for and recover any drafts that were generating when the page closed
+ */
+async function recoverGeneratingDrafts() {
+  try {
+    const drafts = await fetchDraftList();
+    const generatingDrafts = drafts.filter(d => d.status === 'generating' && d.jobId);
+
+    if (generatingDrafts.length === 0) {
+      return;
+    }
+
+    console.log(`Found ${generatingDrafts.length} generating draft(s) to recover`);
+
+    for (const draft of generatingDrafts) {
+      try {
+        // Check if the job completed
+        const response = await fetch(`/api/jobs/${draft.jobId}`);
+
+        if (!response.ok) {
+          // Job not found or expired - mark draft as failed
+          console.log(`Job ${draft.jobId} not found for draft ${draft.id}`);
+          continue;
+        }
+
+        const jobData = await response.json();
+
+        if (jobData.status === 'completed' && jobData.gameDefinition?.gameCode) {
+          console.log(`Recovering completed game for draft ${draft.id}`);
+
+          // Load the full draft to get version history
+          const fullDraft = await loadDraft(draft.id);
+
+          // Set up game data
+          currentGameData = {
+            ...jobData.gameDefinition,
+            description: fullDraft.description
+          };
+
+          // Initialize edit history and save the generated game
+          editHistory = { versions: [], currentIndex: -1 };
+          saveToEditHistory(currentGameData);
+
+          // Show the recovered game
+          await showGeneratedGame();
+          updateShareButtonState();
+          updateEditButtonState(true);
+
+          console.log(`Recovered game from draft ${draft.id}`);
+          return; // Only recover one at a time
+        } else if (jobData.status === 'polling' || jobData.status === 'queued') {
+          // Job still running - resume polling
+          console.log(`Resuming polling for draft ${draft.id}, job ${draft.jobId}`);
+          currentDraftId = draft.id;
+          currentJobId = draft.jobId;
+
+          // Show the creation form with the original description
+          gameDescriptionElement.value = draft.description || '';
+          showGameCreation();
+
+          // Disable form and show status
+          gameDescriptionElement.disabled = true;
+          const generateButton = document.getElementById("btn-generate-game");
+          generateButton.disabled = true;
+          generateButton.classList.add("disabled");
+
+          showGenerationStatus(`Resuming generation (${jobData.model || 'AI'})...`, "loading");
+          startJobPolling(draft.jobId);
+          return; // Only resume one at a time
+        }
+        // If failed, just skip it - user can retry from drafts
+      } catch (err) {
+        console.error(`Error recovering draft ${draft.id}:`, err);
+      }
+    }
+  } catch (error) {
+    console.error('Error checking for generating drafts:', error);
+  }
+}
+
+/**
  * Show the draft list modal
  */
 async function showDraftList() {
@@ -1423,22 +1514,36 @@ function renderDraftList(drafts) {
     return;
   }
 
-  draftListElement.innerHTML = drafts.map(draft => `
-    <div class="draft-item" data-draft-id="${draft.id}">
-      <div class="draft-item-info">
-        <div class="draft-item-title">${escapeHtml(draft.title)}</div>
-        <div class="draft-item-meta">${formatTimeAgo(draft.updatedAt)}</div>
+  draftListElement.innerHTML = drafts.map(draft => {
+    const isGenerating = draft.status === 'generating';
+    const statusClass = isGenerating ? ' draft-item-generating' : '';
+    const title = isGenerating ? 'Generating...' : escapeHtml(draft.title);
+    const meta = isGenerating ? 'In progress' : formatTimeAgo(draft.updatedAt);
+
+    return `
+      <div class="draft-item${statusClass}" data-draft-id="${draft.id}" data-status="${draft.status}">
+        <div class="draft-item-info">
+          <div class="draft-item-title">${title}</div>
+          <div class="draft-item-meta">${meta}</div>
+        </div>
+        <button class="draft-item-delete" data-draft-id="${draft.id}">X</button>
       </div>
-      <button class="draft-item-delete" data-draft-id="${draft.id}">X</button>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   // Add click handlers
   draftListElement.querySelectorAll('.draft-item').forEach(item => {
     item.addEventListener('click', async (e) => {
       if (e.target.classList.contains('draft-item-delete')) return;
       const draftId = item.dataset.draftId;
-      await selectDraft(draftId);
+      const status = item.dataset.status;
+
+      if (status === 'generating') {
+        // Resume generating draft
+        await resumeGeneratingDraft(draftId);
+      } else {
+        await selectDraft(draftId);
+      }
     });
   });
 
@@ -1450,6 +1555,61 @@ function renderDraftList(drafts) {
       await showDraftList(); // Refresh list
     });
   });
+}
+
+/**
+ * Resume a generating draft (check job status and continue polling or recover)
+ */
+async function resumeGeneratingDraft(draftId) {
+  try {
+    const draft = await loadDraft(draftId);
+    if (!draft || !draft.jobId) {
+      console.error('Draft has no jobId, cannot resume');
+      return;
+    }
+
+    hideDraftList();
+
+    // Check the job status
+    const response = await fetch(`/api/jobs/${draft.jobId}`);
+    if (!response.ok) {
+      console.log(`Job ${draft.jobId} not found, generation may have expired`);
+      gameRunner.showMessage("Generation expired\nTry again", "ERROR");
+      return;
+    }
+
+    const jobData = await response.json();
+
+    if (jobData.status === 'completed' && jobData.gameDefinition?.gameCode) {
+      // Job completed while we weren't looking - recover it
+      currentGameData = {
+        ...jobData.gameDefinition,
+        description: draft.description
+      };
+      editHistory = { versions: [], currentIndex: -1 };
+      saveToEditHistory(currentGameData);
+      await showGeneratedGame();
+      updateShareButtonState();
+      updateEditButtonState(true);
+      console.log(`Recovered completed game from draft ${draftId}`);
+    } else if (jobData.status === 'polling' || jobData.status === 'queued') {
+      // Job still running - show form and resume polling
+      currentJobId = draft.jobId;
+      gameDescriptionElement.value = draft.description || '';
+      showGameCreation();
+      gameDescriptionElement.disabled = true;
+      const generateButton = document.getElementById("btn-generate-game");
+      generateButton.disabled = true;
+      generateButton.classList.add("disabled");
+      showGenerationStatus(`Resuming generation (${jobData.model || 'AI'})...`, "loading");
+      startJobPolling(draft.jobId);
+    } else if (jobData.status === 'failed') {
+      gameRunner.showMessage("Generation failed\nTry again", "ERROR");
+    }
+  } catch (error) {
+    console.error('Error resuming generating draft:', error);
+    gameRunner.showMessage("Error resuming\ngeneration", "ERROR");
+  }
 }
 
 /**

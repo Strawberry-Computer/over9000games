@@ -28,9 +28,11 @@ export class DraftManager {
       userId,
       title,
       description: data.description || data.gameData?.description || '',
-      status: 'draft',
+      status: data.status || 'draft',
       currentIndex: '0',
       postId: '',
+      jobId: data.jobId || '',
+      generationModel: data.generationModel || '',
       createdAt: now.toString(),
       updatedAt: now.toString()
     };
@@ -110,6 +112,8 @@ export class DraftManager {
       status: draft.status,
       currentIndex: parseInt(draft.currentIndex),
       postId: draft.postId || null,
+      jobId: draft.jobId || null,
+      generationModel: draft.generationModel || null,
       createdAt: parseInt(draft.createdAt),
       updatedAt: parseInt(draft.updatedAt),
       versions
@@ -138,6 +142,13 @@ export class DraftManager {
       currentIndex: data.currentIndex.toString()
     };
     if (data.title) updates.title = data.title;
+    if (data.status) {
+      updates.status = data.status;
+      // Clear jobId when transitioning to 'draft' status (generation complete)
+      if (data.status === 'draft') {
+        updates.jobId = '';
+      }
+    }
 
     await this.redis.hSet(draftKey, updates);
 
@@ -213,6 +224,8 @@ export class DraftManager {
           title: data.title,
           description: data.description?.substring(0, 100),
           status: data.status,
+          jobId: data.jobId || null,
+          generationModel: data.generationModel || null,
           createdAt: parseInt(data.createdAt),
           updatedAt: parseInt(data.updatedAt)
         };
@@ -242,6 +255,30 @@ export class DraftManager {
     ]);
 
     console.log(`Deleted draft ${draftId}`);
+    return true;
+  }
+
+  /**
+   * Update draft generation status (when job completes or fails)
+   */
+  async updateGenerationStatus(userId, draftId, { status, jobId }) {
+    const draftKey = `draft:${userId}:${draftId}`;
+
+    const existing = await this.redis.hGet(draftKey, 'userId');
+    if (!existing || existing !== userId) {
+      throw new Error('DRAFT_NOT_FOUND');
+    }
+
+    const updates = {
+      status,
+      jobId: jobId || '',
+      updatedAt: Date.now().toString()
+    };
+
+    await this.redis.hSet(draftKey, updates);
+    await this.redis.expire(draftKey, DRAFT_TTL_SECONDS);
+
+    console.log(`Draft ${draftId} generation status updated to ${status}`);
     return true;
   }
 

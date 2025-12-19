@@ -172,9 +172,22 @@ router.post("/api/game/generate", async (req, res) => {
 
     console.log(`Created job ${result.jobId} for: ${description.substring(0, 50)}...`);
 
+    // Create draft with "generating" status to track this generation
+    const userId = context.userId || 'anonymous';
+    const draftResult = await draftManager.createDraft(userId, {
+      title: 'Generating...',
+      description,
+      status: 'generating',
+      jobId: result.jobId,
+      generationModel: selectedModel
+    });
+
+    console.log(`Created draft ${draftResult.draftId} for job ${result.jobId}`);
+
     res.json({
       type: "generate_async",
       jobId: result.jobId,
+      draftId: draftResult.draftId,
       status: result.status,
       model: result.model,
       estimatedTime: result.estimatedTime
@@ -199,7 +212,7 @@ router.post("/api/game/edit", async (req, res) => {
   }
 
   try {
-    const { description, previousGame } = req.body;
+    const { description, previousGame, draftId } = req.body;
     if (!description) {
       res.status(400).json({
         status: "error",
@@ -231,9 +244,34 @@ router.post("/api/game/edit", async (req, res) => {
 
     console.log(`Created edit job ${result.jobId} for: ${description.substring(0, 50)}...`);
 
+    // Update existing draft to "generating" status, or create new one
+    const userId = context.userId || 'anonymous';
+    let resultDraftId = draftId;
+
+    if (draftId) {
+      // Update existing draft with new job reference
+      await draftManager.updateGenerationStatus(userId, draftId, {
+        status: 'generating',
+        jobId: result.jobId
+      });
+      console.log(`Updated draft ${draftId} to generating status for job ${result.jobId}`);
+    } else {
+      // Create new draft if none provided
+      const draftResult = await draftManager.createDraft(userId, {
+        title: 'Generating...',
+        description,
+        status: 'generating',
+        jobId: result.jobId,
+        generationModel: defaultModel
+      });
+      resultDraftId = draftResult.draftId;
+      console.log(`Created draft ${resultDraftId} for edit job ${result.jobId}`);
+    }
+
     res.json({
       type: "generate_async",
       jobId: result.jobId,
+      draftId: resultDraftId,
       status: result.status,
       model: result.model,
       estimatedTime: result.estimatedTime
@@ -1017,14 +1055,14 @@ router.get("/api/drafts/:draftId", asyncHandler(async (req, res) => {
 // Update a draft (save version history)
 router.put("/api/drafts/:draftId", asyncHandler(async (req, res) => {
   const userId = requireAuth();
-  const { versions, currentIndex, title } = req.body;
+  const { versions, currentIndex, title, status } = req.body;
 
   if (!Array.isArray(versions) || typeof currentIndex !== 'number') {
     return res.status(400).json({ error: "versions array and currentIndex required" });
   }
 
   const result = await draftManager.updateDraft(userId, req.params.draftId, {
-    versions, currentIndex, title
+    versions, currentIndex, title, status
   });
   res.json(result);
 }));
