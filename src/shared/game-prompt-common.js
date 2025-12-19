@@ -41,6 +41,7 @@ function getRequirementsSection() {
   - Use for: score display, lives counter, level indicators, game over text
 - **Scoring**: Always include a score system - return current score as a number in update()
 - **Game Over**: Include win/lose conditions - return gameOver: true when game ends
+- **Lives system**: If implementing lives, ensure game over triggers when lives reach 0, not below 0 (avoid stuck states)
 - **Module-level gameState**: Use \`let gameState;\` not globalThis
 - **Input**: Use input.up, input.down, input.left, input.right, input.a, input.b
 - **Complex games**: Can have complex gameState (like Tetris boards, enemy arrays, etc.)
