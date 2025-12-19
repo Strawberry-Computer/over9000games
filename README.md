@@ -281,7 +281,15 @@ const generatedGame = {
 
 #### Leaderboard & Scores
 • `POST /api/score/submit` - Submit player score to leaderboard
-• `GET /api/leaderboard` - Fetch top 5 high scores for current post
+• `GET /api/leaderboard` - Fetch top 10 high scores for current post
+
+#### Draft Management
+• `GET /api/drafts` - List user's drafts (max 20 per user)
+• `POST /api/drafts` - Create new draft
+• `GET /api/drafts/:draftId` - Get specific draft with version history
+• `PUT /api/drafts/:draftId` - Update draft (creates new version, max 10 versions)
+• `DELETE /api/drafts/:draftId` - Delete draft
+• `POST /api/drafts/:draftId/publish` - Publish draft as a Reddit post
 
 #### Post Management
 • `POST /api/post/create` - Create shareable game post with screenshot
@@ -385,9 +393,9 @@ function update(deltaTime, input) {
 - **Automatic Display**: Game over triggers leaderboard overlay
 - **Pause to View**: Press Space during gameplay to view high scores
 - **Score Submission**: Automatic on game over (authenticated users only)
-- **Top 5**: Shows top 5 scores with username and rank
+- **Top 10**: Shows top 10 scores with username and rank
 - **Storage**: Redis sorted sets for efficient ranking
-- **High Score Detection**: "NEW HIGH SCORE" message for top 5 entries
+- **High Score Detection**: "NEW HIGH SCORE" message for top 10 entries
 
 #### Audio System
 Games trigger sound effects using 8 independent sound slots:
@@ -475,6 +483,7 @@ return {
 #### Server (`src/server/`)
 - **index.js**: Express server with API routes and Devvit integration
 - **job-manager.js**: Redis-based async job queue for game generation
+- **draft-manager.js**: Game draft persistence with version history (30-day TTL)
 - **responses-api.js**: OpenAI Responses API integration
 - **headless-game-runner.js**: Server-side game runner for screenshots
 - **screenshot-renderer.js**: PNG screenshot generation

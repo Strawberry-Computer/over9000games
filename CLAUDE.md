@@ -20,7 +20,8 @@ This is a Devvit web application that implements a retro NES-style game console 
 - **AI Generation**: Async job-based OpenAI/Gemini integration for game creation
 - **Game Schema**: Validation system for sprites, palettes, and game logic
 - **Audio System**: 8-slot NES-style audio with 4 channels (pulse1, pulse2, triangle, noise)
-- **Leaderboard**: Redis-based high score tracking with top 5 display
+- **Leaderboard**: Redis-based high score tracking with top 10 display
+- **Draft System**: Persistent game drafts with version history and job recovery
 
 ### Build System
 - Uses Vite for both client and server builds with WebAssembly support
@@ -119,7 +120,15 @@ App registers subreddit menu for moderators (`/internal/menu/post-create`) and a
 
 ### Leaderboard & Scores
 - `POST /api/score/submit`: Submit player score to Redis leaderboard
-- `GET /api/leaderboard`: Fetch top 5 high scores for current post
+- `GET /api/leaderboard`: Fetch top 10 high scores for current post
+
+### Draft Management
+- `GET /api/drafts`: List user's drafts (max 20 per user)
+- `POST /api/drafts`: Create new draft
+- `GET /api/drafts/:draftId`: Get specific draft with version history
+- `PUT /api/drafts/:draftId`: Update draft (creates new version, max 10 versions)
+- `DELETE /api/drafts/:draftId`: Delete draft
+- `POST /api/drafts/:draftId/publish`: Publish draft as a Reddit post
 
 ### Post Management
 - `POST /api/post/create`: Create shareable game post with screenshot
@@ -165,6 +174,7 @@ Project uses ES modules (`"type": "module"`) with separate tsconfig for client/s
 - **Client Entry**: `src/client/main.js` - Main game console client
 - **Splash Entry**: `src/client/splash-main.js` - Game creation/selection splash screen
 - **Job Management**: `src/server/job-manager.js` - Redis-based async job queue
+- **Draft Management**: `src/server/draft-manager.js` - Game draft persistence with version history
 - **Responses API**: `src/server/responses-api.js` - OpenAI Responses API integration
 - **Game Schema Validation**: `src/shared/game-schema.js` - Validates sprites, metadata, and game structure
 - **QuickJS Game Runner**: `src/client/game-runner.js` - Client-side sandboxed game execution
