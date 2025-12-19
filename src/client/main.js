@@ -1087,6 +1087,10 @@ document.getElementById("btn-new-draft")?.addEventListener("click", () => {
   hideDraftList();
   showGameCreation();
 });
+document.getElementById("btn-show-drafts")?.addEventListener("click", () => {
+  hideAllModals();
+  showDraftList();
+});
 
 // Custom game event for score submission
 document.addEventListener("gameOver", (event) => {
