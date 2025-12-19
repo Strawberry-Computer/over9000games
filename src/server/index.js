@@ -123,7 +123,7 @@ router.get("/api/init", async (_req, res) => {
       metadata: {
         ...metadata,
         screenshotUrl,
-        title: metadata?.title || post?.title || "over9000games",
+        title: metadata?.title || "over9000games",
       },
     });
   } catch (error) {
