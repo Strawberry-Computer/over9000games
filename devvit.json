@@ -1,7 +1,9 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
   "name": "over9000games",
-  "icon": "assets/icon.png",
+  "marketingAssets": {
+    "icon": "assets/icon.png"
+  },
   "post": {
     "dir": "dist/client",
     "entrypoints": {
