@@ -200,6 +200,7 @@ Project uses ES modules (`"type": "module"`) with separate tsconfig for client/s
 - **QuickJS Sandbox**: No external dependencies, limited execution time
 - **State-Based Rendering**: Return state objects, no direct canvas access
 - **Camera System**: Scroll offset for side-scrolling worlds up to 1024px wide
+- **Lives System**: If implementing lives, trigger game over when lives reach 0 (not below 0) to avoid stuck states where player can't respawn
 
 ### Debugging Tips
 - Use browser dev tools to debug QuickJS execution errors

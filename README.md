@@ -381,6 +381,9 @@ function update(deltaTime, input) {
 - **audio**: Music and audio control object
 - **gameOver**: Boolean to trigger game over and leaderboard display
 
+**Best Practices:**
+- **Lives System**: If implementing lives, trigger game over when lives reach 0 (not below 0) to avoid stuck states where player can't respawn
+
 #### Execution Model
 1. **LLM Generation**: Self-contained game code with metadata, resources, and update functions
 2. **QuickJS Loading**: Game code loaded into sandbox, functions extracted
