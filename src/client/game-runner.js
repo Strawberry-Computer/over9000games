@@ -815,6 +815,22 @@ export class GameRunner {
 
       if (audioCommands.length > 0) {
         this.audioManager.processCommands(audioCommands);
+
+        // Log audio events to debug panel
+        if (this.debugPanel) {
+          audioCommands.forEach(cmd => {
+            if (cmd.type === 'sound') {
+              this.debugPanel.logAudioEvent({
+                frame: this.frameCount,
+                slotId: cmd.slotId,
+                soundId: cmd.soundId,
+                channel: cmd.channel,
+                note: cmd.note,
+                duration: cmd.duration
+              });
+            }
+          });
+        }
       }
     }
 
