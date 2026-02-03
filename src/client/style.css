@@ -127,6 +127,15 @@ body {
   border-bottom: 3px solid #440044;
 }
 
+.btn.debug-btn {
+  background: var(--nes-yellow);
+  color: var(--nes-dark-gray);
+  border-top: 3px solid #ffff66;
+  border-left: 3px solid #ffff66;
+  border-right: 3px solid #aa8800;
+  border-bottom: 3px solid #aa8800;
+}
+
 .btn:active {
   border-top: 3px solid var(--nes-shadow);
   border-left: 3px solid var(--nes-shadow);
@@ -986,47 +995,32 @@ body.force-mobile .keyboard-bindings {
 
 /* ==================== DEBUG PANEL ==================== */
 
-/* Debug toggle button - floating in bottom-right */
-.debug-toggle-btn {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 48px;
-  height: 48px;
-  background: var(--nes-dark-gray);
-  border: 2px solid var(--nes-green);
-  color: var(--nes-green);
-  font-size: 20px;
-  cursor: pointer;
-  z-index: 9999;
-  font-family: 'Press Start 2P', monospace;
-  transition: all 0.2s;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-}
-
-.debug-toggle-btn:hover {
-  background: var(--nes-green);
-  color: var(--nes-dark-gray);
-  transform: scale(1.1);
-}
-
-/* Debug panel container */
+/* Debug panel container - modal overlay like other modals */
 .debug-panel {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.debug-panel-inner {
+  background: #1a1a1a;
+  border: 3px solid var(--nes-green);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
   width: 90%;
   max-width: 700px;
   height: 80%;
   max-height: 600px;
-  background: rgba(0, 0, 0, 0.95);
-  border: 3px solid var(--nes-green);
-  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
-  z-index: 10000;
   display: flex;
   flex-direction: column;
-  font-family: 'Press Start 2P', monospace;
+  overflow: hidden;
 }
 
 /* Debug header */
@@ -1345,7 +1339,7 @@ body.force-mobile .keyboard-bindings {
 
 /* Mobile responsive */
 @media (max-width: 768px) {
-  .debug-panel {
+  .debug-panel-inner {
     width: 95%;
     height: 90%;
   }
@@ -1355,11 +1349,8 @@ body.force-mobile .keyboard-bindings {
     padding: 8px 4px;
   }
 
-  .debug-toggle-btn {
-    bottom: 80px;
-    right: 10px;
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
+  .btn.debug-btn {
+    font-size: 6px;
+    padding: 8px 4px;
   }
 }

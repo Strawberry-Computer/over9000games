@@ -14,7 +14,7 @@ export class DebugPanel {
     this.maxAudioEvents = 50;
 
     // DOM elements
-    this.toggleBtn = document.getElementById('btn-toggle-debug');
+    this.toggleBtn = document.getElementById('btn-debug'); // Action bar button
     this.closeBtn = document.getElementById('btn-close-debug');
     this.panel = document.getElementById('debug-panel');
     this.tabs = document.querySelectorAll('.debug-tab');
@@ -34,8 +34,10 @@ export class DebugPanel {
   }
 
   initEventListeners() {
-    // Toggle panel
-    this.toggleBtn.addEventListener('click', () => this.toggle());
+    // Toggle panel - now triggered by action bar button
+    if (this.toggleBtn) {
+      this.toggleBtn.addEventListener('click', () => this.toggle());
+    }
     this.closeBtn.addEventListener('click', () => this.close());
 
     // Tab switching
@@ -83,11 +85,15 @@ export class DebugPanel {
     this.isOpen = true;
     this.panel.style.display = 'flex';
     this.refresh();
+    // Prevent body scroll when modal open
+    document.body.style.overflow = 'hidden';
   }
 
   close() {
     this.isOpen = false;
     this.panel.style.display = 'none';
+    // Restore body scroll
+    document.body.style.overflow = '';
   }
 
   switchTab(tabName) {

@@ -21,6 +21,7 @@
         <button class="btn edit-btn" id="btn-edit-game">EDIT</button>
         <button class="btn restart-btn" id="btn-restart-game">RESTART</button>
         <button class="btn post-btn" id="btn-publish-current">POST</button>
+        <button class="btn debug-btn" id="btn-debug">DEBUG</button>
       </div>
 
       <div class="console-screen" id="console-screen">
@@ -224,23 +225,22 @@ space shooter with aliens"></textarea>
       </div>
     </div>
 
-    <!-- Debug Panel -->
-    <button class="debug-toggle-btn" id="btn-toggle-debug" title="Toggle Debug Panel (`)">🔧</button>
-
+    <!-- Debug Panel Modal -->
     <div class="debug-panel" id="debug-panel" style="display: none;">
-      <div class="debug-header">
-        <span class="debug-title">🔧 DEBUG INSPECTOR</span>
-        <button class="debug-close-btn" id="btn-close-debug">✕</button>
-      </div>
+      <div class="debug-panel-inner">
+        <div class="debug-header">
+          <span class="debug-title">🔧 DEBUG INSPECTOR</span>
+          <button class="debug-close-btn" id="btn-close-debug">✕</button>
+        </div>
 
-      <div class="debug-tabs">
-        <button class="debug-tab active" data-tab="sprites">SPRITES</button>
-        <button class="debug-tab" data-tab="source">SOURCE</button>
-        <button class="debug-tab" data-tab="audio">AUDIO</button>
-        <button class="debug-tab" data-tab="state">STATE</button>
-      </div>
+        <div class="debug-tabs">
+          <button class="debug-tab active" data-tab="sprites">SPRITES</button>
+          <button class="debug-tab" data-tab="source">SOURCE</button>
+          <button class="debug-tab" data-tab="audio">AUDIO</button>
+          <button class="debug-tab" data-tab="state">STATE</button>
+        </div>
 
-      <div class="debug-content">
+        <div class="debug-content">
         <!-- SPRITES TAB -->
         <div class="debug-tab-content active" id="debug-tab-sprites">
           <div class="debug-section">
@@ -303,6 +303,7 @@ space shooter with aliens"></textarea>
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
 
