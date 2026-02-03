@@ -1,6 +1,7 @@
 import { navigateTo } from "@devvit/web/client";
 import { getGameRunner } from "./game-runner.js";
 import { getQuickJS } from "quickjs-emscripten";
+import { debugPanel } from "./debug-panel.js";
 
 const titleElement = document.getElementById("title");
 const scoresListElement = document.getElementById("scores-list"); // Legacy, may be removed
@@ -55,6 +56,9 @@ function initializeConsole() {
   try {
     gameRunner = getGameRunner("console-canvas", "sprite-canvas");
     console.log("Game runner created");
+
+    // Connect debug panel to game runner
+    gameRunner.setDebugPanelRef(debugPanel);
   } catch (error) {
     console.error("Failed to initialize game runner:", error);
   }

@@ -324,6 +324,9 @@ export class GameRunner {
 
     console.log("Loading game code into QuickJS VM...");
 
+    // Store game code for debug panel
+    this.gameCode = gameCode;
+
     // Use shared executor to load game code
     const { metadata, resources, updateHandle } = this.executor.loadGameCode(gameCode);
     this.updateFunction = updateHandle;
@@ -335,6 +338,14 @@ export class GameRunner {
     });
 
     console.log("Game loaded successfully:", metadata.title);
+
+    // Update debug panel with game resources
+    this.updateDebugPanel();
+
+    // Update debug panel with source code
+    if (this.debugPanel) {
+      this.debugPanel.setGameCode(gameCode);
+    }
 
     // Apply options
     this.isPublished = isPublished;
@@ -652,7 +663,28 @@ export class GameRunner {
     }
 
     // Always render (shows game, paused overlay, or game over overlay)
+    const renderStart = performance.now();
     this.render();
+    const renderTime = performance.now() - renderStart;
+
+    // Update debug panel state (throttled to avoid performance impact)
+    if (this.debugPanel && this.frameCount % 10 === 0) {
+      const spriteCount = this.state.sprites.filter(s => s.spriteId >= 0).length;
+      const tileCount = this.state.tiles.reduce((sum, row) =>
+        sum + row.filter(t => t >= 0).length, 0);
+
+      this.debugPanel.updateState({
+        score: this.state.score,
+        gameOver: this.state.gameState === GameState.GAME_OVER,
+        frame: this.frameCount,
+        fps: this.lastFrameTime ? 1000 / ((performance.now() - this.lastFrameTime) * 10) : 60,
+        spriteCount,
+        tileCount,
+        scrollX: this.state.scroll.x,
+        scrollY: this.state.scroll.y,
+        renderTime
+      });
+    }
 
     // Continue loop unless stopped
     if (this.state.gameState !== GameState.STOPPED) {
@@ -1077,6 +1109,34 @@ export class GameRunner {
     this.QuickJS = null;
     this.gameDefinition = null;
     this.isInitialized = false;
+  }
+
+  // ==================== DEBUG PANEL INTEGRATION ====================
+
+  getDebugData() {
+    return {
+      palette: this.state.palette || [],
+      sprites: this.gameDefinition?.sprites || [],
+      metadata: this.gameDefinition?.metadata || null,
+      score: this.state.score,
+      gameOver: this.state.gameState === GameState.GAME_OVER,
+      frame: this.frameCount,
+      scroll: this.state.scroll
+    };
+  }
+
+  setDebugPanelRef(debugPanel) {
+    this.debugPanel = debugPanel;
+  }
+
+  updateDebugPanel() {
+    if (!this.debugPanel) return;
+
+    // Update sprites and palette
+    this.debugPanel.setGameResources(
+      this.state.palette,
+      this.gameDefinition?.sprites || []
+    );
   }
 }
 

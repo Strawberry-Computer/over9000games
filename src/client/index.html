@@ -224,6 +224,88 @@ space shooter with aliens"></textarea>
       </div>
     </div>
 
+    <!-- Debug Panel -->
+    <button class="debug-toggle-btn" id="btn-toggle-debug" title="Toggle Debug Panel (`)">🔧</button>
+
+    <div class="debug-panel" id="debug-panel" style="display: none;">
+      <div class="debug-header">
+        <span class="debug-title">🔧 DEBUG INSPECTOR</span>
+        <button class="debug-close-btn" id="btn-close-debug">✕</button>
+      </div>
+
+      <div class="debug-tabs">
+        <button class="debug-tab active" data-tab="sprites">SPRITES</button>
+        <button class="debug-tab" data-tab="source">SOURCE</button>
+        <button class="debug-tab" data-tab="audio">AUDIO</button>
+        <button class="debug-tab" data-tab="state">STATE</button>
+      </div>
+
+      <div class="debug-content">
+        <!-- SPRITES TAB -->
+        <div class="debug-tab-content active" id="debug-tab-sprites">
+          <div class="debug-section">
+            <h4>PALETTE</h4>
+            <div class="palette-grid" id="palette-grid">
+              <!-- Palette colors populated by JS -->
+            </div>
+          </div>
+
+          <div class="debug-section">
+            <h4>SPRITES</h4>
+            <div class="sprite-grid" id="sprite-grid">
+              <!-- Sprite tiles populated by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- SOURCE TAB -->
+        <div class="debug-tab-content" id="debug-tab-source">
+          <div class="debug-toolbar">
+            <button class="debug-btn" id="btn-copy-source">📋 COPY CODE</button>
+            <span class="debug-info" id="source-line-count">Lines: 0</span>
+          </div>
+          <pre class="source-code" id="source-code"><code>// No game code loaded</code></pre>
+        </div>
+
+        <!-- AUDIO TAB -->
+        <div class="debug-tab-content" id="debug-tab-audio">
+          <div class="debug-toolbar">
+            <span class="debug-info">SOUND LOG</span>
+            <button class="debug-btn" id="btn-clear-audio-log">🗑️ CLEAR</button>
+          </div>
+          <div class="audio-log" id="audio-log">
+            <div class="audio-log-empty">No audio events yet</div>
+          </div>
+          <div class="audio-stats" id="audio-stats">
+            Stats: 0 sounds played
+          </div>
+        </div>
+
+        <!-- STATE TAB -->
+        <div class="debug-tab-content" id="debug-tab-state">
+          <div class="debug-section">
+            <h4>GAME STATE</h4>
+            <div class="state-info" id="game-state-info">
+              <div class="state-row"><span class="state-label">Score:</span> <span id="state-score">0</span></div>
+              <div class="state-row"><span class="state-label">Game Over:</span> <span id="state-gameover">false</span></div>
+              <div class="state-row"><span class="state-label">Frame:</span> <span id="state-frame">0</span></div>
+              <div class="state-row"><span class="state-label">FPS:</span> <span id="state-fps">60</span></div>
+            </div>
+          </div>
+
+          <div class="debug-section">
+            <h4>RENDER STATS</h4>
+            <div class="state-info" id="render-stats-info">
+              <div class="state-row"><span class="state-label">Active Sprites:</span> <span id="stats-sprites">0 / 64</span></div>
+              <div class="state-row"><span class="state-label">Active Tiles:</span> <span id="stats-tiles">0 / 2048</span></div>
+              <div class="state-row"><span class="state-label">Scroll:</span> <span id="stats-scroll">{x: 0, y: 0}</span></div>
+              <div class="state-row"><span class="state-label">Render Time:</span> <span id="stats-render-time">0.0ms</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="main.js" defer></script>
   </body>
 </html>
