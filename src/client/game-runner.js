@@ -826,7 +826,11 @@ export class GameRunner {
                 soundId: cmd.soundId,
                 channel: cmd.channel,
                 note: cmd.note,
-                duration: cmd.duration
+                frequency: cmd.frequency,
+                duration: cmd.duration,
+                envelope: cmd.envelope,
+                volume: cmd.volume,
+                mode: cmd.mode // for noise channel
               });
             }
           });

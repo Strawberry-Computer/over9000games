@@ -1259,15 +1259,72 @@ body.force-mobile .keyboard-bindings {
 }
 
 .audio-log-entry {
-  padding: 6px;
-  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  margin-bottom: 2px;
   background: rgba(0, 0, 0, 0.3);
-  border-left: 2px solid var(--nes-green);
+  border-left: 3px solid #333;
   color: #aaa;
+  font-size: 7px;
+  transition: all 0.2s;
 }
 
 .audio-log-entry:nth-child(odd) {
   background: rgba(0, 0, 0, 0.5);
+}
+
+.audio-log-entry.recent {
+  background: rgba(0, 255, 0, 0.1);
+  border-left-color: var(--nes-green);
+  animation: pulse 0.5s ease-out;
+}
+
+@keyframes pulse {
+  0% { background: rgba(0, 255, 0, 0.3); }
+  100% { background: rgba(0, 255, 0, 0.1); }
+}
+
+.audio-waveform {
+  font-size: 12px;
+  font-weight: bold;
+  min-width: 30px;
+  text-align: left;
+  letter-spacing: -2px;
+}
+
+.audio-sound {
+  color: var(--nes-yellow);
+  min-width: 60px;
+  font-weight: bold;
+}
+
+.audio-pitch {
+  color: var(--nes-green);
+  min-width: 50px;
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.audio-envelope {
+  color: var(--nes-purple);
+  min-width: 20px;
+  text-align: center;
+  font-size: 10px;
+}
+
+.audio-duration {
+  color: #999;
+  min-width: 40px;
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.audio-mode {
+  color: #888;
+  font-size: 8px;
+  margin-left: 4px;
 }
 
 .audio-stats {

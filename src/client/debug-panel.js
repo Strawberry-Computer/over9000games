@@ -333,18 +333,62 @@ export class DebugPanel {
       return;
     }
 
+    // Channel waveform representations
+    const channelWaves = {
+      'pulse1': '▬▬',
+      'pulse2': '▭▭',
+      'triangle': '△▽',
+      'noise': '⚡⚡'
+    };
+
+    const channelColors = {
+      'pulse1': '#4af',
+      'pulse2': '#f4a',
+      'triangle': '#4fa',
+      'noise': '#fa4'
+    };
+
+    // Envelope shapes
+    const envelopeShapes = {
+      'sharp': '⟋',
+      'soft': '⟍',
+      'fade': '⌄',
+      'sustain': '▬'
+    };
+
     // Render events (newest first)
-    const eventsHtml = [...this.audioEvents].reverse().map(event => {
-      return `<div class="audio-log-entry">
-        Frame ${event.frame || '?'} | Slot ${event.slotId} | ${event.soundId} | ${event.channel} | ${event.note || '--'} | ${event.duration}s
+    const eventsHtml = [...this.audioEvents].reverse().map((event, index) => {
+      const wave = channelWaves[event.channel] || '♪♪';
+      const color = channelColors[event.channel] || '#888';
+      const isRecent = index < 3; // Highlight last 3 events
+      const envelope = envelopeShapes[event.envelope] || '·';
+
+      // Display note/frequency
+      const pitch = event.note || (event.frequency ? `${event.frequency}Hz` : '--');
+
+      return `<div class="audio-log-entry ${isRecent ? 'recent' : ''}">
+        <span class="audio-waveform" style="color: ${color}" title="${event.channel}">${wave}</span>
+        <span class="audio-sound">${event.soundId}</span>
+        <span class="audio-pitch">${pitch}</span>
+        <span class="audio-envelope" title="${event.envelope}">${envelope}</span>
+        <span class="audio-duration">${event.duration}s</span>
+        ${event.mode ? `<span class="audio-mode" title="${event.mode}">⚙</span>` : ''}
       </div>`;
     }).join('');
 
     this.audioLog.innerHTML = eventsHtml;
 
-    // Update stats
-    const channels = new Set(this.audioEvents.map(e => e.channel));
-    this.audioStats.textContent = `Stats: ${this.audioEvents.length} sounds played | Channels: ${channels.size}`;
+    // Update stats with channel breakdown
+    const channelCounts = {};
+    this.audioEvents.forEach(e => {
+      channelCounts[e.channel] = (channelCounts[e.channel] || 0) + 1;
+    });
+
+    const channelStats = Object.entries(channelCounts)
+      .map(([ch, count]) => `<span style="color: ${channelColors[ch]}">${channelWaves[ch]}×${count}</span>`)
+      .join(' ');
+
+    this.audioStats.innerHTML = `Stats: ${this.audioEvents.length} sounds | ${channelStats}`;
 
     // Auto-scroll to bottom
     this.audioLog.scrollTop = this.audioLog.scrollHeight;
